@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LANSMARK · 토지 소득 측량 리포트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#f1ead9; --paper2:#e8dfc9; --card:#f7f2e6;
+    --ink:#1c3a2d; --ink2:#34503f; --ink3:#5b7064;
+    --clay:#b2502a; --clay2:#cf7144; --gold:#bb8a2b;
+    --line:rgba(28,58,45,.16); --line2:rgba(28,58,45,.08);
+    --good:#3c6a48; --warn:#b2502a; --gate:#9a7a1f;
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:"IBM Plex Sans KR",sans-serif; color:var(--ink);
+    background:var(--paper);
+    background-image:
+      radial-gradient(120% 80% at 88% -10%, rgba(187,138,43,.10), transparent 60%),
+      radial-gradient(100% 70% at -10% 110%, rgba(178,80,42,.08), transparent 55%);
+    line-height:1.5; -webkit-font-smoothing:antialiased; padding:0 0 28px;
+  }
+  .topo{position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.5}
+  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:0 22px}
+  .mono{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+
+  header{padding:26px 0 16px; border-bottom:1.5px solid var(--ink); margin-bottom:22px}
+  .topstrip{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap}
+  .brand{display:flex; align-items:baseline; gap:12px}
+  .logo{font-family:"Fraunces",serif; font-weight:900; font-size:34px; letter-spacing:-.02em; line-height:1}
+  .logo b{color:var(--clay)}
+  .tag{font-size:12.5px; color:var(--ink3); letter-spacing:.01em}
+  .meta{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+  .pill{font-family:"IBM Plex Mono",monospace; font-size:11px; padding:5px 9px; border:1px solid var(--line); border-radius:999px; background:var(--card); color:var(--ink2); white-space:nowrap}
+  .pill.live{border-color:var(--good); color:var(--good)}
+  .pill.mock{border-color:var(--gold); color:var(--gate)}
+
+  .grid{display:grid; grid-template-columns:320px 1fr; gap:18px; align-items:start}
+  @media(max-width:900px){ .grid{grid-template-columns:1fr} }
+  .col{display:flex; flex-direction:column; gap:18px}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px}
+  .card h3{margin:0 0 12px; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink3); font-weight:600; display:flex; align-items:center; gap:8px}
+  .card h3::before{content:""; width:7px; height:7px; background:var(--clay); border-radius:2px; transform:rotate(45deg)}
+
+  .kv{display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px dashed var(--line2); font-size:14px}
+  .kv:last-child{border-bottom:none}
+  .kv span:first-child{color:var(--ink3)}
+  .kv .v{font-family:"IBM Plex Mono",monospace; font-weight:500; text-align:right}
+
+  .map{position:relative; height:150px; border-radius:10px; overflow:hidden; border:1px solid var(--line); margin-top:4px; background:#e7dec7}
+  .map .pin{position:absolute; left:50%; top:54%; transform:translate(-50%,-100%); font-size:20px; filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+  .map .scale{position:absolute; right:8px; bottom:7px; font-size:9.5px; color:var(--ink2); background:rgba(247,242,230,.8); padding:2px 5px; border-radius:5px}
+
+  .chips{display:flex; flex-wrap:wrap; gap:7px}
+  .chip{font-size:11.5px; border:1px solid var(--line); border-radius:8px; padding:6px 9px; background:var(--paper); display:flex; flex-direction:column; gap:1px; min-width:0}
+  .chip .lbl{color:var(--ink3); font-size:10px; letter-spacing:.04em}
+  .chip .val{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:13px}
+  .chip.up .val{color:var(--good)} .chip.dn .val{color:var(--warn)}
+  .chip.gate{border-style:dashed} .chip.gate .val{color:var(--gate)}
+
+  .sectionhead{display:flex; align-items:baseline; justify-content:space-between; margin:2px 2px 12px}
+  .sectionhead .t{font-family:"Fraunces",serif; font-size:21px; font-weight:600}
+  .badge{font-family:"IBM Plex Mono",monospace; font-size:10px; padding:3px 8px; border-radius:999px}
+  .free{color:var(--good); border:1px solid var(--good)}
+  .paid{color:var(--clay); border:1px solid var(--clay)}
+
+  .recos{display:grid; grid-template-columns:repeat(4,1fr); gap:12px}
+  @media(max-width:760px){ .recos{grid-template-columns:repeat(2,1fr)} }
+  .reco{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; cursor:pointer; text-align:center; transition:transform .15s ease, box-shadow .15s ease; position:relative}
+  .reco:hover{transform:translateY(-3px); box-shadow:0 8px 20px rgba(28,58,45,.10)}
+  .reco.active{box-shadow:0 0 0 2px var(--ink) inset}
+  .reco.active::after{content:"선택"; position:absolute; top:-9px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--paper); font-family:"IBM Plex Mono",monospace; font-size:9px; padding:2px 8px; border-radius:999px; letter-spacing:.1em}
+  .ring{width:64px; height:64px; border-radius:50%; margin:2px auto 9px; display:grid; place-items:center; position:relative}
+  .ring::before{content:""; position:absolute; inset:7px; background:var(--card); border-radius:50%}
+  .ring span{position:relative; font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:16px}
+  .reco .nm{font-weight:600; font-size:15px}
+  .reco .ct{font-size:11px; color:var(--ink3); margin-top:1px}
+
+  .simhead{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:4px}
+  .simhead .nm{font-family:"Fraunces",serif; font-size:27px; font-weight:600}
+  .simhead .sub{font-size:12.5px; color:var(--ink3)}
+  .rangewrap{margin:20px 0 8px}
+  .rangewrap .top{display:flex; justify-content:space-between; font-size:11px; color:var(--ink3); margin-bottom:6px; letter-spacing:.04em}
+  .track{position:relative; height:54px}
+  .axis{position:absolute; left:0; right:0; top:34px; height:2px; background:var(--line)}
+  .span{position:absolute; top:28px; height:14px; border-radius:7px; background:linear-gradient(90deg, var(--clay2), var(--gold), var(--good)); opacity:.85; transition:left .3s, width .3s}
+  .tick{position:absolute; top:18px; width:2px; height:34px; background:var(--ink); transition:left .3s}
+  .tick.med{height:46px; top:11px; width:3px}
+  .tlab{position:absolute; top:-2px; transform:translateX(-50%); text-align:center; transition:left .3s}
+  .tlab .p{font-size:9.5px; color:var(--ink3); letter-spacing:.06em}
+  .tlab .n{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:14px; margin-top:1px}
+  .tlab.med .n{font-size:18px; color:var(--clay)}
+
+  .simgrid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:18px}
+  @media(max-width:680px){ .simgrid{grid-template-columns:1fr} }
+  .stat{border:1px solid var(--line); border-radius:10px; padding:12px 13px; background:var(--paper)}
+  .stat .l{font-size:11px; color:var(--ink3); letter-spacing:.04em}
+  .stat .b{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:18px; margin-top:3px}
+  .stat .h{font-size:10.5px; color:var(--ink3); margin-top:2px}
+
+  .factors{margin-top:6px}
+  .frow{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px dashed var(--line2); font-size:13px}
+  .frow:last-child{border-bottom:none}
+  .frow .ax{width:96px; color:var(--ink2); font-size:12px; flex:none}
+  .bar{flex:1; height:8px; background:var(--paper2); border-radius:5px; overflow:hidden; position:relative}
+  .bar i{position:absolute; top:0; bottom:0; background:var(--good); opacity:.8}
+  .bar i.neg{background:var(--warn)}
+  .frow .fv{width:46px; text-align:right; font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:12.5px}
+  .frow .rs{flex:1.4; color:var(--ink3); font-size:11.5px}
+  @media(max-width:680px){ .frow .rs{display:none} }
+
+  .srcline{font-size:11px; color:var(--ink3); margin-top:12px; line-height:1.7}
+  .srcline b{color:var(--ink2); font-weight:600}
+
+  .statusgrid{display:grid; grid-template-columns:repeat(5,1fr); gap:10px}
+  @media(max-width:760px){ .statusgrid{grid-template-columns:repeat(2,1fr)} }
+  .seam{border:1px solid var(--line); border-radius:10px; padding:11px; background:var(--paper)}
+  .seam .nm{font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600}
+  .seam .st{font-size:10.5px; margin-top:4px; display:flex; align-items:center; gap:5px; color:var(--ink3)}
+  .dot{width:8px; height:8px; border-radius:50%; flex:none}
+  .dot.ok{background:var(--good)} .dot.mock{background:var(--gold)} .dot.gate{background:var(--clay)}
+
+  .disc{margin-top:22px; border:1.5px solid var(--ink); border-radius:var(--r); padding:16px 18px; background:var(--ink); color:var(--paper)}
+  .disc h4{margin:0 0 6px; font-family:"Fraunces",serif; font-size:15px; font-weight:600}
+  .disc p{margin:0; font-size:12px; line-height:1.7; color:rgba(241,234,217,.82)}
+  .disc .k{color:var(--gold); font-weight:600}
+
+  .fade{opacity:0; transform:translateY(10px); animation:rise .6s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes rise{to{opacity:1; transform:none}}
+</style>
+</head>
+<body>
+<svg class="topo" preserveAspectRatio="none" viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#1c3a2d" stroke-width="1" opacity="0.10">
+    <path d="M-50 180 C 200 120, 380 240, 560 170 S 900 90, 1080 200"/>
+    <path d="M-50 240 C 200 180, 400 300, 580 230 S 900 150, 1080 260"/>
+    <path d="M-50 320 C 220 260, 420 380, 600 300 S 920 230, 1080 340"/>
+    <path d="M-50 420 C 240 360, 440 470, 620 400 S 940 330, 1080 440"/>
+    <path d="M-50 520 C 240 470, 440 560, 640 500 S 950 440, 1080 540"/>
+    <ellipse cx="720" cy="430" rx="120" ry="70" opacity="0.6"/>
+    <ellipse cx="720" cy="430" rx="78" ry="44" opacity="0.6"/>
+    <ellipse cx="720" cy="430" rx="40" ry="22" opacity="0.6"/>
+  </g>
+</svg>
+
+<div class="wrap">
+  <header class="fade">
+    <div class="topstrip">
+      <div class="brand">
+        <div class="logo">LANS<b>MARK</b></div>
+        <div class="tag">현실 기반 작물 · 수확 · 소득 측량 리포트</div>
+      </div>
+      <div class="meta">
+        <span class="pill mock">DATA · MOCK</span>
+        <span class="pill">geo-stack · Stage0 ✓</span>
+        <span class="pill live">tests · 77 green</span>
+        <span class="pill">srv · /api ✓</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <div class="card fade" style="animation-delay:.05s">
+        <h3>대상 필지</h3>
+        <div class="kv"><span>주소</span><span class="v">전남 해남군 (예시)</span></div>
+        <div class="kv"><span>면적</span><span class="v">3,300㎡ · 33a</span></div>
+        <div class="kv"><span>PNU</span><span class="v" style="font-size:11px">4682025021100010000</span></div>
+        <div class="kv"><span>좌표 (WGS84)</span><span class="v" style="font-size:12px">34.5734, 126.5990</span></div>
+        <div class="map">
+          <svg width="100%" height="100%" viewBox="0 0 300 150" preserveAspectRatio="none">
+            <rect width="300" height="150" fill="#e7dec7"/>
+            <g fill="none" stroke="#1c3a2d" opacity="0.22" stroke-width="1">
+              <path d="M-10 40 C 60 20,120 70,180 45 S 280 15,320 55"/>
+              <path d="M-10 75 C 70 55,130 100,190 78 S 290 50,320 88"/>
+              <path d="M-10 112 C 70 95,130 135,190 116 S 290 86,320 122"/>
+            </g>
+            <polygon points="118,58 182,58 182,96 118,96" fill="#b2502a" opacity="0.16" stroke="#b2502a" stroke-width="1.4"/>
+          </svg>
+          <div class="pin">📍</div>
+          <div class="scale mono">DEM · mock</div>
+        </div>
+      </div>
+
+      <div class="card fade" style="animation-delay:.12s">
+        <h3>지형 분석 · DEM 6축</h3>
+        <div class="chips">
+          <div class="chip"><span class="lbl">경사</span><span class="val">7.6°</span></div>
+          <div class="chip"><span class="lbl">향</span><span class="val">W · 서향</span></div>
+          <div class="chip"><span class="lbl">표고</span><span class="val">307 m</span></div>
+          <div class="chip dn"><span class="lbl">경사 계수</span><span class="val">×0.95</span></div>
+          <div class="chip dn"><span class="lbl">향 계수</span><span class="val">×0.97</span></div>
+          <div class="chip gate"><span class="lbl">토양</span><span class="val">인증 필요</span></div>
+        </div>
+        <div class="srcline">출처 <b>VWorld DEM</b>(mock) · 경사/향/표고는 좌표 기반 자동 산출. 토양 정밀계수는 <b>토양검정 인증</b> 후 해금.</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card fade" style="animation-delay:.08s">
+        <div class="sectionhead"><div><span class="t">작물 추천</span></div><div><span class="badge free">FREE · 무료</span></div></div>
+        <div class="recos" id="recos"></div>
+        <div class="srcline">적합도는 <b>지형·기후·표고</b> 부합도 기반 상대점수(예시). 카드를 누르면 아래 정밀 시뮬이 갱신됩니다.</div>
+      </div>
+
+      <div class="card fade" style="animation-delay:.16s">
+        <div class="sectionhead"><div><span class="t">정밀 소득 시뮬레이션</span></div><div><span class="badge paid">PRO · 유료</span></div></div>
+
+        <div class="simhead">
+          <span class="nm" id="simName">사과(후지)</span>
+          <span class="sub" id="simSub">노지 · 혼합판로 · 10a 기준 · 추정치(mock)</span>
+        </div>
+
+        <div class="rangewrap">
+          <div class="top"><span>소득 분포 (만원 / 10a)</span><span>P10–P90 범위 · 단일값 아님</span></div>
+          <div class="track">
+            <div class="axis"></div>
+            <div class="span" id="span"></div>
+            <div class="tick" id="t10"></div>
+            <div class="tick med" id="t50"></div>
+            <div class="tick" id="t90"></div>
+            <div class="tlab" id="l10"><div class="p">P10 비관</div><div class="n"></div></div>
+            <div class="tlab med" id="l50"><div class="p">P50 중앙</div><div class="n"></div></div>
+            <div class="tlab" id="l90"><div class="p">P90 낙관</div><div class="n"></div></div>
+          </div>
+        </div>
+
+        <div class="simgrid">
+          <div class="stat"><div class="l">필지 전체(33a) 환산 · P50</div><div class="b" id="totMid"></div><div class="h" id="totRange"></div></div>
+          <div class="stat"><div class="l">손익분기 단가</div><div class="b" id="be"></div><div class="h">이 단가 미만이면 적자 구간</div></div>
+        </div>
+
+        <div style="margin-top:18px">
+          <h3 style="margin-bottom:8px">소득 근거 · 보정 계수</h3>
+          <div class="factors" id="factors"></div>
+        </div>
+
+        <div class="srcline" id="srcline"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card fade" style="animation-delay:.2s; margin-top:18px">
+    <h3>데이터 연동 상태 · live seam</h3>
+    <div class="statusgrid">
+      <div class="seam"><div class="nm">VWorld</div><div class="st"><span class="dot mock"></span>타일·필지 mock</div><div class="st"><span class="dot gate"></span>DEM = 키 대기</div></div>
+      <div class="seam"><div class="nm">KMA 기후</div><div class="st"><span class="dot ok"></span>격자변환 ✓</div><div class="st"><span class="dot gate"></span>응답파싱 대기</div></div>
+      <div class="seam"><div class="nm">KAMIS 가격</div><div class="st"><span class="dot ok"></span>P10/50/90 ✓</div><div class="st"><span class="dot gate"></span>품목코드 검증</div></div>
+      <div class="seam"><div class="nm">RDA 소득</div><div class="st"><span class="dot mock"></span>placeholder</div><div class="st"><span class="dot gate"></span>실데이터 대기</div></div>
+      <div class="seam"><div class="nm">Toss 결제</div><div class="st"><span class="dot ok"></span>서명·멱등 ✓</div><div class="st"><span class="dot gate"></span>confirm 키 대기</div></div>
+    </div>
+    <div class="srcline">초록 = 구현·검증 완료 · 노랑 = mock 동작 · 주황 = HUMAN GATE(키/실데이터 필요). 키 확보 시 seam만 채우면 live 전환.</div>
+  </div>
+
+  <div class="disc fade" style="animation-delay:.24s">
+    <h4>판단하지 않는다. 통제하고 기록한다.</h4>
+    <p>본 리포트의 모든 수치는 <span class="k">추정치(예시·mock)</span>이며, 소득·수확·재배 성공을 <span class="k">보장하지 않습니다</span>. 소득은 단일값이 아닌 <span class="k">P10·P50·P90 범위</span>로만 제시됩니다. 본 서비스는 특정 토지의 <span class="k">매입을 권유하지 않습니다</span>. 출처: KAMIS 도매가(예시) · RDA 농축산물소득(2024, placeholder) · VWorld DEM(mock). 정밀 토양계수는 토양검정 인증 후 제공됩니다.</p>
+  </div>
+</div>
+
+<script>
+const CROPS = {
+  apple:        { name:"사과(후지)", cat:"과수",  score:86, p10:380, p50:540, p90:760, be:"1,850원/kg", yield:"≈2,400kg/10a",
+    factors:[["지형·경사",0.95,"7.6° 완경사 — 작업 보통"],["지형·향",0.97,"서향 — 일조 보통"],["기후·서리",0.92,"표고 307m — 만상 주의"],["판로·혼합",1.04,"직거래 비중 가점"]],
+    src:"KAMIS 사과 후지 도매(예시) · RDA 사과 노지 소득(2024, placeholder)" },
+  sweet_potato: { name:"고구마",    cat:"식량",  score:79, p10:210, p50:320, p90:470, be:"720원/kg",   yield:"≈2,800kg/10a",
+    factors:[["지형·경사",1.00,"완경사 — 기계화 양호"],["지형·향",0.99,"향 영향 적음"],["기후·온도",1.02,"해남 온난 — 적합"],["판로·혼합",1.03,"저장출하 가점"]],
+    src:"KAMIS 고구마 도매(예시) · RDA 고구마 소득(2024, placeholder)" },
+  garlic:       { name:"마늘",      cat:"채소",  score:73, p10:260, p50:410, p90:640, be:"3,100원/kg", yield:"≈1,300kg/10a",
+    factors:[["지형·경사",0.98,"완경사 허용"],["지형·향",0.97,"서향 — 보통"],["기후·월동",1.01,"난지형 적지"],["판로·혼합",1.02,"깐마늘 가공 가점"]],
+    src:"KAMIS 마늘(난지) 도매(예시) · RDA 마늘 소득(2024, placeholder)" },
+  blueberry:    { name:"블루베리",  cat:"과수",  score:68, p10:290, p50:520, p90:880, be:"6,400원/kg", yield:"≈900kg/10a",
+    factors:[["지형·경사",0.96,"배수 양호 필요"],["지형·향",0.98,"서향 — 보통"],["토양·pH",0.90,"산성토 조성 필요"],["판로·직거래",1.08,"고변동·직판 의존"]],
+    src:"도매 미등록 가능 — 대체 출처 필요 · RDA 추정(placeholder)" }
+};
+const ORDER = ["apple","sweet_potato","garlic","blueberry"];
+const AREA = 3.3;
+let active = "apple";
+
+function ringStyle(score){
+  const c = score>=80? "var(--good)" : score>=72? "var(--gold)" : "var(--clay)";
+  return `background:conic-gradient(${c} ${score*3.6}deg, var(--paper2) 0)`;
+}
+function renderRecos(){
+  const el = document.getElementById("recos");
+  el.innerHTML = ORDER.map(id=>{
+    const c = CROPS[id];
+    return `<div class="reco ${id===active?'active':''}" data-id="${id}">
+      <div class="ring" style="${ringStyle(c.score)}"><span>${c.score}</span></div>
+      <div class="nm">${c.name}</div><div class="ct">${c.cat} · 적합도</div></div>`;
+  }).join("");
+  el.querySelectorAll(".reco").forEach(r=> r.onclick=()=>{ active=r.dataset.id; renderRecos(); renderSim(); });
+}
+function won(man){
+  const w = man*10000;
+  if(w>=100000000) return (w/100000000).toFixed(2).replace(/\.00$/,'')+"억원";
+  return (man>=1000? (man/1000).toFixed(2).replace(/\.00$/,'')+"천만원" : man.toLocaleString()+"만원");
+}
+function renderSim(){
+  const c = CROPS[active];
+  document.getElementById("simName").textContent = c.name;
+  document.getElementById("simSub").textContent = "노지 · 혼합판로 · 10a 기준 · 추정치(mock)";
+  const pad=(c.p90-c.p10)*0.12, lo=c.p10-pad, hi=c.p90+pad, sp=hi-lo;
+  const pct=v=> ((v-lo)/sp*100);
+  const span=document.getElementById("span");
+  span.style.left=pct(c.p10)+"%"; span.style.width=(pct(c.p90)-pct(c.p10))+"%";
+  const place=(tick,lab,v,txt)=>{ tick.style.left=pct(v)+"%"; lab.style.left=pct(v)+"%"; lab.querySelector(".n").textContent=txt; };
+  place(document.getElementById("t10"),document.getElementById("l10"),c.p10,c.p10);
+  place(document.getElementById("t50"),document.getElementById("l50"),c.p50,c.p50);
+  place(document.getElementById("t90"),document.getElementById("l90"),c.p90,c.p90);
+  document.getElementById("totMid").textContent = won(Math.round(c.p50*AREA));
+  document.getElementById("totRange").textContent = `P10 ${won(Math.round(c.p10*AREA))} ~ P90 ${won(Math.round(c.p90*AREA))}`;
+  document.getElementById("be").textContent = c.be;
+  document.getElementById("factors").innerHTML = c.factors.map(([ax,v,rs])=>{
+    const dev=(v-1), w=Math.min(50,Math.abs(dev)*100*2.2);
+    const side=dev<0?`right:50%;width:${w}%`:`left:50%;width:${w}%`;
+    return `<div class="frow"><span class="ax">${ax}</span>
+      <span class="bar"><i class="${dev<0?'neg':''}" style="${side}"></i></span>
+      <span class="fv" style="color:${dev<0?'var(--warn)':'var(--good)'}">×${v.toFixed(2)}</span>
+      <span class="rs">${rs}</span></div>`;
+  }).join("");
+  document.getElementById("srcline").innerHTML = "출처 · <b>"+c.src+"</b> · 예상수량 "+c.yield+". 모든 값은 추정 범위이며 보장이 아닙니다.";
+}
+renderRecos(); renderSim();
+</script>
+</body>
+</html>

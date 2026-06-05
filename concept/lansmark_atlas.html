@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>LANSMARK ATLAS · 토지 소득 궤도 측량</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#08110d; --bg2:#0b1814; --panel:#0e201a; --panel2:#11261f;
+    --ink:#e6f1e9; --dim:#80a392; --faint:#5a7568;
+    --line:rgba(120,200,165,.16); --line2:rgba(120,200,165,.08);
+    --cyan:#39b9a6; --teal:#2c8f86; --amber:#e0a83a; --good:#5fd08e; --warn:#e07a44; --gold:#d8b24a; --rose:#df6a7a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0; height:100%; overflow:hidden; background:var(--bg)}
+  body{font-family:"IBM Plex Sans KR",sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; user-select:none}
+  .mono{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+
+  /* ===== 스테이지(지도 뷰포트) ===== */
+  #stage{position:fixed; inset:0; cursor:grab;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #0d211b 0%, var(--bg) 60%),
+      radial-gradient(80% 80% at 80% 90%, rgba(57,185,166,.06), transparent 60%);
+  }
+  #stage.drag{cursor:grabbing}
+  #stars{position:absolute; inset:0; pointer-events:none; opacity:.5}
+  #world{position:absolute; left:0; top:0; width:1000px; height:1400px; transform-origin:0 0; will-change:transform}
+  .vignette{position:fixed; inset:0; pointer-events:none; box-shadow:inset 0 0 240px 60px rgba(0,0,0,.6); z-index:30}
+  .grain{position:fixed; inset:0; pointer-events:none; z-index:31; opacity:.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>")}
+
+  /* 핀 */
+  .pin{position:absolute; transform:translate(-50%,-50%); cursor:pointer; z-index:6}
+  .pin .core{width:13px; height:13px; border-radius:50%; background:var(--cyan); box-shadow:0 0 0 4px rgba(57,185,166,.18), 0 0 14px var(--cyan); position:relative; z-index:2; transition:transform .15s}
+  .pin:hover .core{transform:scale(1.25)}
+  .pin .halo{position:absolute; left:50%; top:50%; width:13px; height:13px; margin:-6.5px; border-radius:50%; border:1.5px solid var(--cyan); opacity:.6; animation:ping 2.6s ease-out infinite}
+  .pin.active .core{background:var(--amber); box-shadow:0 0 0 5px rgba(224,168,58,.2),0 0 18px var(--amber)}
+  .pin.active .halo{border-color:var(--amber)}
+  .pin .lab{position:absolute; left:16px; top:-7px; font-size:12px; font-weight:600; white-space:nowrap; color:var(--ink);
+    background:rgba(8,17,13,.7); padding:2px 7px; border-radius:6px; border:1px solid var(--line); backdrop-filter:blur(3px); opacity:0; transition:opacity .15s; pointer-events:none}
+  .pin:hover .lab, .pin.active .lab{opacity:1}
+  @keyframes ping{0%{transform:scale(1);opacity:.7} 80%,100%{transform:scale(5);opacity:0}}
+
+  /* 지도 위 이벤트 펄스 */
+  .ev{position:absolute; transform:translate(-50%,-50%); z-index:7; pointer-events:auto; cursor:pointer}
+  .ev .b{font-size:15px; filter:drop-shadow(0 0 6px currentColor)}
+  .ev .ring{position:absolute; left:50%; top:50%; width:10px; height:10px; margin:-5px; border-radius:50%; border:2px solid currentColor; animation:ping 2s ease-out infinite}
+  .ev.price{color:var(--good)} .ev.drop{color:var(--rose)} .ev.frost{color:#7cc7e0} .ev.demand{color:var(--amber)} .ev.sat{color:var(--cyan)}
+
+  /* ===== HUD ===== */
+  .hud{position:fixed; z-index:20; pointer-events:none}
+  .hud *{pointer-events:auto}
+  .top{top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-start; padding:16px 18px;
+    background:linear-gradient(180deg, rgba(8,17,13,.82), transparent)}
+  .brand{display:flex; align-items:baseline; gap:11px}
+  .logo{font-family:"Fraunces",serif; font-weight:700; font-size:23px; letter-spacing:.02em}
+  .logo b{color:var(--cyan)}
+  .sub{font-size:11px; color:var(--dim); letter-spacing:.06em}
+  .readout{display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end}
+  .chip{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--dim); border:1px solid var(--line); background:rgba(14,32,26,.6); padding:5px 9px; border-radius:7px; backdrop-filter:blur(4px); white-space:nowrap}
+  .chip b{color:var(--cyan); font-weight:500}
+
+  /* 줌 컨트롤 */
+  .zoomctl{position:fixed; left:18px; bottom:18px; z-index:20; display:flex; flex-direction:column; gap:6px}
+  .zoomctl button{width:38px; height:38px; border-radius:9px; border:1px solid var(--line); background:rgba(14,32,26,.8); color:var(--ink);
+    font-size:18px; cursor:pointer; backdrop-filter:blur(4px); transition:border-color .15s, background .15s}
+  .zoomctl button:hover{border-color:var(--cyan); background:var(--panel2)}
+  .crosshair{position:fixed; left:50%; top:50%; z-index:9; transform:translate(-50%,-50%); pointer-events:none; opacity:.35}
+  .crosshair svg{display:block}
+
+  /* 범례 */
+  .legend{position:fixed; right:18px; bottom:18px; z-index:20; font-size:11px; color:var(--dim);
+    background:rgba(14,32,26,.7); border:1px solid var(--line); border-radius:9px; padding:9px 11px; backdrop-filter:blur(4px); display:flex; gap:14px; flex-wrap:wrap; max-width:60vw}
+  .legend i{display:inline-block; width:8px;height:8px;border-radius:50%; margin-right:5px; vertical-align:middle}
+
+  /* ===== 이벤트 피드 ===== */
+  .feed{position:fixed; right:18px; top:70px; z-index:21; width:268px; display:flex; flex-direction:column; gap:8px}
+  .toast{background:rgba(14,32,26,.9); border:1px solid var(--line); border-left-width:3px; border-radius:9px; padding:9px 11px;
+    backdrop-filter:blur(6px); cursor:pointer; transform:translateX(20px); opacity:0; animation:slidein .4s forwards; transition:border-color .15s}
+  .toast:hover{border-color:var(--cyan)}
+  .toast .h{display:flex; align-items:center; gap:7px; font-size:11px; color:var(--dim)}
+  .toast .t{font-size:13px; margin-top:3px; line-height:1.4}
+  .toast .loc{color:var(--cyan); font-weight:600}
+  .toast.price{border-left-color:var(--good)} .toast.drop{border-left-color:var(--rose)} .toast.frost{border-left-color:#7cc7e0}
+  .toast.demand{border-left-color:var(--amber)} .toast.sat{border-left-color:var(--cyan)}
+  @keyframes slidein{to{transform:none;opacity:1}}
+  .feedhead{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.16em; color:var(--faint); text-transform:uppercase; text-align:right}
+
+  /* ===== 시뮬 드로어 ===== */
+  .drawer{position:fixed; top:0; right:0; bottom:0; width:430px; max-width:92vw; z-index:40;
+    background:linear-gradient(180deg, var(--panel), var(--bg2)); border-left:1px solid var(--line);
+    box-shadow:-30px 0 60px rgba(0,0,0,.5); transform:translateX(100%); transition:transform .42s cubic-bezier(.2,.8,.2,1);
+    display:flex; flex-direction:column; overflow:hidden}
+  .drawer.open{transform:none}
+  .dhead{padding:18px 20px 14px; border-bottom:1px solid var(--line); position:relative}
+  .dclose{position:absolute; top:15px; right:16px; width:30px;height:30px;border-radius:8px; border:1px solid var(--line);
+    background:transparent; color:var(--dim); cursor:pointer; font-size:15px}
+  .dclose:hover{border-color:var(--warn); color:var(--warn)}
+  .dregion{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--cyan); letter-spacing:.08em}
+  .dname{font-family:"Fraunces",serif; font-size:26px; font-weight:700; margin-top:2px}
+  .dmeta{font-size:11.5px; color:var(--dim); margin-top:4px}
+  .dbody{padding:16px 20px 22px; overflow-y:auto; flex:1}
+  .dbody::-webkit-scrollbar{width:7px} .dbody::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px}
+
+  .sec{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint); margin:18px 0 9px; display:flex; align-items:center; gap:8px}
+  .sec::after{content:""; flex:1; height:1px; background:var(--line2)}
+  .sec:first-child{margin-top:2px}
+
+  .tchips{display:flex; gap:7px; flex-wrap:wrap}
+  .tchip{font-size:11px; border:1px solid var(--line); border-radius:7px; padding:6px 9px; background:var(--panel2)}
+  .tchip .l{color:var(--faint); font-size:9.5px; display:block} .tchip .v{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:13px}
+  .tchip.dn .v{color:var(--warn)} .tchip.gate{border-style:dashed} .tchip.gate .v{color:var(--gold)}
+
+  .crops{display:flex; gap:8px; flex-wrap:wrap}
+  .crop{flex:1 1 calc(50% - 4px); border:1px solid var(--line); border-radius:10px; padding:10px; cursor:pointer; display:flex; align-items:center; gap:10px;
+    background:var(--panel2); transition:border-color .15s, transform .12s}
+  .crop:hover{transform:translateY(-2px)} .crop.on{border-color:var(--amber); box-shadow:0 0 0 1px var(--amber) inset}
+  .crop .rg{width:38px;height:38px;border-radius:50%; display:grid;place-items:center; position:relative; flex:none}
+  .crop .rg::before{content:"";position:absolute;inset:4px;background:var(--panel2);border-radius:50%}
+  .crop .rg span{position:relative; font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:12px}
+  .crop .nm{font-size:13px; font-weight:600} .crop .ct{font-size:10.5px; color:var(--dim)}
+
+  /* P10/50/90 범위 바 */
+  .range{margin:14px 0 6px}
+  .range .top{display:flex; justify-content:space-between; font-size:10.5px; color:var(--dim); margin-bottom:18px; letter-spacing:.04em}
+  .track{position:relative; height:46px}
+  .axis{position:absolute; left:0;right:0; top:30px; height:2px; background:var(--line)}
+  .span{position:absolute; top:24px; height:13px; border-radius:7px; background:linear-gradient(90deg,var(--warn),var(--gold),var(--good)); opacity:.85; transition:left .3s,width .3s}
+  .tk{position:absolute; top:14px; width:2px; height:34px; background:var(--ink); transition:left .3s}
+  .tk.med{top:8px; height:46px; width:3px; background:#fff}
+  .tl{position:absolute; top:-16px; transform:translateX(-50%); text-align:center; transition:left .3s}
+  .tl .p{font-size:9px; color:var(--faint); letter-spacing:.05em} .tl .n{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:13px}
+  .tl.med .n{font-size:17px; color:var(--amber)}
+
+  .stats{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px}
+  .stat{border:1px solid var(--line); border-radius:9px; padding:10px 12px; background:var(--panel2)}
+  .stat .l{font-size:10.5px; color:var(--dim)} .stat .b{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:16px; margin-top:3px}
+  .stat .h{font-size:10px; color:var(--faint); margin-top:2px}
+
+  .frow{display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px dashed var(--line2); font-size:12.5px}
+  .frow:last-child{border-bottom:none}
+  .frow .ax{width:78px; color:var(--dim); font-size:11.5px; flex:none}
+  .fbar{flex:1; height:7px; background:var(--panel2); border-radius:4px; position:relative; overflow:hidden}
+  .fbar i{position:absolute; top:0;bottom:0; background:var(--good)} .fbar i.neg{background:var(--warn)}
+  .frow .fv{width:42px; text-align:right; font-family:"IBM Plex Mono",monospace; font-size:12px}
+
+  .src{font-size:10.5px; color:var(--faint); line-height:1.7; margin-top:12px}
+  .src b{color:var(--dim)}
+  .disc{margin-top:14px; font-size:10.5px; color:var(--dim); border:1px solid var(--line); border-left:3px solid var(--amber); border-radius:8px; padding:10px 12px; line-height:1.65; background:rgba(224,168,58,.05)}
+  .disc b{color:var(--gold)}
+
+  .hint{position:fixed; left:50%; bottom:74px; transform:translateX(-50%); z-index:15; font-size:11.5px; color:var(--dim);
+    background:rgba(14,32,26,.7); border:1px solid var(--line); padding:7px 14px; border-radius:999px; backdrop-filter:blur(4px); animation:fadepulse 3s ease-in-out infinite}
+  @keyframes fadepulse{0%,100%{opacity:.5}50%{opacity:1}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg id="stars"></svg>
+  <div id="world">
+    <svg width="1000" height="1400" viewBox="0 0 1000 1400" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="land" cx="45%" cy="35%" r="80%">
+          <stop offset="0%" stop-color="#16302642"/><stop offset="0%" stop-color="#173228"/>
+          <stop offset="100%" stop-color="#0f241c"/>
+        </radialGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <!-- 경위도 그래티큘 -->
+      <g stroke="#39b9a6" stroke-width="0.6" opacity="0.08">
+        <path d="M150 0 V1400 M300 0 V1400 M450 0 V1400 M600 0 V1400 M750 0 V1400 M900 0 V1400"/>
+        <path d="M0 200 H1000 M0 400 H1000 M0 600 H1000 M0 800 H1000 M0 1000 H1000 M0 1200 H1000"/>
+      </g>
+      <!-- 한반도(남부) 양식화 실루엣 -->
+      <path d="M470 300 C 540 280, 610 286, 668 300 C 700 308, 716 340, 712 392
+               C 708 470, 718 540, 706 612 C 694 700, 700 800, 670 880
+               C 648 944, 636 986, 612 1030 C 590 1066, 548 1080, 470 1084
+               C 408 1086, 356 1082, 322 1062 C 332 980, 296 900, 314 818
+               C 300 740, 332 686, 304 612 C 296 540, 318 476, 352 452
+               C 386 408, 420 360, 470 300 Z"
+            fill="url(#land)" stroke="#39b9a6" stroke-width="1.5" stroke-opacity="0.5"/>
+      <!-- 내부 등고선 텍스처 -->
+      <g fill="none" stroke="#39b9a6" stroke-width="1" opacity="0.10">
+        <path d="M380 480 C 470 440, 560 500, 640 470"/>
+        <path d="M360 600 C 470 560, 580 620, 660 590"/>
+        <path d="M360 740 C 470 700, 560 760, 640 730"/>
+        <path d="M380 880 C 470 850, 560 900, 620 880"/>
+        <ellipse cx="640" cy="560" rx="60" ry="120" transform="rotate(18 640 560)"/>
+      </g>
+      <!-- 제주 -->
+      <ellipse cx="372" cy="1248" rx="62" ry="30" fill="url(#land)" stroke="#39b9a6" stroke-width="1.4" stroke-opacity="0.5"/>
+      <!-- 지역 라벨 -->
+      <g font-family="IBM Plex Mono" font-size="15" fill="#80a392" opacity="0.55" text-anchor="middle">
+        <text x="520" y="430">수도권</text><text x="560" y="640">충청</text>
+        <text x="410" y="900">호남</text><text x="660" y="720">영남</text>
+        <text x="660" y="380">강원</text><text x="372" y="1252">제주</text>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<div class="crosshair"><svg width="40" height="40"><circle cx="20" cy="20" r="13" fill="none" stroke="#39b9a6" stroke-width="1"/><path d="M20 2 V12 M20 28 V38 M2 20 H12 M28 20 H38" stroke="#39b9a6" stroke-width="1"/></svg></div>
+<div class="vignette"></div><div class="grain"></div>
+
+<!-- HUD -->
+<div class="hud top">
+  <div class="brand"><div class="logo">LANS<b>MARK</b> ATLAS</div><div class="sub">토지 소득 궤도 측량</div></div>
+  <div class="readout">
+    <span class="chip">위치 <b id="coord">36.50°N 127.80°E</b></span>
+    <span class="chip">ZOOM <b id="zlvl">×1.0</b></span>
+    <span class="chip">DATA <b style="color:var(--gold)">MOCK</b></span>
+    <span class="chip">필지 <b id="pcount">0</b></span>
+  </div>
+</div>
+
+<div class="feedhead" style="position:fixed; right:18px; top:54px; z-index:21">◀ LIVE 이벤트</div>
+<div class="feed" id="feed"></div>
+
+<div class="zoomctl">
+  <button id="zin">＋</button><button id="zout">－</button><button id="zreset" title="전체 보기">⊡</button>
+</div>
+<div class="legend">
+  <span><i style="background:var(--cyan)"></i>필지</span>
+  <span><i style="background:var(--good)"></i>가격↑</span>
+  <span><i style="background:var(--rose)"></i>가격↓</span>
+  <span><i style="background:#7cc7e0"></i>서리</span>
+  <span><i style="background:var(--amber)"></i>수요</span>
+</div>
+<div class="hint" id="hint">필지(●)를 클릭하면 소득 시뮬이 열려 · 휠=줌, 드래그=이동</div>
+
+<!-- 시뮬 드로어 -->
+<div class="drawer" id="drawer">
+  <div class="dhead">
+    <button class="dclose" id="dclose">✕</button>
+    <div class="dregion" id="dRegion">—</div>
+    <div class="dname" id="dName">—</div>
+    <div class="dmeta" id="dMeta">—</div>
+  </div>
+  <div class="dbody">
+    <div class="sec">지형 · DEM 6축</div>
+    <div class="tchips" id="dTerrain"></div>
+    <div class="sec">작물 추천 · 무료</div>
+    <div class="crops" id="dCrops"></div>
+    <div class="sec">정밀 소득 시뮬 · 유료 <span style="color:var(--gold); letter-spacing:0; text-transform:none">P10·P50·P90</span></div>
+    <div class="range">
+      <div class="top"><span>소득 분포 (만원/10a)</span><span>단일값 아님</span></div>
+      <div class="track">
+        <div class="axis"></div><div class="span" id="span"></div>
+        <div class="tk" id="t10"></div><div class="tk med" id="t50"></div><div class="tk" id="t90"></div>
+        <div class="tl" id="l10"><div class="p">P10</div><div class="n"></div></div>
+        <div class="tl med" id="l50"><div class="p">P50</div><div class="n"></div></div>
+        <div class="tl" id="l90"><div class="p">P90</div><div class="n"></div></div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="l">필지 환산 · P50</div><div class="b" id="totMid"></div><div class="h" id="totRange"></div></div>
+      <div class="stat"><div class="l">손익분기 단가</div><div class="b" id="be"></div><div class="h">미만 시 적자 구간</div></div>
+    </div>
+    <div class="sec">소득 근거 · 보정 계수</div>
+    <div id="factors"></div>
+    <div class="src" id="src"></div>
+    <div class="disc">본 수치는 <b>추정치(mock)</b>이며 소득·재배 성공을 <b>보장하지 않습니다</b>. 소득은 <b>P10·P50·P90 범위</b>로만 제시되며, 특정 토지의 <b>매입을 권유하지 않습니다</b>.</div>
+  </div>
+</div>
+
+<script>
+/* ===== 데이터 ===== */
+const CROPS = {
+  apple:{nm:"사과(후지)",ct:"과수",sc:86,p10:380,p50:540,p90:760,be:"1,850원/kg",yld:"≈2,400kg/10a",
+    fx:[["경사",0.95],["향",0.97],["서리",0.92],["판로",1.04]], src:"KAMIS 사과 도매(예시)·RDA 사과 노지(2024, placeholder)"},
+  pear:{nm:"배(신고)",ct:"과수",sc:81,p10:330,p50:470,p90:660,be:"1,600원/kg",yld:"≈2,600kg/10a",
+    fx:[["경사",0.96],["향",0.98],["서리",0.93],["판로",1.03]], src:"KAMIS 배 도매(예시)·RDA 배 노지(2024, placeholder)"},
+  sweet_potato:{nm:"고구마",ct:"식량",sc:79,p10:210,p50:320,p90:470,be:"720원/kg",yld:"≈2,800kg/10a",
+    fx:[["경사",1.00],["향",0.99],["온도",1.02],["판로",1.03]], src:"KAMIS 고구마 도매(예시)·RDA(2024, placeholder)"},
+  garlic:{nm:"마늘(난지)",ct:"채소",sc:73,p10:260,p50:410,p90:640,be:"3,100원/kg",yld:"≈1,300kg/10a",
+    fx:[["경사",0.98],["향",0.97],["월동",1.01],["판로",1.02]], src:"KAMIS 마늘 도매(예시)·RDA(2024, placeholder)"},
+  blueberry:{nm:"블루베리",ct:"과수",sc:68,p10:290,p50:520,p90:880,be:"6,400원/kg",yld:"≈900kg/10a",
+    fx:[["경사",0.96],["향",0.98],["토양pH",0.90],["직판",1.08]], src:"도매 미등록 가능·대체 출처 필요(placeholder)"},
+  chili:{nm:"건고추",ct:"채소",sc:70,p10:240,p50:380,p90:560,be:"9,200원/kg",yld:"≈300kg/10a",
+    fx:[["경사",0.97],["향",1.00],["일조",1.03],["판로",1.01]], src:"KAMIS 건고추 도매(예시)·RDA(2024, placeholder)"},
+};
+const PARCELS = [
+  {id:"haenam", nm:"해남 노지", rg:"전남 해남군", x:356,y:1060, t:[7.6,"W·서향",307], crops:["apple","sweet_potato","garlic"]},
+  {id:"naju",   nm:"나주 과원", rg:"전남 나주시", x:404,y:960,  t:[4.2,"S·남향",58],  crops:["pear","apple","blueberry"]},
+  {id:"yeongcheon", nm:"영천 구릉", rg:"경북 영천시", x:660,y:712, t:[11.4,"SE·남동",182], crops:["apple","garlic","chili"]},
+  {id:"muju",   nm:"무주 산간", rg:"전북 무주군", x:556,y:792, t:[18.2,"N·북향",426], crops:["blueberry","apple"]},
+  {id:"cheongju", nm:"청주 평야", rg:"충북 청주시", x:556,y:632, t:[2.1,"flat·평지",41], crops:["sweet_potato","garlic","chili"]},
+  {id:"chuncheon", nm:"춘천 분지", rg:"강원 춘천시", x:632,y:404, t:[9.7,"E·동향",116], crops:["blueberry","apple","pear"]},
+  {id:"jeju",   nm:"제주 남부", rg:"제주 서귀포", x:392,y:1248, t:[6.3,"S·남향",212], crops:["chili","garlic","blueberry"]},
+];
+
+/* ===== 카메라(줌/팬) ===== */
+const stage=document.getElementById("stage"), world=document.getElementById("world");
+const W=1000,H=1400;
+let cam={s:1,tx:0,ty:0};
+function vw(){return window.innerWidth} function vh(){return window.innerHeight}
+function fitScale(){return Math.min(vw()/W, vh()/H)*0.92}
+function clampS(s){return Math.max(fitScale()*0.85, Math.min(8, s))}
+function apply(){
+  world.style.transform=`translate(${cam.tx}px,${cam.ty}px) scale(${cam.s})`;
+  document.getElementById("zlvl").textContent="×"+(cam.s/fitScale()).toFixed(1);
+  const cx=(vw()/2-cam.tx)/cam.s, cy=(vh()/2-cam.ty)/cam.s; // 화면 중심의 월드좌표
+  const lat=(38.7-(cy/H)*5.9).toFixed(2), lng=(124.6+(cx/W)*7.6).toFixed(2);
+  document.getElementById("coord").textContent=`${lat}°N ${lng}°E`;
+}
+function centerOn(x,y,s,anim){
+  const ns=clampS(s); const ntx=vw()/2-x*ns, nty=vh()/2-y*ns;
+  if(!anim){cam={s:ns,tx:ntx,ty:nty}; apply(); return;}
+  const s0={...cam}, t0=performance.now(), dur=620;
+  (function f(now){ let k=Math.min(1,(now-t0)/dur); k=1-Math.pow(1-k,3);
+    cam={s:s0.s+(ns-s0.s)*k, tx:s0.tx+(ntx-s0.tx)*k, ty:s0.ty+(nty-s0.ty)*k}; apply();
+    if(k<1) requestAnimationFrame(f);
+  })(t0);
+}
+function reset(){ centerOn(W/2,H/2,fitScale(),true); }
+
+// 휠 줌(커서 기준)
+stage.addEventListener("wheel",e=>{e.preventDefault();
+  const r=stage.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+  const wx=(mx-cam.tx)/cam.s, wy=(my-cam.ty)/cam.s;
+  const ns=clampS(cam.s*(e.deltaY<0?1.18:0.85));
+  cam.tx=mx-wx*ns; cam.ty=my-wy*ns; cam.s=ns; apply();
+},{passive:false});
+// 드래그 팬
+let drag=null;
+stage.addEventListener("pointerdown",e=>{drag={x:e.clientX,y:e.clientY,tx:cam.tx,ty:cam.ty,moved:0}; stage.classList.add("drag"); stage.setPointerCapture(e.pointerId);});
+stage.addEventListener("pointermove",e=>{ if(!drag)return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+  drag.moved+=Math.abs(dx)+Math.abs(dy); cam.tx=drag.tx+dx; cam.ty=drag.ty+dy; apply();});
+stage.addEventListener("pointerup",()=>{drag=null; stage.classList.remove("drag");});
+document.getElementById("zin").onclick=()=>centerOn((vw()/2-cam.tx)/cam.s,(vh()/2-cam.ty)/cam.s,cam.s*1.4,true);
+document.getElementById("zout").onclick=()=>centerOn((vw()/2-cam.tx)/cam.s,(vh()/2-cam.ty)/cam.s,cam.s/1.4,true);
+document.getElementById("zreset").onclick=reset;
+window.addEventListener("resize",()=>apply());
+
+/* ===== 핀 렌더 ===== */
+PARCELS.forEach(p=>{
+  const el=document.createElement("div"); el.className="pin"; el.style.left=p.x+"px"; el.style.top=p.y+"px"; el.dataset.id=p.id;
+  el.innerHTML=`<div class="halo"></div><div class="core"></div><div class="lab">${p.nm}</div>`;
+  el.addEventListener("click",ev=>{ev.stopPropagation(); openParcel(p.id);});
+  world.appendChild(el);
+});
+document.getElementById("pcount").textContent=PARCELS.length;
+
+/* ===== 별 배경 ===== */
+(function stars(){ const svg=document.getElementById("stars"); let s="";
+  for(let i=0;i<90;i++){const x=Math.random()*100,y=Math.random()*100,r=Math.random()*1.3+.3,o=Math.random()*.5+.2;
+    s+=`<circle cx="${x}%" cy="${y}%" r="${r}" fill="#9fe0cf" opacity="${o}"/>`;}
+  svg.innerHTML=s;
+})();
+
+/* ===== 시뮬 드로어 ===== */
+const drawer=document.getElementById("drawer");
+let curParcel=null, curCrop=null;
+function won(man){const w=man*10000; return w>=1e8?(w/1e8).toFixed(2).replace(/\.00$/,'')+"억원":(man>=1000?(man/1000).toFixed(2).replace(/\.00$/,'')+"천만원":man.toLocaleString()+"만원");}
+function ring(sc){const c=sc>=80?"var(--good)":sc>=72?"var(--gold)":"var(--warn)"; return `background:conic-gradient(${c} ${sc*3.6}deg, var(--panel) 0)`;}
+function openParcel(id){
+  const p=PARCELS.find(x=>x.id===id); if(!p)return; curParcel=p;
+  document.querySelectorAll(".pin").forEach(n=>n.classList.toggle("active",n.dataset.id===id));
+  document.getElementById("dRegion").textContent=p.rg;
+  document.getElementById("dName").textContent=p.nm;
+  document.getElementById("dMeta").textContent=`면적 3,300㎡·33a · 좌표 자동측정 · 추정치(mock)`;
+  const [slope,asp,alt]=p.t;
+  document.getElementById("dTerrain").innerHTML=
+    `<div class="tchip"><span class="l">경사</span><span class="v">${slope}°</span></div>
+     <div class="tchip"><span class="l">향</span><span class="v">${asp}</span></div>
+     <div class="tchip"><span class="l">표고</span><span class="v">${alt}m</span></div>
+     <div class="tchip ${slope>12?'dn':''}"><span class="l">경사계수</span><span class="v">×${(slope>16?0.85:slope>12?0.92:slope>6?0.95:1.0).toFixed(2)}</span></div>
+     <div class="tchip gate"><span class="l">토양</span><span class="v">인증 필요</span></div>`;
+  curCrop=p.crops[0]; renderCrops(); renderSim();
+  // 카메라가 핀으로 날아가 꽂힘 + 드로어 열림(드로어 폭 고려해 약간 좌측 정렬)
+  const targetS=Math.max(cam.s, fitScale()*3.0);
+  const ns=clampS(targetS); const ntx=(vw()-430)/2-p.x*ns, nty=vh()/2-p.y*ns;
+  const s0={...cam}, t0=performance.now();
+  (function f(now){let k=Math.min(1,(now-t0)/620); k=1-Math.pow(1-k,3);
+    cam={s:s0.s+(ns-s0.s)*k, tx:s0.tx+(ntx-s0.tx)*k, ty:s0.ty+(nty-s0.ty)*k}; apply(); if(k<1)requestAnimationFrame(f);})(t0);
+  drawer.classList.add("open");
+  document.getElementById("hint").style.display="none";
+}
+function renderCrops(){
+  document.getElementById("dCrops").innerHTML=curParcel.crops.map(id=>{const c=CROPS[id];
+    return `<div class="crop ${id===curCrop?'on':''}" data-id="${id}">
+      <div class="rg" style="${ring(c.sc)}"><span>${c.sc}</span></div>
+      <div><div class="nm">${c.nm}</div><div class="ct">${c.ct} · 적합도</div></div></div>`;}).join("");
+  document.querySelectorAll("#dCrops .crop").forEach(el=>el.onclick=()=>{curCrop=el.dataset.id; renderCrops(); renderSim();});
+}
+function renderSim(){
+  const c=CROPS[curCrop], A=3.3;
+  const pad=(c.p90-c.p10)*0.14, lo=c.p10-pad, hi=c.p90+pad, sp=hi-lo, pct=v=>(v-lo)/sp*100;
+  const span=document.getElementById("span"); span.style.left=pct(c.p10)+"%"; span.style.width=(pct(c.p90)-pct(c.p10))+"%";
+  const set=(tk,tl,v)=>{document.getElementById(tk).style.left=pct(v)+"%"; const L=document.getElementById(tl); L.style.left=pct(v)+"%"; L.querySelector(".n").textContent=v;};
+  set("t10","l10",c.p10); set("t50","l50",c.p50); set("t90","l90",c.p90);
+  document.getElementById("totMid").textContent=won(Math.round(c.p50*A));
+  document.getElementById("totRange").textContent=`P10 ${won(Math.round(c.p10*A))} ~ P90 ${won(Math.round(c.p90*A))}`;
+  document.getElementById("be").textContent=c.be;
+  document.getElementById("factors").innerHTML=c.fx.map(([ax,v])=>{const dev=v-1,w=Math.min(50,Math.abs(dev)*220);
+    return `<div class="frow"><span class="ax">${ax}</span><span class="fbar"><i class="${dev<0?'neg':''}" style="${dev<0?'right':'left'}:50%;width:${w}%"></i></span>
+    <span class="fv" style="color:${dev<0?'var(--warn)':'var(--good)'}">×${v.toFixed(2)}</span></div>`;}).join("");
+  document.getElementById("src").innerHTML="출처 · <b>"+c.src+"</b> · 예상수량 "+c.yld;
+}
+document.getElementById("dclose").onclick=()=>{drawer.classList.remove("open"); document.querySelectorAll(".pin").forEach(n=>n.classList.remove("active")); reset();};
+
+/* ===== 지도 이벤트 엔진 ===== */
+const EV_TYPES={
+  price:{ic:"📈",tx:t=>`${t} 도매가 +${(Math.random()*9+3|0)}% 상승`},
+  drop:{ic:"📉",tx:t=>`${t} 도매가 -${(Math.random()*7+2|0)}% 하락`},
+  frost:{ic:"❄️",tx:t=>`${t} 일대 서리주의보`},
+  demand:{ic:"🔥",tx:t=>`${t} 직거래 수요 급등`},
+  sat:{ic:"🛰",tx:t=>`${t} 위성영상·필지경계 갱신`},
+};
+const TYPE_KEYS=Object.keys(EV_TYPES);
+const feed=document.getElementById("feed");
+function spawnEvent(){
+  const p=PARCELS[Math.random()*PARCELS.length|0];
+  const k=TYPE_KEYS[Math.random()*TYPE_KEYS.length|0], E=EV_TYPES[k];
+  // 지도 위 펄스
+  const m=document.createElement("div"); m.className="ev "+k; m.style.left=p.x+"px"; m.style.top=(p.y-18)+"px";
+  m.innerHTML=`<div class="ring"></div><div class="b">${E.ic}</div>`;
+  m.title=p.nm; m.onclick=ev=>{ev.stopPropagation(); openParcel(p.id);};
+  world.appendChild(m); setTimeout(()=>m.remove(),6500);
+  // 피드 토스트
+  const t=document.createElement("div"); t.className="toast "+k;
+  t.innerHTML=`<div class="h">${E.ic} <span style="font-family:'IBM Plex Mono';font-size:10px">${new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span></div>
+    <div class="t"><span class="loc">${p.nm}</span> · ${E.tx(CROPS[p.crops[0]].nm)}</div>`;
+  t.onclick=()=>openParcel(p.id);
+  feed.prepend(t); while(feed.children.length>4) feed.lastChild.remove();
+}
+setTimeout(spawnEvent,1200); setInterval(spawnEvent,4200);
+
+/* ===== 시작 ===== */
+reset();
+</script>
+</body>
+</html>

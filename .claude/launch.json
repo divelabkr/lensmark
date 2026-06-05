@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lansmark",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx", "server/devServer.ts"],
+      "port": 8788
+    }
+  ]
+}

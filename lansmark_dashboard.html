@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LANSMARK · 작물·수확·소득 시뮬레이터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#F2EDE1; --paper2:#FBF8F0; --card:#FDFBF5;
+    --ink:#2A251E; --ink2:#6A6052; --ink3:#938872;
+    --green:#34503A; --green-d:#243A29; --green-soft:#A9C1A6;
+    --amber:#BE7A22; --amber-l:#E0A552; --amber-soft:#E6C58C;
+    --line:#DBD2BF; --line2:#CDC2AB;
+    --warn:#B0432B; --warn-soft:#E0A99B;
+    --shadow:0 1px 0 #fff inset, 0 2px 8px rgba(42,37,30,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  body{
+    background-image:radial-gradient(circle at 12% 8%, rgba(190,122,34,.05), transparent 40%),
+                     radial-gradient(circle at 88% 92%, rgba(52,80,58,.06), transparent 45%);
+    min-height:100vh;
+  }
+  .mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+  .serif{font-family:"Gowun Batang",serif}
+  .wrap{max-width:880px;margin:0 auto;padding:0 20px 80px}
+
+  /* header */
+  header{padding:38px 0 22px;border-bottom:1px solid var(--line)}
+  .brandrow{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .brand{font-family:"Gowun Batang",serif;font-weight:700;font-size:30px;letter-spacing:-.5px;color:var(--green-d)}
+  .brand .dot{color:var(--amber)}
+  .demo{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);border:1px solid var(--amber-soft);padding:4px 9px;border-radius:999px;background:#fff7ec}
+  .tagline{margin-top:8px;font-family:"Gowun Batang",serif;font-size:15px;color:var(--ink2);font-style:normal}
+  .tagline b{color:var(--ink)}
+
+  /* stepper */
+  .steps{display:flex;gap:6px;margin:22px 0 6px;flex-wrap:wrap}
+  .step{font-size:12px;color:var(--ink3);display:flex;align-items:center;gap:7px}
+  .step .n{width:21px;height:21px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;font-family:"IBM Plex Mono",monospace;font-size:11px;background:var(--paper2)}
+  .step.active{color:var(--green-d);font-weight:600}
+  .step.active .n{background:var(--green);color:#fff;border-color:var(--green)}
+  .step.done .n{background:var(--green-soft);border-color:var(--green-soft);color:var(--green-d)}
+  .step .arrow{color:var(--line2)}
+
+  /* panels */
+  .panel{margin-top:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow)}
+  h2.sec{font-family:"Gowun Batang",serif;font-size:20px;color:var(--ink);margin-bottom:3px}
+  .sub{font-size:13px;color:var(--ink2);margin-bottom:18px}
+
+  /* form */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:620px){.grid2{grid-template-columns:1fr}}
+  label.f{display:block;font-size:12px;color:var(--ink2);font-weight:500;margin-bottom:6px}
+  .f input,.f select{width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:9px;background:#fff;font-family:inherit;font-size:14px;color:var(--ink)}
+  .f input:focus,.f select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(52,80,58,.12)}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:64px;padding:9px;border:1px solid var(--line2);background:#fff;border-radius:9px;font-family:inherit;font-size:13px;color:var(--ink2);cursor:pointer;transition:.15s}
+  .seg button.on{background:var(--green);color:#fff;border-color:var(--green)}
+  .seg button:hover:not(.on){border-color:var(--green);color:var(--green-d)}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:10px;border:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn-primary{background:var(--green);color:#fff}
+  .btn-primary:hover{background:var(--green-d)}
+  .btn-ghost{background:transparent;border:1px solid var(--line2);color:var(--ink2)}
+  .btn-ghost:hover{border-color:var(--green);color:var(--green-d)}
+  .btn-amber{background:var(--amber);color:#fff}
+  .btn-amber:hover{background:#a5681a}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* candidate cards */
+  .cands{display:grid;gap:12px}
+  .cand{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:18px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;transition:.15s;box-shadow:var(--shadow)}
+  .cand:hover{border-color:var(--green-soft);transform:translateY(-1px)}
+  .cand h3{font-family:"Gowun Batang",serif;font-size:19px;color:var(--ink)}
+  .cand .meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .pill{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:600;letter-spacing:.02em}
+  .pill.s-high{background:#e4efe3;color:#2f5a33}
+  .pill.s-medium_high{background:#eaf1e7;color:#3a5d3a}
+  .pill.s-medium{background:#f1efe3;color:#6a6033}
+  .pill.s-conditional{background:#fbf0db;color:#8a5c14}
+  .pill.s-low{background:#f6e6e0;color:#9a4128}
+  .pill.conf{background:#f0ece0;color:var(--ink2);font-family:"IBM Plex Mono",monospace}
+  .pill.score{background:#eef1ec;color:var(--green-d);font-family:"IBM Plex Mono",monospace}
+  .cand ul{list-style:none;font-size:12.5px;color:var(--ink2);margin-top:6px}
+  .cand ul li{padding-left:14px;position:relative;margin-top:3px;line-height:1.5}
+  .cand ul li::before{content:"·";position:absolute;left:3px;color:var(--amber)}
+  .cand ul.risk li::before{content:"!";color:var(--warn);font-weight:700;font-size:11px;left:4px}
+  .selbtn{align-self:center;white-space:nowrap}
+
+  /* paywall */
+  .lock{text-align:center;padding:14px 4px}
+  .lock .ic{font-size:28px}
+  .lock h3{font-family:"Gowun Batang",serif;font-size:20px;margin:8px 0 4px}
+  .lock p{font-size:13px;color:var(--ink2);margin-bottom:4px}
+  .price{font-family:"Gowun Batang",serif;font-size:30px;color:var(--green-d);margin:10px 0}
+  .price small{font-size:14px;color:var(--ink3)}
+  .lockfeat{font-size:12px;color:var(--ink2);margin:14px auto 18px;max-width:380px;text-align:left}
+  .lockfeat li{padding:4px 0 4px 18px;position:relative}
+  .lockfeat li::before{content:"✓";position:absolute;left:0;color:var(--green)}
+
+  /* result */
+  .rhead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .confbox{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)}
+  .confbadge{font-family:"IBM Plex Mono",monospace;font-weight:600;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:#fff}
+  .cA{background:#2f6b3a}.cB{background:#4f7d3e}.cC{background:#b58a2a}.cD{background:#a86a2e}.cX{background:#9a4128}
+
+  .metric{margin:18px 0}
+  .metric .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+  .metric .name{font-size:13.5px;font-weight:600;color:var(--ink)}
+  .metric .p50{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600}
+  .bar{position:relative;height:34px;background:linear-gradient(#efe9da,#f6f1e6);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .band{position:absolute;top:0;bottom:0;border-radius:6px;opacity:.92}
+  .band.g{background:linear-gradient(90deg,var(--green-soft),#7ea37c)}
+  .band.a{background:linear-gradient(90deg,var(--amber-soft),var(--amber-l))}
+  .band.w{background:linear-gradient(90deg,var(--warn-soft),#c9745c)}
+  .tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
+  .zero{position:absolute;top:0;bottom:0;width:1px;background:var(--ink3);border-left:1px dashed var(--ink3)}
+  .ends{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink3);margin-top:5px}
+  .pmark{display:flex;gap:14px;font-size:11px;color:var(--ink2);margin-top:7px}
+  .pmark span b{font-family:"IBM Plex Mono",monospace;color:var(--ink)}
+
+  .be{background:#f6f2e7;border:1px dashed var(--line2);border-radius:9px;padding:12px 14px;font-size:13px;color:var(--ink2);margin:16px 0}
+  .be b{font-family:"IBM Plex Mono",monospace;color:var(--green-d);font-size:15px}
+
+  .risks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:6px}
+  @media(max-width:620px){.risks{grid-template-columns:1fr}}
+  .rk{background:var(--paper2);border:1px solid var(--line);border-radius:10px;padding:13px}
+  .rk h4{font-size:12px;letter-spacing:.04em;color:var(--ink2);margin-bottom:8px;text-transform:uppercase}
+  .rk ul{list-style:none;font-size:12.5px;color:var(--ink);line-height:1.55}
+  .rk li{padding-left:13px;position:relative;margin-top:4px}
+  .rk li::before{content:"–";position:absolute;left:0;color:var(--amber)}
+
+  .block{margin-top:22px}
+  .block h4{font-family:"Gowun Batang",serif;font-size:15px;color:var(--ink);margin-bottom:8px}
+  .actions{display:grid;gap:6px}
+  .actions li{font-size:13px;color:var(--ink2);padding:9px 12px;background:var(--paper2);border:1px solid var(--line);border-radius:8px}
+
+  .disc{margin-top:22px;padding:16px 18px;background:#f3eee1;border:1px solid var(--line2);border-radius:11px}
+  .disc h4{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:9px}
+  .disc li{font-size:11.5px;color:var(--ink2);line-height:1.6;padding-left:14px;position:relative;margin-top:4px}
+  .disc li::before{content:"※";position:absolute;left:0;color:var(--ink3);font-size:10px}
+
+  .back{margin-top:18px}
+  .foot{margin-top:26px;font-size:11px;color:var(--ink3);text-align:center;line-height:1.7}
+  .hidden{display:none}
+  .fade{animation:fade .35s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .landchip{display:inline-flex;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:10px}
+  .landchip span{background:var(--paper2);border:1px solid var(--line);border-radius:7px;padding:4px 9px}
+  .landchip span b{color:var(--ink);font-family:"IBM Plex Mono",monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brandrow">
+      <div class="brand">LANSMARK<span class="dot">.</span></div>
+      <div class="demo">데모 · mock 데이터</div>
+    </div>
+    <div class="tagline"><b>추천하지 않습니다. 범위를 보여줍니다.</b> · 토지 조건 기반 작물·수확·소득 시뮬레이터</div>
+    <div class="steps" id="steps"></div>
+  </header>
+
+  <!-- STEP 1: INPUT -->
+  <section class="panel fade" id="panel-input">
+    <div class="card">
+      <h2 class="sec">토지 조건 입력</h2>
+      <p class="sub">주소는 좌표·기후로 자동 보강됩니다(데모는 전남 해남 인근 mock). 토양검정서가 없으면 신뢰도가 제한됩니다.</p>
+      <div class="grid2">
+        <div class="f">
+          <label class="f">주소 / 지번</label>
+          <input id="in-addr" type="text" value="전남 해남군" placeholder="예: 전남 해남군 …" />
+        </div>
+        <div class="f">
+          <label class="f">면적 (㎡)</label>
+          <input id="in-area" type="number" value="3300" min="1" />
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <label class="f">배수 상태</label>
+          <div class="seg" id="seg-drainage" data-key="drainage">
+            <button data-v="good">양호</button>
+            <button class="on" data-v="normal">보통</button>
+            <button data-v="poor">불량</button>
+            <button data-v="unknown">모름</button>
+          </div>
+        </div>
+        <div>
+          <label class="f">관수(물) 가능</label>
+          <div class="seg" id="seg-water" data-key="water">
+            <button class="on" data-v="available">가능</button>
+            <button data-v="limited">제한</button>
+            <button data-v="none">불가</button>
+            <button data-v="unknown">모름</button>
+          </div>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <label class="f">노동력 수준</label>
+          <div class="seg" id="seg-labor" data-key="labor">
+            <button data-v="low">낮음</button>
+            <button class="on" data-v="medium">보통</button>
+            <button data-v="high">높음</button>
+          </div>
+        </div>
+        <div>
+          <label class="f">토양 자료</label>
+          <div class="seg" id="seg-soil" data-key="soil">
+            <button class="on" data-v="none">없음</button>
+            <button data-v="manual_input">수동입력</button>
+            <button data-v="old_soil_test">구검정서</button>
+            <button data-v="official_soil_test">공식검정서</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <button class="btn btn-primary" id="btn-candidates">무료 작물 후보 보기 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2: CANDIDATES -->
+  <section class="panel hidden" id="panel-candidates">
+    <div class="card" style="margin-bottom:14px">
+      <h2 class="sec">잘 자랄 가능성이 있는 작물 (TOP 5)</h2>
+      <p class="sub">무료 미리보기입니다. 단정이 아니라 검토 가능성·방향과 주요 리스크를 보여줍니다.</p>
+      <div class="landchip" id="landchip"></div>
+    </div>
+    <div class="cands" id="cands"></div>
+    <div class="back"><button class="btn btn-ghost" onclick="goto('input')">← 조건 수정</button></div>
+  </section>
+
+  <!-- STEP 3: PAYWALL -->
+  <section class="panel hidden" id="panel-paywall">
+    <div class="card">
+      <div class="lock">
+        <div class="ic">🌱</div>
+        <h3 id="lock-crop">— 수확·소득 시뮬레이션</h3>
+        <p>식재량 · 수확량 · 비용 · 매출 · 예상소득을 <b>범위(P10/P50/P90)</b>로 계산합니다.</p>
+        <div class="price">29,000<small>원 · 빠른 시뮬레이션</small></div>
+        <ul class="lockfeat">
+          <li>면적 기준 식재량 추정</li>
+          <li>수확량/비용/매출/소득 보수~낙관 범위</li>
+          <li>손익분기 판매단가</li>
+          <li>생육 리스크(기상·병해충·재난) 요약</li>
+        </ul>
+        <button class="btn btn-amber" id="btn-unlock">결제(데모) · 잠금해제</button>
+        <div style="margin-top:14px"><button class="btn btn-ghost" onclick="goto('candidates')">← 다른 작물 선택</button></div>
+        <p style="margin-top:12px;font-size:11px;color:var(--ink3)">데모에서는 결제 없이 잠금이 해제됩니다. 실제 서비스는 결제 성공 후 서버 발급 토큰(entitlement)으로 검증합니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 4: RESULT -->
+  <section class="panel hidden" id="panel-result"></section>
+
+  <div class="foot">
+    LANSMARK 데모 · 모든 수치는 <b>illustrative(전문가 보정 전)</b> 룰북 + mock 데이터 기반입니다.<br/>
+    실제 결과는 토양·기상·재배기술·병해충·판로·가격 변동에 따라 달라집니다.
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   LANSMARK core 로직 이식 (TS와 동일 — 검증된 범위 수식)
+   ════════════════════════════════════════════════════════ */
+const Z = 1.2816, round = Math.round;
+const sig = r => Math.max(0, (r.p90 - r.p10) / (2 * Z));
+function mulIndep(a, b){
+  const m = a.p50 * b.p50;
+  if (m <= 0 || a.p50 <= 0 || b.p50 <= 0)
+    return { p10: Math.max(0, round(Math.min(a.p10*b.p10, m))), p50: Math.max(0, round(m)), p90: Math.max(0, round(a.p90*b.p90)) };
+  const cv = Math.hypot(sig(a)/a.p50, sig(b)/b.p50), s = m*cv;
+  return { p10: Math.max(0, round(m - Z*s)), p50: round(m), p90: Math.max(0, round(m + Z*s)) };
+}
+function subIndep(a, b){
+  const m = a.p50 - b.p50, s = Math.hypot(sig(a), sig(b));
+  return { p10: round(m - Z*s), p50: round(m), p90: round(m + Z*s) };
+}
+const mul = (r, f) => ({ p10: round(r.p10*f), p50: round(r.p50*f), p90: round(r.p90*f) });
+const mulY = (r, f) => ({ p10: Math.max(0,round(r.p10*f)), p50: Math.max(0,round(r.p50*f)), p90: Math.max(0,round(r.p90*f)) });
+
+function soilConf(soil){
+  if (!soil || soil.source === "none") return "D";
+  return { official_soil_test:"A", old_soil_test:"B", manual_input:"C", global_estimate:"D" }[soil.source] || "D";
+}
+function toLevel(s, cond){
+  if (cond) return "conditional";
+  if (s>=80) return "high"; if (s>=65) return "medium_high"; if (s>=50) return "medium"; if (s>=35) return "conditional"; return "low";
+}
+const LEVEL_KO = { high:"적합", medium_high:"양호", medium:"검토가능", conditional:"조건부", low:"낮음", insufficient_data:"자료부족" };
+
+function scoreCrop(land, crop){
+  let score=50; const reasons=[],risks=[],checks=[...crop.checks],blockedBy=[];
+  const soil=land.soil, req=crop.req;
+  if (soil && soil.ph!=null && req.phMin!=null && req.phMax!=null){
+    if (soil.ph>=req.phMin && soil.ph<=req.phMax){ score+=18; reasons.push("토양 pH가 작물 권장 범위에 가깝습니다."); }
+    else { score-=20; risks.push("토양 pH가 작물 권장 범위와 다릅니다."); }
+  } else if (req.phMin!=null && req.phMax!=null){
+    score -= crop.cat==="fruit"?12:5; risks.push("토양 pH 미확인으로 정밀 판단이 제한됩니다."); blockedBy.push("토양검정서 미제출");
+  }
+  if (land.drainage==="good"){ score += req.drainage==="high"?12:5; reasons.push("배수 조건이 유리하게 입력되었습니다."); }
+  else if (land.drainage==="poor"){ score -= req.drainage==="high"?24:10; risks.push("배수 불량 가능성이 있습니다."); }
+  else risks.push("배수 상태 확인이 필요합니다.");
+  if (land.water==="available"){ score += req.waterNeed==="high"?10:4; reasons.push("관수 가능성이 입력되었습니다."); }
+  else if (req.waterNeed==="high"){ score-=15; risks.push("물 요구량이 큰 작물인데 관수 정보가 부족합니다."); }
+  if (land.labor==="low" && req.laborNeed==="high"){ score-=15; risks.push("노동력 수준 대비 관리·수확 부담이 큽니다."); }
+  crop.riskNotes.forEach(r=>{ if(!risks.includes(r)) risks.push(r); });
+  if (reasons.length===0) reasons.push("현재 입력값 기준으로 1차 검토 대상입니다.");
+  const n = Math.max(0, Math.min(100, round(score)));
+  const cond = blockedBy.length>0 && crop.cat==="fruit";
+  return { id:crop.id, ko:crop.ko, suitability:toLevel(n,cond), score:n, confidence:soilConf(soil), reasons:reasons.slice(0,4), risks:risks.slice(0,5), checks:[...new Set(checks)].slice(0,8), blockedBy };
+}
+function rankCandidates(land, limit){
+  return CROPS.map(c=>scoreCrop(land,c)).sort((a,b)=>b.score-a.score).slice(0,limit);
+}
+
+const COST_LABEL = { seed_or_seedling:"종자/묘목", soil_amendment:"토양개량/비료", materials:"멀칭/자재", water:"관수/물관리", labor:"인건비/작업비", packaging_transport:"포장/운송" };
+
+function simulate(land, cropId, channel, targetYear){
+  const crop = CROPS.find(c=>c.id===cropId);
+  const area = land.areaM2;
+  const candidate = scoreCrop(land, crop);
+
+  // planting
+  const estPlant = mul(crop.eco.density, area);
+
+  // yield
+  const ty = targetYear || "mature";
+  const baseY = crop.eco.yield[ty] || crop.eco.yield.mature;
+  let factor = area, conf = soilConf(land.soil); const adj=[];
+  const add = (v, why) => { factor*=v; adj.push(why); };
+  if (!land.soil || land.soil.source==="none"){ add(crop.cat==="fruit"?0.75:0.9, "토양검정서 미제출(보수계수)"); conf="D"; }
+  if (land.drainage==="poor") add(crop.req.drainage==="high"?0.65:0.85, "배수 불량");
+  if (land.water!=="available" && crop.req.waterNeed==="high") add(0.75, "관수 제한");
+  if (land.labor==="low" && crop.req.laborNeed==="high") add(0.85, "노동력 제한");
+  const yieldKg = mulY(baseY, factor);
+
+  // cost (정규화된 항목 → 합=총계)
+  const total = mul(crop.eco.cost, area);
+  const rawFrac = {
+    seed_or_seedling: crop.cat==="fruit"?0.32:0.16,
+    soil_amendment: crop.cat==="fruit"?0.24:0.18,
+    materials: 0.16,
+    water: crop.req.waterNeed==="high"?0.18:0.08,
+    labor: crop.req.laborNeed==="high"?0.28:0.18,
+    packaging_transport: 0.10,
+  };
+  const fsum = Object.values(rawFrac).reduce((a,b)=>a+b,0) || 1;
+  const lineItems = Object.entries(rawFrac).map(([k,f])=>({ key:k, label:COST_LABEL[k], value: mul(total, f/fsum) }));
+
+  // revenue / income
+  const price = crop.eco.price[channel] || crop.eco.price.mixed;
+  const revenue = mulIndep(yieldKg, price);
+  const income = subIndep(revenue, total);
+  const be = yieldKg.p50>0 ? round(total.p50/yieldKg.p50) : 0;
+
+  // growth risk
+  const weather=[], pest=["작물별 병해충 데이터 연동 필요"], disaster=[];
+  if (crop.req.frostSensitivity==="high") weather.push("봄서리/개화기 저온 리스크 확인");
+  if (crop.req.waterNeed==="high") weather.push("가뭄·관수 부족 리스크 확인");
+  if (land.drainage==="poor") disaster.push("집중호우 후 물고임 리스크");
+  if (weather.length===0) weather.push("주요 기상 리스크 낮음(입력 기준)");
+  if (disaster.length===0) disaster.push("입력 기준 특이 재난요인 없음");
+
+  const warnings=[];
+  if (income.p10<0) warnings.push("보수 시나리오(P10)에서는 손실 가능성이 있습니다.");
+  if (income.p50<0) warnings.push("기준 시나리오(P50)에서도 손실 가능성이 있습니다.");
+
+  return { candidate, estPlant, yieldKg, conf, adj, cost: total, lineItems, price, revenue, income, be, weather, pest, disaster, warnings };
+}
+
+const DISCLAIMERS = [
+  "LANSMARK 결과는 수익 보장, 재배 성공 보장, 매입/임대 추천이 아닙니다.",
+  "공개 데이터·사용자 입력·작물 기준표 기반의 의사결정 보조 시뮬레이션입니다.",
+  "실제 수확량·판매가는 토양, 기상, 재배기술, 병해충, 판로, 가격 변동에 따라 달라집니다.",
+  "토양검정서가 없으면 토양 기반 정밀 판단은 제한됩니다.",
+  "품종 확정 추천이 아니라 품종 선택 방향과 추가 확인 항목을 제공합니다.",
+];
+
+/* ════════════════════════════════════════════════════════
+   작물 시드 15종 (TS seed와 동일, illustrative)
+   ════════════════════════════════════════════════════════ */
+const CROPS = [
+ {id:"sweet_potato",ko:"고구마",cat:"root",cultivars:["조기출하형","저장성 우선형"],
+  req:{phMin:5.5,phMax:6.8,drainage:"medium",waterNeed:"medium",frostSensitivity:"medium",laborNeed:"medium"},
+  eco:{density:{p10:2,p50:2.8,p90:3.5},yield:{mature:{p10:1.2,p50:1.8,p90:2.5}},cost:{p10:1800,p50:2800,p90:4200},
+       price:{wholesale:{p10:900,p50:1400,p90:2200},direct:{p10:1800,p50:2800,p90:4200},mixed:{p10:1300,p50:2100,p90:3200}}},
+  riskNotes:["가격 변동성","수확·선별 노동","배수 불량 시 품질 저하"],checks:["농기계 진입","토양 물빠짐","저장 공간","지역 판매 채널"]},
+ {id:"potato",ko:"감자",cat:"root",cultivars:["봄재배형","가공/저장형"],
+  req:{phMin:5.0,phMax:6.5,drainage:"high",waterNeed:"medium",frostSensitivity:"high",laborNeed:"medium"},
+  eco:{density:{p10:3.5,p50:4.5,p90:6},yield:{mature:{p10:2,p50:3,p90:4}},cost:{p10:1500,p50:2500,p90:3800},
+       price:{wholesale:{p10:600,p50:1100,p90:1800},direct:{p10:1500,p50:2500,p90:3800},mixed:{p10:1000,p50:1700,p90:2600}}},
+  riskNotes:["서리 피해","역병 관리","가격 변동성"],checks:["배수 상태","씨감자 품질","저장 공간"]},
+ {id:"soybean",ko:"콩(대두)",cat:"field_crop",cultivars:["일반 메주콩형","기계화·저관리형"],
+  req:{phMin:6.0,phMax:7.0,drainage:"medium",waterNeed:"low",frostSensitivity:"medium",laborNeed:"low"},
+  eco:{density:{p10:12,p50:18,p90:25},yield:{mature:{p10:0.15,p50:0.25,p90:0.35}},cost:{p10:600,p50:1100,p90:1800},
+       price:{wholesale:{p10:4000,p50:5500,p90:7500},direct:{p10:6000,p50:9000,p90:13000},mixed:{p10:5000,p50:7000,p90:10000}}},
+  riskNotes:["단위면적 수익성 한계","노린재 등 병해충"],checks:["기계 수확","건조 공간","지역 수매처"]},
+ {id:"corn",ko:"옥수수",cat:"field_crop",cultivars:["찰옥수수형","단옥수수형"],
+  req:{phMin:5.5,phMax:7.0,drainage:"medium",waterNeed:"medium",frostSensitivity:"high",laborNeed:"medium"},
+  eco:{density:{p10:4,p50:5.5,p90:7},yield:{mature:{p10:1,p50:1.6,p90:2.2}},cost:{p10:1200,p50:2000,p90:3000},
+       price:{wholesale:{p10:800,p50:1400,p90:2200},direct:{p10:1800,p50:2800,p90:4500},mixed:{p10:1300,p50:2100,p90:3300}}},
+  riskNotes:["출하 타이밍 집중","멧돼지/조류 피해"],checks:["판로(직거래)","야생동물 대비","수확 인력"]},
+ {id:"garlic",ko:"마늘",cat:"vegetable",cultivars:["난지형","한지형"],
+  req:{phMin:5.5,phMax:6.5,drainage:"high",waterNeed:"medium",frostSensitivity:"low",laborNeed:"high"},
+  eco:{density:{p10:15,p50:22,p90:30},yield:{mature:{p10:0.9,p50:1.3,p90:1.8}},cost:{p10:3000,p50:4500,p90:6500},
+       price:{wholesale:{p10:2500,p50:4000,p90:6000},direct:{p10:4000,p50:6500,p90:10000},mixed:{p10:3200,p50:5200,p90:8000}}},
+  riskNotes:["종구 비용 높음","파종·수확 노동 집중","가격 변동성"],checks:["종구 확보","수확 인력","건조·저장"]},
+ {id:"onion",ko:"양파",cat:"vegetable",cultivars:["조생형","중만생 저장형"],
+  req:{phMin:6.0,phMax:7.0,drainage:"medium",waterNeed:"medium",frostSensitivity:"low",laborNeed:"high"},
+  eco:{density:{p10:20,p50:28,p90:36},yield:{mature:{p10:4,p50:6,p90:8}},cost:{p10:2000,p50:3200,p90:4800},
+       price:{wholesale:{p10:400,p50:800,p90:1400},direct:{p10:1000,p50:1700,p90:2800},mixed:{p10:700,p50:1200,p90:2000}}},
+  riskNotes:["가격 폭락 위험","정식·수확 노동","저장 손실"],checks:["정식 인력","저장 공간","계약재배"]},
+ {id:"chili_pepper",ko:"고추(건고추)",cat:"vegetable",cultivars:["건고추형","풋고추형"],
+  req:{phMin:6.0,phMax:6.8,drainage:"high",waterNeed:"medium",frostSensitivity:"high",laborNeed:"high"},
+  eco:{density:{p10:2,p50:2.8,p90:3.5},yield:{mature:{p10:0.25,p50:0.4,p90:0.6}},cost:{p10:4000,p50:6000,p90:9000},
+       price:{wholesale:{p10:8000,p50:13000,p90:20000},direct:{p10:13000,p50:20000,p90:32000},mixed:{p10:10000,p50:16000,p90:25000}}},
+  riskNotes:["탄저병 치명적","수확·건조 노동 매우 큼","서리 민감"],checks:["건조 시설","방제 계획","수확 인력"]},
+ {id:"napa_cabbage",ko:"배추",cat:"vegetable",cultivars:["가을배추형","고랭지형"],
+  req:{phMin:6.0,phMax:6.8,drainage:"medium",waterNeed:"high",frostSensitivity:"medium",laborNeed:"medium"},
+  eco:{density:{p10:2,p50:2.5,p90:3},yield:{mature:{p10:6,p50:8.5,p90:11}},cost:{p10:1500,p50:2500,p90:4000},
+       price:{wholesale:{p10:300,p50:700,p90:1500},direct:{p10:800,p50:1400,p90:2500},mixed:{p10:550,p50:1000,p90:1900}}},
+  riskNotes:["가격 급등락 심함","무름병/뿌리혹병","기상 민감"],checks:["관수 가능","출하 시기 분산","계약재배"]},
+ {id:"sesame",ko:"참깨",cat:"oilseed",cultivars:["일반형","착유/가공형"],
+  req:{phMin:5.5,phMax:7.0,drainage:"high",waterNeed:"low",frostSensitivity:"medium",laborNeed:"medium"},
+  eco:{density:{p10:10,p50:15,p90:20},yield:{mature:{p10:0.05,p50:0.08,p90:0.12}},cost:{p10:700,p50:1300,p90:2000},
+       price:{wholesale:{p10:12000,p50:16000,p90:22000},direct:{p10:18000,p50:25000,p90:35000},mixed:{p10:14000,p50:20000,p90:28000}}},
+  riskNotes:["단위면적 수확량 적음","수확기 비 피해","도복"],checks:["건조 공간","착유 판로","배수"]},
+ {id:"perilla",ko:"들깨",cat:"oilseed",cultivars:["저관리형","착유/가공형"],
+  req:{phMin:5.5,phMax:7.0,drainage:"medium",waterNeed:"low",frostSensitivity:"medium",laborNeed:"low"},
+  eco:{density:{p10:6,p50:9,p90:12},yield:{mature:{p10:0.08,p50:0.15,p90:0.25}},cost:{p10:700,p50:1300,p90:2200},
+       price:{wholesale:{p10:7000,p50:10000,p90:15000},direct:{p10:10000,p50:16000,p90:24000},mixed:{p10:8500,p50:13000,p90:19000}}},
+  riskNotes:["단위면적 수익성 한계","수확·건조 품질 관리","판로 확보 필요"],checks:["건조 공간","가공/직거래","지역 수매처"]},
+ {id:"balloon_flower",ko:"도라지",cat:"medicinal",cultivars:["2년근형","3년근 이상형"],
+  req:{phMin:5.5,phMax:6.5,drainage:"high",waterNeed:"low",frostSensitivity:"low",laborNeed:"high"},
+  eco:{density:{p10:30,p50:45,p90:60},yield:{year2:{p10:0.4,p50:0.7,p90:1.0},mature:{p10:0.7,p50:1.0,p90:1.4}},cost:{p10:2000,p50:3500,p90:5500},
+       price:{wholesale:{p10:4000,p50:6500,p90:9000},direct:{p10:8000,p50:13000,p90:20000},processed:{p10:9000,p50:15000,p90:24000},mixed:{p10:6000,p50:10000,p90:15000}}},
+  riskNotes:["다년생 회수기간 김","뿌리썩음병(배수 중요)","수확 노동 큼"],checks:["배수·경사","다년 점유","약용 판로"]},
+ {id:"strawberry",ko:"딸기(시설)",cat:"facility",cultivars:["신선 출하형","체험농장형"],
+  req:{phMin:5.5,phMax:6.5,drainage:"high",waterNeed:"high",frostSensitivity:"medium",laborNeed:"high",facility:true},
+  eco:{density:{p10:6,p50:8,p90:10},yield:{mature:{p10:2.5,p50:4,p90:5.5}},cost:{p10:15000,p50:25000,p90:38000},
+       price:{wholesale:{p10:5000,p50:8000,p90:12000},direct:{p10:10000,p50:15000,p90:22000},experience_farm:{p10:15000,p50:22000,p90:30000},mixed:{p10:9000,p50:14000,p90:20000}}},
+  riskNotes:["시설 초기투자 매우 큼","탄저병/흰가루병","연중 노동 집중"],checks:["하우스 보유","관수·양액 설비","체험 입지"]},
+ {id:"apple",ko:"사과",cat:"fruit",cultivars:["내한성 우선","개화 지연형"],
+  req:{phMin:5.5,phMax:6.5,drainage:"high",waterNeed:"medium",frostSensitivity:"high",laborNeed:"high"},
+  eco:{density:{p10:0.1,p50:0.2,p90:0.35},yield:{year2:{p10:0.1,p50:0.3,p90:0.6},year3:{p10:0.8,p50:1.5,p90:2.5},mature:{p10:3,p50:4.5,p90:6}},cost:{p10:8000,p50:16000,p90:28000},
+       price:{wholesale:{p10:1500,p50:2800,p90:4500},direct:{p10:3000,p50:5000,p90:8000},mixed:{p10:2200,p50:3800,p90:6000}}},
+  riskNotes:["봄서리(개화기)","초기 투자·결실까지 수년","병해충 방제 빈번"],checks:["토양검정서","서리 이력","관수 가능","다년 점유"]},
+ {id:"grape",ko:"포도",cat:"fruit",cultivars:["샤인머스캣형","캠벨/일반형"],
+  req:{phMin:6.0,phMax:6.8,drainage:"high",waterNeed:"medium",frostSensitivity:"high",laborNeed:"high",facility:true},
+  eco:{density:{p10:0.1,p50:0.15,p90:0.25},yield:{year2:{p10:0.2,p50:0.5,p90:1},year3:{p10:1,p50:1.8,p90:2.8},mature:{p10:2,p50:3,p90:4}},cost:{p10:10000,p50:20000,p90:35000},
+       price:{wholesale:{p10:2000,p50:4000,p90:7000},direct:{p10:5000,p50:9000,p90:16000},mixed:{p10:3500,p50:6500,p90:12000}}},
+  riskNotes:["시설(비가림) 권장","봄서리·열과","초기투자 큼"],checks:["비가림 시설","토양검정서","관수 설비","다년 점유"]},
+ {id:"blueberry",ko:"블루베리",cat:"fruit",cultivars:["내한성 우선","개화 지연형"],
+  req:{phMin:4.2,phMax:5.5,drainage:"high",waterNeed:"high",frostSensitivity:"high",laborNeed:"high"},
+  eco:{density:{p10:0.2,p50:0.35,p90:0.5},yield:{year2:{p10:0.1,p50:0.35,p90:0.7},year3:{p10:0.4,p50:0.9,p90:1.5},mature:{p10:0.8,p50:1.5,p90:2.5}},cost:{p10:9000,p50:18000,p90:32000},
+       price:{wholesale:{p10:5000,p50:8000,p90:12000},direct:{p10:12000,p50:18000,p90:28000},experience_farm:{p10:14000,p50:22000,p90:35000},mixed:{p10:9000,p50:15000,p90:24000}}},
+  riskNotes:["토양 pH 필수 확인","배수 불량 치명적","초기 투자 높음","봄서리"],checks:["토양검정서","우기 후 배수 사진","관수 가능","지역 재배 사례"]},
+];
+
+/* mock provider (주소→좌표/기후) */
+function mockEnrich(addr){
+  return { lat:34.5734, lng:126.5990, pnu:"4682025021100010000", annualRainfallMm:1450, minWinterTempC:-7 };
+}
+
+/* ════════════════════════════════════════════════════════
+   UI 상태 & 렌더
+   ════════════════════════════════════════════════════════ */
+const STATE = { step:"input", land:{ areaM2:3300, drainage:"normal", water:"available", labor:"medium", soil:{source:"none"} }, candidates:[], cropId:null, sim:null, enriched:null };
+const STEP_LABELS = [["input","조건 입력"],["candidates","작물 후보"],["paywall","시뮬레이션"],["result","결과"]];
+const fmtN = n => Math.round(n).toLocaleString("ko-KR");
+
+function renderSteps(){
+  const order = STEP_LABELS.map(s=>s[0]);
+  const cur = order.indexOf(STATE.step);
+  document.getElementById("steps").innerHTML = STEP_LABELS.map(([id,label],i)=>{
+    const cls = i===cur?"active":(i<cur?"done":"");
+    return `<div class="step ${cls}"><span class="n">${i+1}</span>${label}</div>${i<STEP_LABELS.length-1?'<span class="arrow">→</span>':''}`;
+  }).join("");
+}
+
+function goto(step){
+  STATE.step = step;
+  ["input","candidates","paywall","result"].forEach(s=>{
+    document.getElementById("panel-"+s).classList.toggle("hidden", s!==step);
+  });
+  const p = document.getElementById("panel-"+step);
+  p.classList.remove("fade"); void p.offsetWidth; p.classList.add("fade");
+  renderSteps();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* segmented controls */
+document.querySelectorAll(".seg").forEach(seg=>{
+  seg.addEventListener("click", e=>{
+    const b = e.target.closest("button"); if(!b) return;
+    seg.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    const key = seg.dataset.key, v = b.dataset.v;
+    if (key==="soil") STATE.land.soil = { source:v, ph: v==="none"?undefined:5.8 };
+    else STATE.land[key] = v;
+  });
+});
+
+/* step 1 -> candidates */
+document.getElementById("btn-candidates").addEventListener("click", ()=>{
+  STATE.land.areaM2 = Math.max(1, Number(document.getElementById("in-area").value)||3300);
+  const addr = document.getElementById("in-addr").value || "전남 해남군";
+  STATE.enriched = mockEnrich(addr);
+  STATE.candidates = rankCandidates(STATE.land, 5);
+  document.getElementById("landchip").innerHTML =
+    `<span>📍 ${addr}</span><span>면적 <b>${fmtN(STATE.land.areaM2)}</b>㎡</span>`+
+    `<span>강수 <b>${STATE.enriched.annualRainfallMm}</b>mm</span><span>겨울최저 <b>${STATE.enriched.minWinterTempC}</b>℃</span>`+
+    `<span>토양 <b>${STATE.land.soil.source==="none"?"없음":STATE.land.soil.source}</b></span>`;
+  renderCandidates();
+  goto("candidates");
+});
+
+function renderCandidates(){
+  document.getElementById("cands").innerHTML = STATE.candidates.map(c=>`
+    <div class="cand">
+      <div>
+        <h3>${c.ko}</h3>
+        <div class="meta">
+          <span class="pill s-${c.suitability}">${LEVEL_KO[c.suitability]||c.suitability}</span>
+          <span class="pill score">점수 ${c.score}</span>
+          <span class="pill conf">신뢰도 ${c.confidence}</span>
+        </div>
+        <ul>${c.reasons.slice(0,2).map(r=>`<li>${r}</li>`).join("")}</ul>
+        <ul class="risk">${c.risks.slice(0,2).map(r=>`<li>${r}</li>`).join("")}</ul>
+      </div>
+      <button class="btn btn-primary selbtn" onclick="pickCrop('${c.id}')">시뮬레이션 →</button>
+    </div>`).join("");
+}
+
+function pickCrop(id){
+  STATE.cropId = id;
+  const crop = CROPS.find(c=>c.id===id);
+  document.getElementById("lock-crop").textContent = crop.ko + " · 수확·소득 시뮬레이션";
+  goto("paywall");
+}
+
+document.getElementById("btn-unlock").addEventListener("click", ()=>{
+  STATE.sim = simulate(STATE.land, STATE.cropId, "mixed", "mature");
+  renderResult();
+  goto("result");
+});
+
+/* range bar */
+function bar(name, range, unit, opts){
+  opts = opts || {};
+  const negative = range.p10 < 0 || (opts.zero && range.p10<0);
+  let dMin = 0, dMax = Math.max(range.p90, 1);
+  if (opts.zero){ dMin = Math.min(0, range.p10); dMax = Math.max(0, range.p90); }
+  const span = (dMax - dMin) || 1;
+  const pct = v => Math.max(0, Math.min(100, ((v - dMin)/span)*100));
+  const left = pct(range.p10), right = pct(range.p90);
+  const width = Math.max(1, right - left);
+  const mid = pct(range.p50);
+  const colorClass = opts.color || "g";
+  const fmt = opts.kg ? (v=>fmtN(v)+"kg") : (v=>fmtN(v)+"원");
+  return `
+   <div class="metric">
+     <div class="top"><span class="name">${name}</span><span class="p50" style="color:var(--${colorClass==='a'?'amber':(colorClass==='w'?'warn':'green')})">${fmt(range.p50)}</span></div>
+     <div class="bar">
+       <div class="band ${colorClass}" style="left:${left}%;width:${width}%"></div>
+       ${opts.zero ? `<div class="zero" style="left:${pct(0)}%"></div>`:""}
+       <div class="tick" style="left:${mid}%"></div>
+     </div>
+     <div class="pmark">
+       <span>보수 P10 <b>${fmt(range.p10)}</b></span>
+       <span>기준 P50 <b>${fmt(range.p50)}</b></span>
+       <span>낙관 P90 <b>${fmt(range.p90)}</b></span>
+     </div>
+   </div>`;
+}
+
+function renderResult(){
+  const s = STATE.sim, crop = CROPS.find(c=>c.id===STATE.cropId);
+  const incomeColor = s.income.p50 >= 0 ? "g" : "w";
+  const liSum = s.lineItems.reduce((a,li)=>a+li.value.p50,0);
+  document.getElementById("panel-result").innerHTML = `
+   <div class="card">
+     <div class="rhead">
+       <h2 class="sec">${crop.ko} · 수확·소득 시뮬레이션</h2>
+       <div class="confbox">신뢰도 <span class="confbadge c${s.conf}">${s.conf}</span> ${s.conf==="D"?"(토양검정서 없음 — 정밀 판단 제한)":""}</div>
+     </div>
+     <p class="sub">아래는 단일 확정값이 아니라 보수(P10)~기준(P50)~낙관(P90) 범위입니다. 면적 ${fmtN(STATE.land.areaM2)}㎡ · 혼합판매 · 성목 기준.</p>
+
+     ${bar("예상 수확량", s.yieldKg, "kg", {kg:true, color:"g"})}
+     ${bar("예상 비용", s.cost, "원", {color:"a"})}
+     ${bar("예상 매출", s.revenue, "원", {color:"g"})}
+     ${bar("예상 소득 (매출 − 비용)", s.income, "원", {color:incomeColor, zero:true})}
+
+     <div class="be">손익분기 판매단가 ≈ <b>${fmtN(s.be)}원/kg</b> · 이 단가 이상이면 손실을 면합니다. ${s.warnings.length?("<br/>⚠ "+s.warnings.join(" ")):""}</div>
+
+     <div class="block">
+       <h4>생육 리스크</h4>
+       <div class="risks">
+         <div class="rk"><h4>기상</h4><ul>${s.weather.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+         <div class="rk"><h4>병해충</h4><ul>${s.pest.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+         <div class="rk"><h4>재난</h4><ul>${s.disaster.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+       </div>
+     </div>
+
+     <div class="block">
+       <h4>비용 구성 <span style="font-size:11px;color:var(--ink3);font-family:'IBM Plex Mono'">(항목합 P50 ${fmtN(liSum)} = 총계 ${fmtN(s.cost.p50)})</span></h4>
+       <div class="actions">
+         ${s.lineItems.map(li=>`<li style="display:flex;justify-content:space-between"><span>${li.label}</span><span class="mono">${fmtN(li.value.p50)}원</span></li>`).join("")}
+       </div>
+     </div>
+
+     <div class="block">
+       <h4>다음 확인 항목</h4>
+       <div class="actions">
+         ${crop.checks.map(x=>`<li>□ ${x}</li>`).join("")}
+       </div>
+     </div>
+
+     <div class="disc">
+       <h4>면책 · 사용 안내</h4>
+       <ul>${DISCLAIMERS.map(d=>`<li>${d}</li>`).join("")}</ul>
+     </div>
+
+     <div class="back"><button class="btn btn-ghost" onclick="goto('candidates')">← 다른 작물로</button>
+       <button class="btn btn-ghost" onclick="goto('input')" style="margin-left:8px">조건 수정</button></div>
+   </div>`;
+}
+
+renderSteps();
+</script>
+</body>
+</html>

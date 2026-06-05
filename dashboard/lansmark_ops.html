@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LENSMARK 운영 콘솔</title>
+<style>
+  :root{--green:#10B95C;--green-d:#0C2A1B;--green-mid:#1C7A44;--green-soft:#E6F7EC;--green-line:#CDEBD8;
+   --bg:#0f1713;--card:#16211b;--card2:#1c2a22;--line:#26352c;--ink:#eaf3ec;--ink2:#9fb4a6;--ink3:#6f857a;
+   --amber:#F2B33D;--amber-d:#D98E1B;--sky:#3E92C4;--warn:#DA5237;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink);font-family:"Manrope","IBM Plex Sans KR",-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .bar{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--card);flex-wrap:wrap}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;letter-spacing:-.4px}
+  .logo .m{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--green),#2BD97A);display:grid;place-items:center;font-size:16px}
+  .logo small{font-size:11px;font-weight:700;color:var(--ink3);margin-left:2px}
+  .spacer{flex:1}
+  .mode{font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:9px;background:var(--card2);border:1px solid var(--line);color:var(--ink2)}
+  .mode b{color:var(--green)}
+  .btn{font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink);background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:7px 12px;cursor:pointer;text-decoration:none}
+  .btn:hover{border-color:var(--green-mid)}
+  .upd{font-size:11px;color:var(--ink3);font-weight:600}
+  main{padding:22px;max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+  h2{font-size:13px;font-weight:800;color:var(--ink2);letter-spacing:.04em;text-transform:uppercase;margin-bottom:11px;display:flex;align-items:center;gap:8px}
+  h2 .c{font-size:11px;color:var(--ink3);font-weight:700;background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:2px 7px}
+  .grid{display:grid;gap:12px}
+  .g4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .g-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:var(--shadow)}
+  .intg{display:flex;align-items:flex-start;gap:11px}
+  .dot{width:11px;height:11px;border-radius:50%;margin-top:3px;flex:0 0 auto;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+  .dot.live{background:var(--green);box-shadow:0 0 0 3px rgba(16,185,92,.2)}
+  .dot.fallback{background:var(--amber)}
+  .dot.off{background:var(--ink3)}
+  .intg .nm{font-size:13.5px;font-weight:800}
+  .intg .st{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+  .st.live{color:var(--green)}.st.fallback{color:var(--amber)}.st.off{color:var(--ink3)}
+  .intg .nt{font-size:11px;color:var(--ink2);font-weight:600;line-height:1.45;margin-top:4px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .kpi .v{font-size:26px;font-weight:800}.kpi .v small{font-size:13px;color:var(--ink3);font-weight:700}
+  .kpi .l{font-size:11px;color:var(--ink2);font-weight:700;margin-top:2px}
+  .kpi.good .v{color:var(--green)}.kpi.warn .v{color:var(--amber)}
+  .pill{display:inline-block;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:7px}
+  .pill.on{background:rgba(16,185,92,.15);color:var(--green)}.pill.off{background:rgba(217,82,55,.15);color:#ff8c72}
+  .pill.mock{background:rgba(242,179,61,.15);color:var(--amber)}
+  .fwrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px;font-weight:600}
+  .fwrow:first-child{border-top:none}
+  .fwrow .nm{width:120px;color:var(--ink2)}
+  .fwbar{flex:1;height:8px;background:var(--card2);border-radius:5px;overflow:hidden}
+  .fwbar i{display:block;height:100%;background:linear-gradient(90deg,#1C7A44,var(--green))}
+  .fwrow .n{width:46px;text-align:right;color:var(--ink);font-weight:800}
+  .empty{color:var(--ink3);font-size:12px;font-weight:600;padding:8px 0}
+  .foot{font-size:11px;color:var(--ink3);font-weight:600;line-height:1.6;border-top:1px solid var(--line);padding-top:14px}
+  .foot b{color:var(--amber)}
+  .err{color:#ff8c72;font-weight:700}
+  .awarn{background:rgba(242,179,61,.12);border:1px solid var(--amber-d);color:var(--amber);font-size:12px;font-weight:700;padding:9px 13px;border-radius:10px;margin-bottom:6px}
+  .awarn code{background:rgba(0,0,0,.25);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <div class="logo"><div class="m">🌿</div>LENSMARK <small>운영 콘솔</small></div>
+    <div class="spacer"></div>
+    <span class="mode" id="mode">mode —</span>
+    <span class="upd" id="upd">—</span>
+    <button class="btn" id="refresh">↻ 새로고침</button>
+    <a class="btn" href="/" target="_blank">제품 보기 →</a>
+  </div>
+  <main>
+    <div id="authwarn"></div>
+    <section>
+      <h2>🔌 통합 준비도 <span class="c" id="int-c">—</span></h2>
+      <div class="grid g4" id="integrations"><div class="empty">불러오는 중…</div></div>
+    </section>
+    <section>
+      <h2>💳 결제 · 유료권한</h2>
+      <div class="grid g-kpi" id="payment"></div>
+    </section>
+    <section>
+      <h2>🔁 플라이휠(실측 보정) · 사용량</h2>
+      <div class="grid g-kpi" id="usage" style="margin-bottom:12px"></div>
+      <div class="card"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">작물별 실측 기록</div><div id="bycrop"><div class="empty">아직 기록 없음</div></div></div>
+      <div class="card" style="margin-top:12px"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">지형버킷별 보정 현황 <span style="color:var(--ink3);font-weight:600">(실측 5건↑ = validated)</span></div><div id="buckets"><div class="empty">아직 버킷 없음</div></div></div>
+    </section>
+    <section>
+      <h2>📈 익명 수요·퍼널 <span class="c" id="an-c">—</span> <span style="font-size:11px;color:var(--ink3);font-weight:600">(무료 베타 · 집계 · PII 0 · 익명 신호=위조 가능·참고용)</span></h2>
+      <div class="card" style="margin-bottom:12px"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">퍼널 <span style="color:var(--ink3);font-weight:600">(단계별 이벤트 — 어디서 빠지나)</span></div><div id="funnel"><div class="empty">아직 데이터 없음</div></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="card"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">수요 히트맵 <span style="color:var(--ink3);font-weight:600">(시뮬한 작물×지역 = 진짜 수요)</span></div><div id="demand"><div class="empty">아직 시뮬 없음</div></div></div>
+        <div class="card"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">데이터 갭 <span style="color:var(--ink3);font-weight:600">(원했지만 없던 작물)</span></div><div id="datagaps"><div class="empty">없음</div></div></div>
+      </div>
+    </section>
+    <section>
+      <h2>⚙ 시스템</h2>
+      <div class="grid g-kpi" id="system"></div>
+    </section>
+    <section>
+      <h2>🧾 최근 활동(결제·웹훅)</h2>
+      <div class="card"><div id="recent"><div class="empty">활동 없음</div></div></div>
+    </section>
+    <div class="foot">읽기 전용 모니터링 · 시크릿(키)은 노출되지 않습니다. <b>운영 배포 시 이 콘솔은 관리자 인증(/admin) 뒤에 두세요.</b> 데이터: <code>/api/health</code> · <code>/api/ops/stats</code> · 10초 자동 갱신.</div>
+  </main>
+<script>
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $=id=>document.getElementById(id);
+function statusOf(it){ if(it.live)return["live","LIVE"]; if(it.keyed)return["fallback","키있음·mock 폴백"]; return["off","키 필요"]; }
+const LABEL={vworldTiles:"VWorld 타일",vworldGeocode:"주소→좌표(geocode)",vworldParcel:"필지경계(parcel)",vworldDem:"지형 DEM",kmaClimate:"기후(KMA)",kamisPrice:"도매가(KAMIS)",tossPayment:"결제(Toss)",pgWebhook:"PG 웹훅",rdaIncome:"소득 base(RDA)"};
+function kpi(v,l,cls){return `<div class="kpi ${cls||''}"><div class="v num">${v}</div><div class="l">${esc(l)}</div></div>`;}
+function adminHdr(){const t=sessionStorage.getItem("lansmark_admin");return t?{"x-lansmark-admin":t}:{};}
+function renderLogin(){document.querySelector("main").innerHTML=`<section><h2>🔒 관리자 인증</h2><div class="card" style="max-width:440px"><div style="font-size:12.5px;color:var(--ink2);font-weight:600;margin-bottom:10px">운영 콘솔은 관리자 토큰이 필요합니다.</div><input id="tok" type="password" placeholder="LANSMARK_ADMIN_TOKEN" style="width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:13px"><button class="btn" id="tokgo" style="margin-top:10px">로그인</button></div></section>`;document.getElementById("tokgo").addEventListener("click",()=>{const v=document.getElementById("tok").value.trim();if(v){sessionStorage.setItem("lansmark_admin",v);location.reload();}});}
+
+async function load(){
+  let h,s;
+  try{
+    h=await fetch("/api/health").then(r=>r.json());
+    const sr=await fetch("/api/ops/stats",{headers:adminHdr()});
+    if(sr.status===401){renderLogin();return;}
+    s=await sr.json();
+  }catch(e){$("integrations").innerHTML=`<div class="err">연결 실패 — dev 서버 실행 중인지 확인</div>`;return;}
+  $("authwarn").innerHTML=s.authConfigured?"":`<div class="awarn">⚠ 관리자 인증 미설정(개발 오픈) — 운영 배포 시 <code>LANSMARK_ADMIN_TOKEN</code> 설정 필요</div>`;
+  $("mode").innerHTML=`mode <b>${esc(h.mode||"—")}</b>`;
+  $("upd").textContent="갱신 "+new Date().toLocaleTimeString("ko-KR");
+  // 통합
+  const ints=h.integrations||{};const keys=Object.keys(ints);
+  const liveN=keys.filter(k=>ints[k].live).length;
+  $("int-c").textContent=`live ${liveN} / ${keys.length}`;
+  $("integrations").innerHTML=keys.map(k=>{const it=ints[k],[c,t]=statusOf(it);return `<div class="card intg"><span class="dot ${c}"></span><div><div class="nm">${esc(LABEL[k]||k)}</div><div class="st ${c}">${t}</div><div class="nt">${esc(it.note||"")}</div></div></div>`;}).join("");
+  // 결제
+  const pay=s.payment||{};
+  $("payment").innerHTML=
+    `<div class="kpi"><div class="v">${pay.mode==="live"?'<span class="pill on">LIVE</span>':'<span class="pill mock">MOCK</span>'}</div><div class="l">결제 모드(Toss)</div></div>`+
+    `<div class="kpi"><div class="v">${pay.requireEntitlement?'<span class="pill on">ON</span>':'<span class="pill off">OFF</span>'}</div><div class="l">유료 게이트</div></div>`+
+    kpi("₩"+(pay.priceKrw||0).toLocaleString("ko-KR"),"정밀분석 단가")+
+    kpi((s.usage&&s.usage.entitlementsMinted)||0,"발급 엔티틀먼트","good");
+  // 사용량
+  const u=s.usage||{};
+  $("usage").innerHTML=kpi(u.simRuns||0,"정밀 시뮬 실행")+kpi(u.mockPaysIssued||0,"데모 결제")+kpi((s.flywheel&&s.flywheel.records)||0,"보정 기록(누적)")+kpi((s.flywheel&&s.flywheel.withActuals)||0,"실측 포함","good")+kpi(u.requests||0,"API 요청")+kpi(u.errors||0,"5xx 에러",(u.errors>0?"warn":""));
+  // 작물별
+  const bc=(s.flywheel&&s.flywheel.byCrop)||{};const ents=Object.entries(bc).sort((a,b)=>b[1]-a[1]);const max=ents.length?ents[0][1]:1;
+  $("bycrop").innerHTML=ents.length?ents.map(([c,n])=>`<div class="fwrow"><span class="nm">${esc(c)}</span><span class="fwbar"><i style="width:${Math.round(n/max*100)}%"></i></span><span class="n num">${n}</span></div>`).join(""):`<div class="empty">아직 실측 보정 기록이 없습니다 — 제품에서 ‘실측 기록’을 입력하면 집계됩니다.</div>`;
+  // 익명 수요·퍼널(집계·PII0)
+  const an=s.analytics||{funnel:{},demand:[],dataGaps:[],demandKeys:0};
+  const FSTAGE=[["recommend","추천 조회"],["simulate","정밀 시뮬"],["guide","가이드"],["foreign","외래 조회"],["journal","일지 시작"],["subscribe","알림 옵트인"]];
+  const fmax=Math.max(1,...FSTAGE.map(([k])=>an.funnel[k]||0));
+  $("an-c").textContent="작물×지역 "+(an.demandKeys||0);
+  $("funnel").innerHTML=FSTAGE.map(([k,l])=>{const n=an.funnel[k]||0;return `<div class="fwrow"><span class="nm" style="width:84px">${esc(l)}</span><span class="fwbar"><i style="width:${Math.round(n/fmax*100)}%"></i></span><span class="n num">${n}</span></div>`;}).join("");
+  const dm=an.demand||[];const dmax=dm.length?dm[0].sims:1;
+  $("demand").innerHTML=dm.length?dm.map(d=>`<div class="fwrow"><span class="nm">${esc(d.cropId)}</span><span style="flex:1;color:var(--ink3);font-size:11px">${esc(d.region)}</span><span class="fwbar" style="max-width:80px"><i style="width:${Math.round(d.sims/dmax*100)}%"></i></span><span class="n num">${d.sims}</span></div>`).join(""):`<div class="empty">아직 시뮬 없음 — 사용자가 정밀 시뮬을 돌리면 작물×지역 수요가 집계됩니다.</div>`;
+  const dg=an.dataGaps||[];
+  $("datagaps").innerHTML=dg.length?dg.map(g=>`<div class="fwrow"><span class="nm" style="flex:1">${esc(g.key)}</span><span class="n num">${g.hits}</span></div>`).join(""):`<div class="empty">없음</div>`;
+  // 시스템
+  $("system").innerHTML=kpi("v"+esc(h.version||"—"),"버전")+kpi(esc(s.config&&s.config.dataMode||"—"),"DATA_MODE")+kpi(esc(s.config&&s.config.port||"—"),"PORT")+kpi(keys.length,"연동 지점")+kpi(liveN,"LIVE 연동","good");
+  // 보정 버킷
+  const vb=(s.flywheel&&s.flywheel.validatedBuckets)||[];
+  $("buckets").innerHTML=vb.length?vb.map(b=>`<div class="fwrow"><span class="nm">${esc(b.cropId)}</span><span style="flex:1;color:var(--ink3);font-size:11px">${esc(b.bucket)}</span><span class="pill ${b.validated?'on':'mock'}" style="margin-right:8px">${b.validated?'validated':esc(b.actuals)+'/5'}</span><span class="n num">${esc(b.n)}</span></div>`).join(""):`<div class="empty">아직 버킷 없음</div>`;
+  // 최근 활동
+  const rec=s.recent||[];
+  $("recent").innerHTML=rec.length?rec.map(e=>`<div class="fwrow"><span class="nm" style="width:62px">${esc(e.type)}</span><span style="flex:1">${esc(e.detail)}</span><span style="color:var(--ink3);font-size:11px">${esc((e.at||"").slice(11,19))}</span></div>`).join(""):`<div class="empty">활동 없음</div>`;
+}
+$("refresh").addEventListener("click",load);
+load(); setInterval(load,10000);
+</script>
+</body>
+</html>

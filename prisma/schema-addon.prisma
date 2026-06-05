@@ -1,0 +1,58 @@
+// Merge this into existing prisma/schema.prisma if Prisma is used.
+
+model LansmarkSimulationRun {
+  id              String   @id @default(cuid())
+  userId          String?
+  landParcelId    String?
+  cropId          String
+  cultivarGroupId String?
+  inputJson       Json
+  resultJson      Json
+  confidence      String
+  paid            Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([cropId])
+  @@index([createdAt])
+}
+
+model LansmarkSoilEvidence {
+  id                String   @id @default(cuid())
+  userId            String?
+  landParcelId      String?
+  source            String
+  testedAt          DateTime?
+  ph                Float?
+  organicMatterGkg  Float?
+  ecDsM             Float?
+  p2o5MgKg          Float?
+  potassiumCmolKg   Float?
+  calciumCmolKg     Float?
+  magnesiumCmolKg   Float?
+  texture           String?
+  drainageClass     String?
+  fileUrl           String?
+  confidence        String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([landParcelId])
+}
+
+model LansmarkFeedbackLog {
+  id               String   @id @default(cuid())
+  userId           String?
+  simulationRunId  String?
+  cropId           String?
+  actualYieldKg    Float?
+  actualRevenueKrw Int?
+  actualCostKrw    Int?
+  notes            String?
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([simulationRunId])
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- 개인정보처리방침 '초안' — 실제 수집 관행(코드)에 맞춰 작성. ⚠ 법무 검토 전 실서비스 적용 금지. -->
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LENSMARK 개인정보처리방침(초안)</title>
+<style>
+  :root{--ink:#10211A;--ink2:#5B6A60;--line:#E7ECE4;--green:#10B95C;--amber:#D98E1B}
+  *{box-sizing:border-box} body{font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:var(--ink);max-width:760px;margin:0 auto;padding:28px 20px 80px;line-height:1.7;font-size:14.5px}
+  h1{font-size:22px;margin:0 0 4px} h2{font-size:16px;margin:26px 0 8px;border-bottom:2px solid var(--green);padding-bottom:5px}
+  .draft{background:#FFF6EE;border:1px solid var(--amber);color:#8a5a12;border-radius:10px;padding:12px 14px;font-weight:700;margin:14px 0 8px}
+  .meta{color:var(--ink2);font-size:12.5px} table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top} th{background:#F2F6F0}
+  a{color:var(--green)} .top{display:flex;gap:10px;align-items:center;margin-bottom:6px}
+  .fill{background:#FFF0F0;color:#B23;border-radius:5px;padding:1px 6px;font-size:12px;font-weight:700}
+</style></head><body>
+<div class="top"><a href="/app">← LENSMARK</a></div>
+<h1>개인정보처리방침</h1>
+<div class="meta">시행일: <span class="fill">YYYY-MM-DD 기입</span> · 최종개정: <span class="fill">기입</span></div>
+<div class="draft">⚠ 초안(DRAFT) — 실제 데이터 처리 관행에 맞춰 작성했으나, <b>법무 검토를 거쳐 확정·시행</b>해야 합니다. <span class="fill">[ ]</span> 표시는 사업자 정보 기입란.</div>
+
+<p>LENSMARK(이하 "서비스")는 「개인정보 보호법」을 준수하며, 수집하는 개인정보를 다음과 같이 처리합니다. 본 서비스는 <b>의사결정 보조 도구</b>이며 수익·재배성공을 보장하지 않습니다.</p>
+
+<h2>1. 수집 항목·목적·보유기간</h2>
+<table><tr><th>항목</th><th>목적</th><th>보유·파기</th></tr>
+<tr><td>휴대폰번호 <span class="meta">(알림 신청 시·동의)</span></td><td>농사 알림(기상특보·병해충 예찰) 발송</td><td><b>동의 철회(해지) 시 즉시 파기</b></td></tr>
+<tr><td>실측 데이터(수확량·비용·매출 등) <span class="meta">(이용자 제출 시 · 무료 베타는 브라우저 익명ID)</span></td><td>예측 정확도 보정(통계 집계) <span class="meta">— 무료 베타 익명 제출은 '✓검증' 배지에 미반영</span></td><td>서비스 운영 기간 <span class="meta">(익명 집계 후 통계 보존 가능)</span></td></tr>
+<tr><td>위치(좌표)·필지 정보 <span class="meta">(지도 분석 시)</span></td><td>작물 추천·소득 분석 연산</td><td>분석 단계는 처리 즉시 <span class="meta">(분석 연산만으로는 서버 영구저장 안 함)</span></td></tr>
+<tr><td>재배일지(작물·작업·수확량·매출·필지 좌표) <span class="meta">(이용자가 '재배 시작' 선택 시)</span></td><td>영농 기록·시즌 리포트·예측↔실측 보정(해자)</td><td>일지 저장 <span class="meta">(무료 베타: 브라우저 익명ID로 사용자별 격리 저장 · 삭제 요청 시 파기)</span></td></tr>
+<tr><td>결제 정보</td><td>유료 정밀 분석 결제</td><td>전자상거래법 등 관계 법령 보존기간 <span class="meta">(카드정보는 PG사 처리·당사 미보유)</span></td></tr>
+</table>
+
+<h2>2. 제3자 제공 및 처리위탁</h2>
+<p>현재 개인정보를 제3자에게 제공하지 않습니다. 다만 서비스 운영을 위해 아래에 처리를 위탁할 수 있으며, 위탁 개시 전 본 방침에 반영하고 필요한 동의를 받습니다.</p>
+<table><tr><th>수탁자</th><th>위탁 업무</th><th>상태</th></tr>
+<tr><td>전자결제대행(PG, 예: Toss Payments)</td><td>결제 처리</td><td>유료 도입 시</td></tr>
+<tr><td>문자(SMS) 발송 사업자</td><td>알림 문자 발송</td><td><b>발송 개시 시</b> (현재 번호만 저장·미발송)</td></tr>
+</table>
+
+<h2>3. 정보주체의 권리</h2>
+<p>이용자는 열람·정정·삭제·처리정지·동의철회를 요구할 수 있습니다. 알림 수신 동의는 앱의 <b>알림 해지</b>로 즉시 철회·파기되며, 그 밖의 요청은 아래 문의처로 접수합니다.</p>
+
+<h2>4. 안전성 확보 조치</h2>
+<p>전송 구간 암호화(HTTPS), 최소 수집, 로그·응답에서 번호 마스킹(예: 010****5678), 저장 파일 접근권한 제한(소유자 전용)을 적용합니다. <span class="meta">(저장 시 암호화 등 추가 강화는 운영 단계 적용 예정)</span></p>
+
+<h2>5. 개인정보 보호책임자·문의처</h2>
+<p>책임자: <span class="fill">[성명·직책 기입]</span> · 이메일: <span class="fill">[privacy@도메인 기입]</span> · 전화: <span class="fill">[기입]</span></p>
+<p class="meta">본 방침은 초안이며, 시행 전 「개인정보 보호법」 및 사업자 실제 운영에 맞춰 법무 검토·보완이 필요합니다.</p>
+</body></html>

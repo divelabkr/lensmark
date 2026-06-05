@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LENSMARK · 땅 → 추천 → 소득 시뮬</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<style>
+  :root{--green:#10B95C;--green-d:#0C2A1B;--green-mid:#1C7A44;--green-soft:#E6F7EC;--green-line:#CDEBD8;--bn1:#15C268;--bn2:#089A4D;
+   --bg:#F2F6F0;--bg2:#F7FAF5;--card:#FFFFFF;--line:#E7ECE4;--line2:#DDE5D9;--ink:#10211A;--ink2:#5B6A60;--ink3:#93A199;
+   --amber:#F2B33D;--amber-d:#D98E1B;--amber-soft:#FCEFD0;--sky:#3E92C4;--sky-soft:#DCEDF7;--warn:#DA5237;--warn-soft:#F8DFD8;
+   --shadow:0 1px 2px rgba(16,33,26,.05),0 8px 24px rgba(16,33,26,.07);--shadow-sm:0 1px 3px rgba(16,33,26,.07);}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--ink);font-family:"Manrope","IBM Plex Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .wrap{display:flex;flex-direction:column;height:100vh}
+  .bar{background:var(--card);border-bottom:1px solid var(--line2);padding:9px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;z-index:1000;box-shadow:var(--shadow-sm)}
+  .logo{display:flex;align-items:center;gap:8px;margin-right:4px}.logo .m{width:29px;height:29px;border-radius:9px;background:linear-gradient(135deg,var(--green),#2BD97A);display:grid;place-items:center;font-size:15px}.logo .n{font-weight:800;font-size:16px;letter-spacing:-.4px;color:var(--green-d)}
+  .seg{display:inline-flex;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:3px;gap:2px}
+  .seg button{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--ink2);padding:6px 11px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.15s}
+  .seg button.on{background:var(--green);color:#fff;box-shadow:0 2px 6px rgba(16,185,92,.3)}.seg.view button.on{background:var(--sky)}
+  .tier{display:inline-flex;align-items:center;gap:6px;background:var(--green-soft);border:1px solid var(--green-line);border-radius:9px;padding:5px 10px;font-size:12px;font-weight:800;color:var(--green-mid)}.tier .lv{font-size:9.5px;background:var(--green);color:#fff;border-radius:5px;padding:2px 6px}
+  .spacer{flex:1}.cnt{font-size:11.5px;font-weight:800;color:var(--ink2)}.cnt b{color:var(--green-mid)}
+  .btn{border:1px solid var(--line2);background:var(--card);font-family:inherit;font-size:12px;font-weight:700;color:var(--ink2);padding:6px 11px;border-radius:9px;cursor:pointer}.btn:hover{background:var(--bg2)}.btn.danger{color:var(--warn);border-color:#eecabf}
+  .body{flex:1;display:flex;min-height:0}
+  .mapcol{flex:1;position:relative;min-width:0}#map{position:absolute;inset:0;background:#dfe7da}
+  .hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:800;background:rgba(16,33,26,.82);color:#fff;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;pointer-events:none;max-width:92%;text-align:center}
+  .pin{width:16px;height:16px;border-radius:50% 50% 50% 0;background:var(--sky);border:3px solid #fff;box-shadow:0 0 0 2px var(--sky),0 5px 10px rgba(0,0,0,.4);transform:rotate(-45deg)}
+  .panel{width:392px;flex:0 0 392px;background:var(--bg);border-left:1px solid var(--line2);display:flex;flex-direction:column;min-height:0}
+  .ptop{padding:13px 15px 11px;border-bottom:1px solid var(--line);background:var(--card)}
+  .ptop h2{font-size:14.5px;font-weight:800;letter-spacing:-.3px;display:flex;align-items:center;gap:7px}.ptop .sub{font-size:11px;color:var(--ink3);margin-top:3px;font-weight:600}
+  .plist{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:11px}
+  .empty{margin:auto;text-align:center;color:var(--ink3);font-size:13px;font-weight:600;padding:26px 14px;line-height:1.75}.empty .ic{font-size:32px;display:block;margin-bottom:9px;opacity:.5}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:13px 14px;box-shadow:var(--shadow-sm)}
+  .card .ch{display:flex;align-items:center;justify-content:space-between;gap:8px}.card .cname{font-size:13.5px;font-weight:800}.card .cx{cursor:pointer;color:var(--ink3);font-size:15px;border:none;background:none;line-height:1}
+  .card .creg{font-size:11.5px;color:var(--ink2);font-weight:600;margin:4px 0 9px}.card .creg b{color:var(--green-mid)}
+  .badge{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:3px 7px;border-radius:6px}
+  .b-free{background:var(--green-soft);color:var(--green-mid)}.b-paid{background:var(--amber-soft);color:var(--amber-d)}.b-tier{background:var(--bg2);color:var(--ink2);border:1px solid var(--line2)}
+  .tagrow{display:flex;flex-wrap:wrap;gap:6px}
+  .crop{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:8px;padding:6px 10px;background:var(--green-soft);color:var(--green-mid);border:1px solid var(--green-line);cursor:pointer;transition:.12s}
+  .crop:hover{background:#d4f1de}.crop.sel{background:var(--green);color:#fff;border-color:var(--green)}
+  .crop .sc{font-size:10px;font-weight:800;color:#fff;background:var(--green);border-radius:5px;padding:1px 5px}.crop.sel .sc{background:rgba(255,255,255,.3)}
+  .crop.mid{background:var(--amber-soft);color:var(--amber-d);border-color:#f0dca8}.crop.mid .sc{background:var(--amber)}
+  .crop.low{background:#f1f3ef;color:var(--ink3);border-color:var(--line)}.crop.low .sc{background:#aeb8ad}
+  .crop .meta{font-size:10px;color:var(--ink3);font-weight:600}
+  /* decision summary */
+  .decide{border-radius:14px;padding:13px 15px;color:#fff;background:linear-gradient(120deg,var(--bn2),var(--bn1) 70%,#1ED073);box-shadow:0 10px 24px rgba(8,154,77,.24)}
+  .decide.neg{background:linear-gradient(120deg,#c2452e,#da5237)}
+  .decide .dl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;opacity:.92}
+  .decide .dv{font-size:21px;font-weight:800;margin:5px 0 2px;letter-spacing:-.4px}
+  .decide .dmeta{font-size:11.5px;opacity:.93;font-weight:600}
+  .decide .pill{display:inline-block;font-size:10px;font-weight:800;background:rgba(255,255,255,.2);border-radius:7px;padding:4px 9px;margin-top:9px;margin-right:5px}
+  /* mini gauge + kpis */
+  .k3{display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;align-items:center}
+  .gw{position:relative;width:88px;height:52px}.gw .gn{position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:17px;font-weight:800}.gw .gn small{font-size:9px;color:var(--ink3)}
+  .kbox{background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:9px 11px}.kbox .kl{font-size:10.5px;color:var(--ink2);font-weight:700}.kbox .kv{font-size:16px;font-weight:800;margin-top:2px}.kbox .kv small{font-size:10px;color:var(--ink3)}
+  .easy{font-size:10px;color:var(--ink3);font-weight:700;margin-top:7px;display:flex;justify-content:space-between}.easy b{color:var(--ink2)}
+  /* range bar */
+  .rb{margin-top:4px}.track{position:relative;height:22px;background:var(--bg);border-radius:7px;overflow:hidden;border:1px solid var(--line)}.band{position:absolute;top:3px;bottom:3px;border-radius:5px}.band.g{background:linear-gradient(90deg,#5fd189,var(--green))}.band.w{background:linear-gradient(90deg,#e9a18d,var(--warn))}.tick{position:absolute;top:-1px;bottom:-1px;width:2.5px;background:var(--ink);border-radius:2px}.zero{position:absolute;top:0;bottom:0;border-left:1.5px dashed var(--ink3)}
+  /* factors */
+  .fsum{display:flex;align-items:baseline;gap:8px;padding:9px 12px;background:linear-gradient(90deg,#eef8f1,#fbfdfa);border:1px dashed var(--green-line);border-radius:10px}.fsum .fl{font-size:11.5px;color:var(--ink2);font-weight:700}.fsum .fv{font-size:18px;font-weight:800;color:var(--green-mid)}.fsum .fv.neg{color:var(--warn)}
+  .frow{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
+  .fax{font-size:9.5px;font-weight:800;color:#fff;border-radius:5px;padding:3px 6px;white-space:nowrap}.fax.t{background:#7a8b80}.fax.s{background:#5c8f6a}.fax.c{background:#6f93c4}.fax.v{background:#9b7bc4}
+  .freason{font-size:11.5px;color:var(--ink);font-weight:500;line-height:1.3}.fpct{font-size:12px;font-weight:800;white-space:nowrap}.fpct.down{color:var(--warn)}.fpct.up{color:var(--green-mid)}.fpct.flat{color:var(--ink3)}
+  /* terrain edit */
+  .edit{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+  .fc label{display:block;font-size:9.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px}.fc label .rv{float:right;color:var(--green-mid);font-weight:800}
+  .fc input,.fc select{width:100%;padding:7px 9px;border:1px solid var(--line2);border-radius:9px;background:#fff;font-family:inherit;font-size:12.5px;color:var(--ink);font-weight:600}
+  input[type=range]{accent-color:var(--green);height:26px}
+  .sat-row{display:flex;gap:6px;flex-wrap:wrap}.tg{font-size:11px;font-weight:700;border:1px solid var(--line2);background:#fff;border-radius:8px;padding:6px 9px;cursor:pointer;color:var(--ink2)}.tg.on{background:var(--green);color:#fff;border-color:var(--green)}
+  .auto-note{font-size:10px;color:var(--ink3);font-weight:600;margin-bottom:7px}.auto-note b{color:var(--sky)}
+  .upsell{font-size:11px;font-weight:700;color:var(--amber-d);background:var(--amber-soft);border:1px solid #f0dca8;border-radius:9px;padding:9px 11px;display:flex;gap:7px;align-items:flex-start}
+  .conf{font-size:11px;color:var(--ink2);font-weight:600;display:flex;gap:7px;align-items:center}.conf .d{width:8px;height:8px;border-radius:50%}
+  .cmp-table{width:100%;border-collapse:collapse;font-size:12px}.cmp-table th{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.03em;text-align:left;padding:6px 8px;font-weight:800}.cmp-table td{padding:8px;border-top:1px solid var(--line);font-weight:600}.cmp-table tr.best td{background:var(--green-soft)}.cmp-table .ico{font-weight:800;color:var(--green-mid)}
+  .sectt{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:800;margin:2px 0 -2px}
+  .disc{font-size:10px;color:var(--ink3);line-height:1.6;padding:10px 14px;border-top:1px solid var(--line);background:var(--bg2);font-weight:500}.disc b{color:var(--amber-d)}
+  /* ===== map-first atlas: 이벤트 펄스 + LIVE 피드 (C3) + 로딩/에러/출처 ===== */
+  .evtm{position:relative;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px currentColor,0 2px 7px rgba(0,0,0,.45)}
+  .evtm::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50%;background:currentColor;transform:translate(-50%,-50%);animation:lmpulse 1.8s ease-out infinite;opacity:.55}
+  @keyframes lmpulse{0%{width:14px;height:14px;opacity:.55}100%{width:48px;height:48px;opacity:0}}
+  .livefeed{position:absolute;left:12px;bottom:12px;z-index:850;width:288px;max-width:44vw;background:rgba(255,255,255,.96);border:1px solid var(--line2);border-radius:13px;box-shadow:var(--shadow);overflow:hidden;backdrop-filter:blur(7px)}
+  .livefeed .lh{display:flex;align-items:center;gap:7px;padding:8px 11px;border-bottom:1px solid var(--line);font-size:11.5px;font-weight:800;color:var(--ink2)}
+  .livefeed .lh .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);animation:lmblink 1.5s infinite}
+  @keyframes lmblink{50%{opacity:.25}}
+  .livefeed .lh .seam{margin-left:auto;font-size:9px;font-weight:700;color:var(--ink3)}
+  .livefeed .lh .pp{cursor:pointer;font-size:12px;color:var(--ink2);border:none;background:none;padding:0 2px}
+  .feed{max-height:176px;overflow-y:auto;padding:5px}
+  .feed .empty2{font-size:11px;color:var(--ink3);font-weight:600;text-align:center;padding:16px 8px}
+  .fitem{display:flex;gap:8px;align-items:flex-start;padding:7px 8px;border-radius:9px;cursor:pointer}
+  .fitem:hover{background:var(--bg2)}
+  .fitem .ei{font-size:15px;line-height:1.15}
+  .fitem .et{flex:1;font-size:11.5px;font-weight:600;color:var(--ink);line-height:1.34}.fitem .et small{color:var(--ink3);font-weight:600}
+  .fitem .ec{font-size:9px;font-weight:800;padding:2px 5px;border-radius:5px;white-space:nowrap;align-self:center}
+  .loadc{display:flex;align-items:center;gap:9px;color:var(--ink2);font-size:12.5px;font-weight:700;padding:20px 14px;justify-content:center}
+  .spin{width:15px;height:15px;border:2.5px solid var(--green-line);border-top-color:var(--green);border-radius:50%;animation:lmspin .7s linear infinite}
+  @keyframes lmspin{to{transform:rotate(360deg)}}
+  .errc{font-size:12px;color:var(--warn);font-weight:700;background:var(--warn-soft);border:1px solid #eecabf;border-radius:11px;padding:11px 13px}
+  .src{font-size:10px;color:var(--ink3);font-weight:600;padding:2px 1px;line-height:1.55}.src b{color:var(--amber-d)}
+  .badge.b-val{background:var(--green-soft);color:var(--green-mid)}
+  /* ===== 토지 유형(강/바다/도시/임야/기존농경지) 구분 ===== */
+  .lcbadge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:7px;border:1px solid;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .lc-block,.lc-warn{border-width:1.5px}
+  .lc-h{display:flex;gap:11px;align-items:flex-start}.lc-ic{font-size:23px;line-height:1.1}
+  .lc-t{font-size:14px;font-weight:800}.lc-r{font-size:11.5px;color:var(--ink2);font-weight:600;margin-top:3px;line-height:1.45}
+  .lc-note{font-size:11px;color:var(--ink3);font-weight:600;margin-top:10px;border-top:1px dashed var(--line);padding-top:9px}
+  .lc-note b{color:var(--green-mid)}
+  .lc-banner{display:flex;gap:10px;align-items:flex-start;padding:10px 13px;border:1.5px solid;border-radius:12px;font-size:12px}.lc-banner b{font-size:12.5px}
+  .rc-sel{font-family:inherit;font-size:12px;font-weight:600;border:1px solid var(--line2);border-radius:8px;padding:6px 8px;background:#fff;color:var(--ink)}
+  /* ===== 생육·출하 타임라인 ===== */
+  .gstrip{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-top:5px}
+  .gm{position:relative;height:30px;border-radius:5px;display:flex;align-items:flex-end;justify-content:center}
+  .gm .gmn{font-size:9px;color:rgba(16,33,26,.5);font-weight:800;padding-bottom:2px}
+  .gm .gf{position:absolute;top:1px;left:50%;transform:translateX(-50%);font-size:8.5px}
+  .glegend{display:flex;flex-wrap:wrap;gap:9px;margin-top:8px;font-size:10px;color:var(--ink2);font-weight:700}
+  .glegend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:3px;vertical-align:-1px}
+  .grkrow{display:flex;flex-wrap:wrap;gap:5px}
+  .grk{font-size:11px;font-weight:600;color:var(--ink2);background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:4px 8px}
+  .srch{display:inline-flex;gap:4px;align-items:center;position:relative}
+  .srch input{font-family:inherit;font-size:12px;font-weight:600;color:var(--ink);border:1px solid var(--line2);border-radius:9px;padding:6px 9px;width:148px;background:var(--bg2)}
+  .srch input:focus{outline:none;border-color:var(--green);background:#fff}
+  .srch .btn{padding:6px 9px}
+  /* 검색 모드 토글(주소/작물) — .seg 축약판 */
+  .smode{display:inline-flex;background:var(--bg2);border:1px solid var(--line2);border-radius:9px;padding:2px;gap:2px}
+  .smode button{border:none;background:transparent;font-family:inherit;font-size:12px;cursor:pointer;padding:5px 7px;border-radius:6px;line-height:1;transition:.15s}
+  .smode button.on{background:var(--green);box-shadow:0 2px 6px rgba(16,185,92,.3)}
+  /* 작물 자동완성 드롭다운 — 검색창 바로 아래(지도 위) */
+  .srch-ac{position:absolute;top:calc(100% + 5px);left:0;right:0;min-width:210px;max-height:280px;overflow-y:auto;background:#fff;border:1px solid var(--line2);border-radius:11px;box-shadow:0 10px 30px rgba(16,33,26,.18);z-index:3000;padding:5px;display:none}
+  .srch-ac.show{display:block}
+  .srch-ac .it{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--ink);padding:7px 9px;border-radius:8px;cursor:pointer}
+  .srch-ac .it:hover,.srch-ac .it.cur{background:var(--green-soft)}
+  .srch-ac .it .b{margin-left:auto;font-size:8px;padding:2px 5px;border-radius:5px;font-weight:800;text-transform:uppercase}
+  .srch-ac .none{font-size:12px;color:var(--ink3);font-weight:600;padding:9px 10px;text-align:center}
+  /* ===== 페이월(유료 잠금) ===== */
+  .pw{border:1.5px solid var(--amber-d);background:linear-gradient(135deg,#fffdf7,#fcefd0)}
+  .pw-h{font-size:15px;font-weight:800;color:var(--amber-d)}
+  .pw-sub{font-size:12px;color:var(--ink2);font-weight:600;line-height:1.55;margin-top:6px}
+  .pw-feat{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .pw-feat span{font-size:11px;font-weight:700;color:var(--ink2);background:#fff;border:1px solid #f0dca8;border-radius:7px;padding:4px 8px}
+  .pw-btn{width:100%;border:none;border-radius:11px;padding:12px;font-family:inherit;font-size:15px;font-weight:800;color:#fff;background:linear-gradient(135deg,#F2B33D,#D98E1B);cursor:pointer;box-shadow:0 6px 16px rgba(217,142,27,.3)}
+  /* 결제 목업 모달 */
+  .paymask{position:fixed;inset:0;z-index:3200;background:rgba(16,33,26,.55);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+  .paybox{background:#fff;border-radius:18px;box-shadow:var(--shadow);width:min(380px,92vw);padding:20px 20px 16px;animation:popin .18s ease}
+  .paytop{font-weight:800;font-size:16px;color:#2B64F5;display:flex;align-items:center;gap:7px;margin-bottom:14px}
+  .paymock{font-size:11px;font-weight:700;color:#5B6A60;background:#EEF1EC;border-radius:6px;padding:2px 6px}
+  .payrow{display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);padding:6px 0;border-bottom:1px solid var(--line)}
+  .payrow b{color:var(--ink);font-weight:700}
+  .payamt{font-family:"Manrope";font-size:28px;font-weight:800;color:var(--ink);text-align:right;margin:12px 0 4px}
+  .paynote{font-size:11px;color:var(--ink3);margin-bottom:14px}
+  .payact{display:flex;gap:8px}
+  .paybtn2{border:1px solid var(--line2);background:#fff;border-radius:11px;padding:12px 16px;font-family:inherit;font-weight:700;color:var(--ink2);cursor:pointer}
+  .pw-btn:hover{filter:brightness(1.05)}.pw-btn:disabled{opacity:.6}
+  .pw-note{font-size:10px;color:var(--ink3);font-weight:600;margin-top:8px;line-height:1.5}
+  #pro{cursor:pointer}
+  /* ===== 버전 배지 + 변경점 팝업 ===== */
+  #ver{font-size:10.5px;font-weight:800;color:var(--green-mid);background:var(--green-soft);border:1px solid var(--green-line);border-radius:7px;padding:3px 7px;cursor:pointer;margin-left:1px}
+  .vmodal{position:fixed;inset:0;z-index:3000;background:rgba(16,33,26,.55);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+  .vbox{background:var(--card);border:1px solid var(--line2);border-radius:16px;max-width:440px;width:100%;max-height:82vh;overflow:auto;box-shadow:0 20px 60px rgba(16,33,26,.35)}
+  .vtop{font-size:16px;font-weight:800;padding:16px 18px;border-bottom:1px solid var(--line);background:linear-gradient(120deg,var(--green-soft),#fff)}.vtop b{color:var(--green-mid)}
+  .vbody{padding:14px 18px;display:flex;flex-direction:column;gap:14px}
+  .vrel .vrh{font-size:13px;font-weight:800;color:var(--ink)}.vrel .vrh span{font-size:11px;color:var(--ink3);font-weight:600;margin-left:5px}
+  .vitem{font-size:12px;color:var(--ink2);font-weight:600;line-height:1.55;margin-top:4px}
+  .vbtn{margin:2px 18px 18px;width:calc(100% - 36px);border:none;border-radius:11px;padding:12px;font-family:inherit;font-size:14px;font-weight:800;color:#fff;background:var(--green);cursor:pointer}.vbtn:hover{filter:brightness(1.05)}
+  @media(max-width:900px){.body{flex-direction:column}.panel{width:auto;flex:0 0 auto;max-height:52vh;border-left:none;border-top:1px solid var(--line2)}.mapcol{flex:1;min-height:260px}.livefeed{width:230px}}
+  @media print{.bar .seg,.bar .btn,.bar .tier,.bar .cnt,.bar .spacer,.hint,.livefeed{display:none!important}.mapcol{display:none!important}.panel{width:100%!important;flex:1 1 auto!important;border:none!important;max-height:none!important}.plist{overflow:visible!important;display:block!important}.card{break-inside:avoid;page-break-inside:avoid}html,body,.wrap,.body{height:auto!important;display:block!important}.bar{box-shadow:none;border:none}}
+  /* ===== 동반 패널 탭 그룹(레이아웃 정리 — 출하·병충해·환경·지원·일지를 한 칸에) ===== */
+  .opwrap{padding:0;overflow:hidden}
+  .optabs{display:flex;gap:3px;background:#eef1ec;padding:5px;overflow-x:auto}
+  .optab{flex:1 0 auto;font-size:11.5px;font-weight:800;padding:7px 9px;border:none;background:transparent;color:#6b756b;border-radius:9px;cursor:pointer;white-space:nowrap}
+  .optab.active{background:#fff;color:#1f2d1a;box-shadow:var(--shadow-sm)}
+  .oppane{display:none;padding:12px 13px}
+  .oppane.active{display:block}
+  /* 작물→지역 적합 시도 마커(지도) */
+  .rgnm{font-size:9.5px;font-weight:800;color:#fff;border-radius:9px;padding:2px 6px;text-align:center;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35);border:1.5px solid #fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <div class="logo"><div class="m">🌿</div><div class="n">LENSMARK</div></div><span class="ver" id="ver" title="변경 이력 보기">v—</span>
+    <div class="seg" id="mode"><button data-m="pin" class="on">📍 핀</button><button data-m="select">▦ 토지선택</button></div>
+    <div class="tier" id="tier"><span class="lv">전국</span> 대표작물</div>
+    <div class="srch">
+      <div class="smode" id="smode"><button data-s="addr" class="on" title="주소·지번으로 위치 찾기">📍</button><button data-s="crop" title="작물로 추천 지역 찾기">🌱</button></div>
+      <input id="srch-in" placeholder="주소·지번 검색" autocomplete="off"><button class="btn" id="srch-go" title="검색">🔍</button><button class="btn" id="srch-geo" title="내 위치">📍</button>
+      <div class="srch-ac" id="srch-ac"></div>
+    </div>
+    <div class="tier" id="pro" style="display:none;background:linear-gradient(135deg,#F2B33D,#D98E1B);color:#fff;border-color:#D98E1B" title="구매(Pro) · 클릭 시 해제">⭐ PRO</div>
+    <div class="spacer"></div>
+    <span class="cnt" id="cnt">선택 <b>0</b></span>
+    <div class="seg view" id="view"><button data-v="sep" class="on">따로</button><button data-v="comb">합쳐서</button></div>
+    <button class="btn" id="save">💾 저장</button>
+    <button class="btn" id="load">📂 불러오기</button>
+    <button class="btn" id="pdf">🖨 PDF</button>
+    <button class="btn" id="share">🔗 공유</button>
+    <input type="file" id="loadfile" accept="application/json" style="display:none">
+    <button class="btn danger" id="reset">초기화</button>
+  </div>
+  <div class="body">
+    <div class="mapcol"><div id="map"></div><div class="hint" id="hint">① 지도에서 땅을 탭하면 ② 추천 작물이 뜨고 ③ 작물을 누르면 소득 시뮬</div>
+      <div class="livefeed" id="livefeed"><div class="lh"><span class="dot"></span>LIVE 이벤트<span class="seam">데모 트리거 · 실연동: KAMIS/KMA/위성</span><button class="pp" id="feedpp" title="일시정지/재생">⏸</button></div><div class="feed" id="feed"><div class="empty2">실시간 이벤트 수집 중…</div></div></div>
+    </div>
+    <aside class="panel">
+      <div class="ptop"><h2 id="ptitle">🌱 땅을 선택하세요</h2><div class="sub" id="psub">땅 → 추천 작물 → 정밀 소득 시뮬</div></div>
+      <div class="plist" id="plist">
+        <div class="empty"><span class="ic">🗺</span>지도를 탭해 시작.<br/>줌에 따라 <b>전국=대표작물 · 시군=특산물 · 필지=실제 재배가능</b><br/><br/>📍핀=한 곳 · ▦토지선택=여러 곳 비교<br/><br/><button class="btn" id="assess-open" style="font-size:12px;padding:7px 12px">🧭 귀농 자가진단(무료)</button><div style="font-size:11px;color:var(--ink3);margin-top:5px">땅 고르기 전, 준비도 30초 점검</div></div>
+      </div>
+      <div class="disc">의사결정 보조용이며 수익·재배성공 보장이나 매입추천이 아닙니다. 모든 수치는 범위(P10–P50–P90)로 제시됩니다. 필지·지형·기후·가격·소득은 <b>실엔진(/api)</b> 결과 — 키 없을 땐 mock provider. 정밀 토양계수는 <b>토양검정 인증</b> 후 해금됩니다. · <a href="/terms" target="_blank" rel="noopener" style="color:var(--green-mid);font-weight:700">이용약관</a> · <a href="/privacy" target="_blank" rel="noopener" style="color:var(--green-mid);font-weight:700">개인정보처리방침</a></div>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+/* ============================================================
+   LENSMARK map-first atlas — 실엔진 연동(내부 시뮬 엔진 없음).
+   모든 수치는 백엔드 /api/* 실호출 결과. 단일값 금지 · 범위(P10/50/90) · 면책 · 출처 · 인증게이트.
+   ============================================================ */
+const API={ base:"" };
+/* ===== 결제·유료권한(엔티틀먼트) ===== */
+let ENT=null;try{ENT=localStorage.getItem("lansmark_ent")||null;}catch(_){}
+/* 무료 베타 익명ID(브라우저당 1회·localStorage): 재배일지를 사용자별 격리(IDOR 차단) + 실측 제출자 식별(per-user 캡). 'anon-' 접두사라 서버 '✓검증' 카운트에선 제외(위조 차단). 비밀이 아님(무작위·PII 아님). */
+let ANON="anon-0";try{ANON=localStorage.getItem("lansmark_anon")||"";if(!/^anon-[a-f0-9]{8,64}$/.test(ANON)){ANON="anon-"+((self.crypto&&crypto.randomUUID)?crypto.randomUUID().replace(/-/g,""):(Date.now().toString(16)+Math.floor(Math.random()*1e12).toString(16)));localStorage.setItem("lansmark_anon",ANON);}}catch(_){ANON="anon-"+Date.now().toString(16);}
+let PAY={mode:"mock",priceKrw:4900,tossClientKey:null,required:true};
+let FREEBETA=false; // 무료 베타: /api/config의 payment.required===false(=서버 requireEntitlement off)면 true → 정밀분석 무료(유료 추후 오픈).
+function isPro(){return !!ENT;}
+function setEnt(t){ENT=t;try{localStorage.setItem("lansmark_ent",t);}catch(_){}updateProBadge();}
+function clearEnt(){ENT=null;try{localStorage.removeItem("lansmark_ent");}catch(_){}updateProBadge();}
+function updateProBadge(){const b=document.getElementById("pro");if(b)b.style.display=isPro()?"inline-flex":"none";}
+function newOrderId(){return "LM-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);}
+/* 데모 결제(목업) — Toss 결제창을 흉내낸 모달. 승인 시 서버가 엔티틀먼트 발급(/api/pay/mock). */
+function mockPayModal(){return new Promise((resolve,reject)=>{const won=(PAY.priceKrw||4900).toLocaleString("ko-KR");
+  const m=document.createElement("div");m.className="paymask";m.id="paymask";
+  m.innerHTML=`<div class="paybox"><div class="paytop">토스페이먼츠 <span class="paymock">목업</span></div>
+    <div class="payrow"><span>상품</span><b>LENSMARK 정밀 소득 분석</b></div><div class="payrow"><span>결제수단</span><b>카드 · 간편결제 (목업)</b></div>
+    <div class="payamt">₩${won}</div><div class="paynote">※ 실제 결제 아님 — Toss 키 연결 시 실 결제창으로 전환됩니다.</div>
+    <div class="payact"><button class="paybtn2" id="pay-cancel">취소</button><button class="pw-btn" id="pay-ok" style="flex:1">결제 승인</button></div></div>`;
+  document.body.appendChild(m);const close=()=>m.remove();
+  m.querySelector("#pay-cancel").onclick=()=>{close();reject(new Error("결제 취소"));};
+  m.addEventListener("click",e=>{if(e.target===m){close();reject(new Error("결제 취소"));}});
+  m.querySelector("#pay-ok").onclick=async function(){this.disabled=true;this.textContent="승인 중…";
+    try{const r=await jpost("/api/pay/mock",{});if(!r||!r.entitlementToken)throw new Error("토큰 없음");setEnt(r.entitlementToken);this.textContent="✓ 결제 완료";setTimeout(()=>{close();resolve(r);},450);}
+    catch(e){this.disabled=false;this.textContent="다시 시도";reject(e);}};
+});}
+/* 실 Toss 결제(키 연결 시 활성) — v2 SDK 결제창 리다이렉트. ⚠ 실키로 1회 검증 필요(HUMAN GATE). */
+async function tossPay(){
+  if(!PAY.tossClientKey)return mockPayModal();                 // 키 없으면 목업
+  if(!window.TossPayments)await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://js.tosspayments.com/v2/standard";s.onload=res;s.onerror=()=>rej(new Error("Toss SDK 로드 실패"));document.head.appendChild(s);});
+  const payment=window.TossPayments(PAY.tossClientKey).payment({customerKey:"ANONYMOUS"});
+  // 복귀 후 필지·작물 복원용 상태를 successUrl에 인코딩(Toss가 paymentKey 등 쿼리를 뒤에 추가).
+  let st="";try{if(pinState&&okN(pinState.lat))st="?lm="+encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify({lat:pinState.lat,lng:pinState.lng,tier:pinState.tier,crop:pinState.crop||null})))));}catch(_){}
+  const ret=location.origin+location.pathname;
+  await payment.requestPayment({method:"CARD",amount:{currency:"KRW",value:PAY.priceKrw||4900},orderId:newOrderId(),orderName:"LENSMARK 정밀 소득 분석",successUrl:ret+st,failUrl:ret+st}); // → Toss 결제창 → 복귀 시 handlePaymentReturn
+}
+/* 결제창 복귀 처리 — successUrl 복귀(?paymentKey&orderId&amount) 시 서버 승인(/api/pay/confirm) 후 잠금해제. */
+async function handlePaymentReturn(){const q=new URLSearchParams(location.search);const pk=q.get("paymentKey"),oid=q.get("orderId"),amt=q.get("amount"),lm=q.get("lm");
+  const clean=()=>history.replaceState(null,"",location.origin+location.pathname+(location.hash||"")); // 민감 쿼리 제거
+  if(!pk||!oid||!amt){ if(q.get("code")){clean();alert("결제가 취소되었거나 실패했습니다.");} return; } // 실패/취소 복귀
+  try{const r=await jpost("/api/pay/confirm",{paymentKey:pk,orderId:oid,amount:Number(amt)});if(r&&r.entitlementToken)setEnt(r.entitlementToken);}catch(e){alert("결제 승인 실패: "+(e&&e.message||e));}
+  clean();
+  // 결제 전 보던 필지·작물 복원(엔티틀먼트 설정 후 → 잠금해제된 정밀시뮬로 바로 표시)
+  if(lm){try{const p=JSON.parse(decodeURIComponent(escape(atob(lm))));if(okN(p.lat))await restore({mode:"pin",pin:{lat:p.lat,lng:p.lng,tier:p.tier,crop:p.crop}});}catch(_){}}
+}
+function paywallCard(){const won=(PAY.priceKrw||4900).toLocaleString("ko-KR");return `<div class="card pw"><div class="pw-h">🔒 정밀 소득 분석 잠금</div>
+  <div class="pw-sub">결제하면 이 필지의 <b>P10·P50·P90 소득</b> · 지형·토양·기후·위성 <b>6축 근거</b> · <b>생육·출하 타임라인</b> · 손익분기 · 실측 보정(플라이휠)이 전부 열립니다.</div>
+  <div class="pw-feat"><span>📊 소득 범위</span><span>⚙ 근거 6축</span><span>🌱 생육·출하</span><span>📋 실측 보정</span><span>🔁 무제한 재계산</span></div>
+  <button class="pw-btn" id="pw-go">₩${won} · ${PAY.mode==="live"?"결제하고 열기":"데모 결제하고 열기"}</button>
+  <div class="pw-note">${PAY.mode==="live"?"Toss 일반결제(카드·간편결제).":"※ 데모 결제(실 결제 아님) — Toss 키 연결 시 실결제 전환."} 구매 후 7일간 이 브라우저에서 무제한.</div></div>`;}
+function bindPay(onPaid){const go=document.getElementById("pw-go");if(!go)return;go.addEventListener("click",async()=>{go.disabled=true;go.textContent="결제 처리 중…";try{await tossPay();}catch(e){const msg=(e&&e.message)||"";if(!/취소/.test(msg))alert("결제 실패: "+msg);go.disabled=false;go.textContent=`₩${(PAY.priceKrw||4900).toLocaleString("ko-KR")} · ${PAY.mode==="live"?"결제하고 열기":"데모 결제하고 열기"}`;return;}await onPaid();});}
+/* ===== 버전 · 변경점 팝업 ===== */
+const SEEN_VER_KEY="lansmark_seen_version";let RELEASES_CACHE=[],CUR_VER="";
+function cmpVer(a,b){const pa=String(a).split(".").map(Number),pb=String(b).split(".").map(Number);for(let i=0;i<3;i++){const d=(pa[i]||0)-(pb[i]||0);if(d)return d;}return 0;}
+function setSeenVer(v){try{localStorage.setItem(SEEN_VER_KEY,v);}catch(_){}}
+async function checkVersion(){
+  let v;try{v=await jget("/api/version");}catch(_){return;}
+  if(!v||!v.version)return;
+  CUR_VER=v.version;RELEASES_CACHE=v.releases||[];
+  const vb=document.getElementById("ver");if(vb){vb.textContent="v"+v.version;vb.onclick=()=>RELEASES_CACHE.length&&showWhatsNew(CUR_VER,RELEASES_CACHE);}
+  let seen=null;try{seen=localStorage.getItem(SEEN_VER_KEY);}catch(_){}
+  if(seen===v.version)return;
+  const rels=seen?RELEASES_CACHE.filter(r=>cmpVer(r.version,seen)>0):RELEASES_CACHE.slice(0,1); // 첫 방문이면 최신 1개만
+  if(!rels.length){setSeenVer(v.version);return;}
+  showWhatsNew(v.version,rels);
+}
+function showWhatsNew(version,rels){
+  if(document.getElementById("vmodal"))return;
+  const body=rels.map(r=>`<div class="vrel"><div class="vrh">v${esc(r.version)} · ${esc(r.title)}<span>${esc(r.date)}</span></div>${(r.items||[]).map(i=>`<div class="vitem">• ${esc(i)}</div>`).join("")}</div>`).join("");
+  const m=document.createElement("div");m.className="vmodal";m.id="vmodal";
+  m.innerHTML=`<div class="vbox"><div class="vtop">🎉 LENSMARK 업데이트 <b>v${esc(version)}</b></div><div class="vbody">${body}</div><button class="vbtn" id="vok">확인 · 시작하기</button></div>`;
+  document.body.appendChild(m);
+  const close=()=>{setSeenVer(CUR_VER||version);const e=document.getElementById("vmodal");if(e)e.remove();};
+  m.addEventListener("click",e=>{if(e.target===m)close();});
+  document.getElementById("vok").addEventListener("click",close);
+}
+async function jget(p){const h={};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;const r=await fetch(API.base+p,{headers:h});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();} // 엔티틀먼트 헤더 동봉(일지 조회/리포트 등 GET 게이트)
+async function jpost(p,b){const h={"Content-Type":"application/json"};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;const r=await fetch(API.base+p,{method:"POST",headers:h,body:JSON.stringify(b)});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();}
+
+/* ===== 줌 → 단계(전국/시군/필지) ===== */
+function tierOf(z){ if(z<=8)return"sido"; if(z<=12)return"sigungu"; return"parcel"; }
+const TIER_META={ sido:{lv:"전국",label:"대표작물",cell:0.40,color:"#6f93c4"}, sigungu:{lv:"시·군",label:"지역 농산물",cell:0.045,color:"#5c8f6a"}, parcel:{lv:"필지",label:"실제 재배가능",cell:0.0025,color:"#10B95C"} };
+
+/* ===== 지역 라벨 시드(데모 · 시·도/시·군 대표작물) — 필지단계는 /api/recommend 실호출 ===== */
+const SIDO_CROPS={"서울특별시":["근교 시설채소"],"인천광역시":["쌀","근교채소"],"경기도":["쌀","배","인삼"],"강원특별자치도":["감자","옥수수","고랭지배추"],"충청북도":["사과","포도","복숭아"],"충청남도":["인삼","딸기","쌀"],"세종특별자치시":["복숭아","근교채소"],"대전광역시":["근교채소"],"전북특별자치도":["쌀","콩","고추"],"전라남도":["쌀","마늘","양파","배추"],"광주광역시":["근교채소"],"경상북도":["사과","포도","자두"],"대구광역시":["사과","근교채소"],"경상남도":["단감","딸기","마늘"],"부산광역시":["근교채소"],"울산광역시":["배","근교채소"],"제주특별자치도":["감귤","당근","양배추"]};
+const SIGUNGU_PRODUCE={"해남군":["고구마","겨울배추"],"나주시":["배","쌀"],"김제시":["쌀","감자"],"안동시":["마","사과"],"평창군":["감자","고랭지채소"],"금산군":["인삼"],"영동군":["포도","곶감"],"무주군":["사과","머루"],"진안군":["홍삼","표고버섯"],"장수군":["사과","오미자"],"논산시":["딸기","상추"],"익산시":["쌀","고구마"],"완주군":["곶감","생강"],"임실군":["고추","치즈(낙농)"],"순창군":["고추장(장류)","매실"],"남원시":["복분자","파프리카"],"함양군":["곶감","양파"],"옥천군":["포도","복숭아"],"전주시":["근교채소"],"제주시":["감귤"],"서귀포시":["감귤","한라봉"],"상주시":["곶감","배"]};
+const SIGUNGU_PT=[["해남군",34.573,126.599],["나주시",35.016,126.711],["김제시",35.803,126.881],["안동시",36.568,128.729],["평창군",37.370,128.390],["금산군",36.108,127.488],["영동군",36.175,127.783],["무주군",36.007,127.661],["진안군",35.791,127.424],["장수군",35.647,127.521],["논산시",36.187,127.099],["익산시",35.948,126.958],["완주군",35.905,127.162],["임실군",35.618,127.289],["순창군",35.374,127.137],["남원시",35.416,127.390],["함양군",35.520,127.725],["옥천군",36.306,127.571],["전주시",35.824,127.148],["제주시",33.499,126.531],["서귀포시",33.254,126.560],["상주시",36.410,128.159]];
+const SIDO_PT=[["서울특별시",37.566,126.978],["인천광역시",37.456,126.705],["경기도",37.41,127.52],["강원특별자치도",37.83,128.16],["충청북도",36.8,127.7],["충청남도",36.6,126.8],["세종특별자치시",36.48,127.289],["대전광역시",36.35,127.385],["전북특별자치도",35.72,127.15],["전라남도",34.86,126.99],["광주광역시",35.16,126.85],["경상북도",36.4,128.9],["대구광역시",35.87,128.60],["경상남도",35.26,128.2],["부산광역시",35.18,129.075],["울산광역시",35.54,129.31],["제주특별자치도",33.43,126.55]];
+function nearest(list,lat,lng){let b=null,bd=1e9;for(const r of list){const d=(r[1]-lat)**2+(r[2]-lng)**2;if(d<bd){bd=d;b=r;}}return{name:b[0],dist:Math.sqrt(bd)};}
+function regionOf(lat,lng){const sg=nearest(SIGUNGU_PT,lat,lng),sd=nearest(SIDO_PT,lat,lng);return{sido:sd.name,sigungu:sg.dist<0.6?sg.name:null};}
+
+/* ===== 실데이터 호출 (필지단계 = 실엔진) ===== */
+async function apiRecommend(lat,lng){const d=await jpost("/api/recommend",{land:{lat,lng,areaM2:3300},limit:6});return d.candidates||[];}
+async function apiTerrain(lat,lng){return jget(`/api/terrain?lat=${lat}&lng=${lng}`);}      // {slopeDegree,aspect,altitudeM,source}
+async function apiParcel(lat,lng){return jget(`/api/parcel?lat=${lat}&lng=${lng}`);}        // {center,polygon,pnu,address}
+async function apiSimulate(cropId,lat,lng,opts,terr,region){
+  const land={lat,lng,areaM2:opts.area};
+  if(opts.drain&&opts.drain!=="normal")land.drainage=opts.drain;
+  if(opts.ph!=null&&opts.ph!=="")land.soilEvidence={source:"manual_input",ph:Number(opts.ph)};
+  const context={terrain:{slopeDegree:terr.slopeDegree,aspect:terr.aspect,altitudeM:terr.altitudeM,source:"manual"}};
+  if(opts.sat&&opts.sat.on)context.satellite={observed:true,ndviRelative:opts.sat.ndviLow?"low":"similar",frostPocket:!!opts.sat.frost,waterlogging:!!opts.sat.wet};
+  return jpost("/api/simulate",{cropId,cultivationType:opts.cultivation||"open_field",salesChannel:opts.sales,targetYear:opts.year||"mature",climateScenario:climScenario(),region,land,context});
+}
+async function apiFeedback(cropId,region,terr,pred,actual){return jpost("/api/feedback",{cropId,region,terrain:{slopeDegree:terr.slopeDegree,aspect:terr.aspect,altitudeM:terr.altitudeM},predicted:pred,actual});}
+async function apiLandClass(lat,lng){return jget(`/api/landclass?lat=${lat}&lng=${lng}`);} // {category,group,label,cultivable,action,reason,source}
+function polygonAreaM2(poly){if(!Array.isArray(poly)||poly.length<3)return null;const R=6378137,d=Math.PI/180;let a=0;for(let i=0;i<poly.length;i++){const p1=poly[i],p2=poly[(i+1)%poly.length];a+=(p2.lng-p1.lng)*d*(2+Math.sin(p1.lat*d)+Math.sin(p2.lat*d));}const m2=Math.abs(a*R*R/2);return m2>10?Math.round(m2):null;} // 필지 폴리곤 실면적
+async function apiGeocode(address){return jget(`/api/geocode?address=${encodeURIComponent(address)}`);} // {address,pnu,lat,lng}
+async function gotoLoc(lat,lng){MAP.setView([lat,lng],15);await openAt(lat,lng);} // 필지단계로 진입 → 전체 분석
+/* 검색창: 주소(geocode) / 작물(→추천 지역) 2모드. 작물모드는 /api/crops 자동완성 → 선택 시 renderCropRegion.
+   CSP-safe(addEventListener), 모든 표시값 esc, 키보드 내비(↑↓·Enter·Esc), 외부 클릭 시 드롭다운 닫기. */
+function bindSearch(){
+  const inp=document.getElementById("srch-in"),go=document.getElementById("srch-go"),geo=document.getElementById("srch-geo"),
+        sm=document.getElementById("smode"),ac=document.getElementById("srch-ac");
+  let smode="addr",CAT=null,acItems=[],curIdx=-1; // CAT=작물 카탈로그 캐시(1회 로드)
+
+  const runAddr=async()=>{const q=(inp.value||"").trim();if(!q)return;go.disabled=true;go.textContent="…";try{const r=await apiGeocode(q);if(r&&okN(r.lat)&&okN(r.lng))await gotoLoc(r.lat,r.lng);else alert("주소를 찾지 못했습니다.");}catch(_){alert("검색 실패");}go.disabled=false;go.textContent="🔍";};
+
+  async function loadCat(){if(CAT)return CAT;try{CAT=(await jget("/api/crops")).crops||[];}catch(_){CAT=[];}return CAT;}
+  function hideAC(){ac.classList.remove("show");ac.innerHTML="";acItems=[];curIdx=-1;}
+  function choose(id,ko){if(!id)return;inp.value=ko||"";hideAC();renderCropRegion(id);} // 작물 선택 → 독립 진입
+  function highlight(){[...ac.querySelectorAll(".it")].forEach((el,i)=>el.classList.toggle("cur",i===curIdx));}
+  function showAC(items){
+    acItems=items;curIdx=-1;
+    if(!items.length){ac.innerHTML='<div class="none">일치하는 작물이 없습니다</div>';ac.classList.add("show");return;}
+    ac.innerHTML=items.map((c,i)=>`<div class="it" data-crop="${esc(c.cropId)}" data-ko="${esc(c.cropNameKo)}" data-i="${i}"><span>${esc(c.cropNameKo)}</span><span class="b ${c.guideTier==='free'?'b-free':'b-paid'}">${c.guideTier==='free'?'무료':'유료'}</span></div>`).join("");
+    ac.classList.add("show");
+    ac.querySelectorAll(".it").forEach(el=>el.addEventListener("click",()=>choose(el.getAttribute("data-crop"),el.getAttribute("data-ko"))));
+  }
+  async function filterCrops(){const q=(inp.value||"").trim().toLowerCase();const list=await loadCat();if(smode!=="crop")return;showAC(q?list.filter(c=>(c.cropNameKo||"").toLowerCase().includes(q)):list.slice(0,40));}
+
+  function setMode(m){
+    smode=(m==="crop")?"crop":"addr";
+    [...sm.children].forEach(b=>b.classList.toggle("on",b.dataset.s===smode));
+    inp.placeholder=smode==="crop"?"작물명 (예: 블루베리)":"주소·지번 검색";
+    if(geo)geo.style.display=smode==="crop"?"none":""; // 작물 모드엔 '내 위치'(필지 이동) 숨김 — 흐름 이탈 방지(레드팀 UX 선반영)
+    inp.value="";hideAC();inp.focus();
+    if(smode==="crop")filterCrops(); // 진입 즉시 전체 작물 목록 노출
+  }
+  if(sm)sm.addEventListener("click",e=>{const b=e.target.closest("button");if(b)setMode(b.dataset.s);});
+
+  if(go)go.addEventListener("click",()=>{if(smode==="crop"){if(acItems.length)choose(acItems[Math.max(0,curIdx)].cropId,acItems[Math.max(0,curIdx)].cropNameKo);else filterCrops();}else runAddr();});
+  if(inp){
+    inp.addEventListener("input",()=>{if(smode==="crop")filterCrops();});
+    inp.addEventListener("focus",()=>{if(smode==="crop")filterCrops();});
+    inp.addEventListener("keydown",e=>{
+      if(smode!=="crop"){if(e.key==="Enter")runAddr();return;}
+      if(e.key==="ArrowDown"){e.preventDefault();if(acItems.length){curIdx=(curIdx+1)%acItems.length;highlight();}}
+      else if(e.key==="ArrowUp"){e.preventDefault();if(acItems.length){curIdx=(curIdx-1+acItems.length)%acItems.length;highlight();}}
+      else if(e.key==="Enter"){e.preventDefault();const it=acItems[curIdx>=0?curIdx:0];if(it)choose(it.cropId,it.cropNameKo);}
+      else if(e.key==="Escape")hideAC();
+    });
+  }
+  // 외부 클릭 시 드롭다운 닫기(검색영역 밖)
+  document.addEventListener("click",e=>{if(ac&&ac.classList.contains("show")&&!e.target.closest(".srch"))hideAC();});
+
+  if(geo)geo.addEventListener("click",()=>{if(!navigator.geolocation){alert("이 브라우저는 위치 기능을 지원하지 않습니다.");return;}geo.textContent="…";navigator.geolocation.getCurrentPosition(p=>{geo.textContent="📍";gotoLoc(p.coords.latitude,p.coords.longitude);},_=>{geo.textContent="📍";alert("위치 권한이 필요합니다.");});});
+}
+
+/* ===== 추천(무료) ===== */
+async function recommend(lat,lng,tier){
+  const reg=regionOf(lat,lng);
+  if(tier==="sido")return{tier,regionText:reg.sido,crops:(SIDO_CROPS[reg.sido]||["데이터 준비중"]).map(ko=>({ko})),note:"시·도 대표작물(예시 시드)",region:reg.sido};
+  if(tier==="sigungu"){const k=reg.sigungu,list=k&&SIGUNGU_PRODUCE[k]?SIGUNGU_PRODUCE[k]:(SIDO_CROPS[reg.sido]||["데이터 준비중"]);return{tier,regionText:(reg.sigungu?reg.sigungu+" ":"")+"("+reg.sido+")",crops:list.map(ko=>({ko})),note:k&&SIGUNGU_PRODUCE[k]?"지역 특산물(예시 시드)":"대표작물(예시 시드)",region:reg.sido};}
+  const cands=await apiRecommend(lat,lng);
+  return{tier,regionText:(reg.sigungu?reg.sigungu+" ":"")+"필지",crops:cands.map(c=>({id:c.cropId,ko:c.cropNameKo,score:c.score,suit:c.suitability,conf:c.confidence,blockedBy:c.blockedBy})),note:"실제 재배가능 · 무료 적합도 추천",region:reg.sido};
+}
+
+/* ===== 상태/지도 ===== */
+let MAP,GRID=L.layerGroup(),SELLAYER=L.layerGroup(),PARCEL=L.layerGroup(),EVT=L.layerGroup(),REGION=L.layerGroup(),PIN=null,MODE="pin",VIEW="sep";
+const SEL=new Map(); let FOCUS=null; const CHOSEN={};
+let pinState=null;
+let pinGen=0; // 핀 요청 세대 — 빠른 연속 탭/복원 시 stale await가 현재 상태를 오염시키지 않게(레드팀 M10·L5)
+function defOpts(){return{area:3300,sales:"mixed",year:"mature",ph:null,drain:"normal",cultivation:"open_field",sat:{on:false,ndviLow:false,frost:false,wet:false}};}
+function pinIcon(color){const c=color||"var(--sky)";return L.divIcon({className:"",html:`<div class="pin" style="background:${c};box-shadow:0 0 0 2px ${c},0 5px 10px rgba(0,0,0,.4)"></div>`,iconSize:[16,16],iconAnchor:[8,15]});}
+/* ===== 토지 유형(강/바다/도시/임야/기존농경지) 렌더 ===== */
+const LC_STYLE={agri:{c:"#10B95C",ic:"🌾"},water:{c:"#3E92C4",ic:"🌊"},urban:{c:"#8A8F98",ic:"🏙"},forest:{c:"#6F8F4A",ic:"🌲"},other:{c:"#D98E1B",ic:"⚠"}};
+const lcStyle=lc=>LC_STYLE[lc&&lc.group]||LC_STYLE.other;
+function landBadge(lc){const s=lcStyle(lc);return `<span class="lcbadge" style="background:${s.c}1a;color:${s.c};border-color:${s.c}66">${s.ic} ${esc(lc.label)}</span>`;}
+function landBlockCard(lc){const s=lcStyle(lc);return `<div class="card lc-block" style="border-color:${s.c}"><div class="lc-h" style="color:${s.c}"><span class="lc-ic">${s.ic}</span><div><div class="lc-t">${esc(lc.label)} · 경작 불가</div><div class="lc-r">${esc(lc.reason)}</div></div></div><div class="lc-note">강·바다·수로(수면)에는 소득 시뮬을 제공하지 않습니다. 인접 <b>농경지</b>를 선택하세요.</div></div>`;}
+function landWarnCard(lc){const s=lcStyle(lc);return `<div class="card lc-warn" style="border-color:${s.c}"><div class="lc-h" style="color:${s.c}"><span class="lc-ic">${s.ic}</span><div><div class="lc-t">${esc(lc.label)} · 농지 아님</div><div class="lc-r">${esc(lc.reason)}</div></div></div><button class="btn" id="lc-override" style="margin-top:11px;background:${s.c};color:#fff;border-color:${s.c};font-weight:800">⚠ 그래도 소득 분석 진행</button></div>`;}
+function landBanner(lc){if(!lc||lc.action==="block")return"";const s=lcStyle(lc);const head=lc.action==="reconfirm"?`기존 농경지 — ${esc(lc.label)} · 재확인`:`${esc(lc.label)} — 농지 아님(참고용)`;return `<div class="lc-banner" style="border-color:${s.c}66;background:${s.c}12"><span class="lc-ic">${s.ic}</span><div><b>${head}</b><div class="lc-r">${esc(lc.reason)}</div><div class="lc-r" style="margin-top:3px;opacity:.8">※ 지목(등기)과 실제 이용이 다를 수 있어요 — 현장 확인 권장.</div></div></div>`;}
+const USE_OPTS=[["empty","빈 땅·휴경"],["paddy","벼(논)"],["field","밭작물 재배중"],["orchard","과수 재배중"],["other","기타"]];
+function reconfirmCard(st){const lc=st.lc;if(!lc)return"";if(lc.action!=="reconfirm")return landBanner(lc);const s=lcStyle(lc);
+  if(st.reconfirmed){const u=(USE_OPTS.find(o=>o[0]===st.currentUse)||["","확인"])[1],inUse=st.currentUse&&st.currentUse!=="empty";return `<div class="lc-banner" style="border-color:${s.c}66;background:${s.c}12"><span class="lc-ic">✅</span><div><b>재확인됨 — 현재: ${esc(u)}</b><div class="lc-r">${inUse?'이미 재배 중 — 전환 시 전작 정리비·공백기를 함께 고려하세요.':'신규/휴경지 기준으로 분석합니다.'}</div></div></div>`;}
+  return `<div class="lc-banner" style="border-color:${s.c}66;background:${s.c}12"><span class="lc-ic">${s.ic}</span><div style="flex:1"><b>기존 농경지 — ${esc(lc.label)} · 재확인 필요</b><div class="lc-r">진행 전 <b>현재 재배 현황</b>을 확인하세요(지목≠실이용 가능).</div><div style="display:flex;gap:6px;margin-top:8px"><select id="rc-use" class="rc-sel">${USE_OPTS.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join("")}</select><button class="btn" id="rc-go" style="background:${s.c};color:#fff;border-color:${s.c};font-weight:800">✓ 재확인</button></div></div></div>`;}
+function bindReconfirm(st,rerender){const go=document.getElementById("rc-go");if(!go)return;go.addEventListener("click",()=>{const sel=document.getElementById("rc-use");st.currentUse=sel?sel.value:"other";st.reconfirmed=true;rerender();});}
+function coordOf(st){return st.lat!=null?[st.lat,st.lng]:st.center;}
+function cellOf(lat,lng,tier){const s=TIER_META[tier].cell,r=Math.floor(lat/s),c=Math.floor(lng/s);return{key:`${tier}:${r}:${c}`,bounds:[[r*s,c*s],[(r+1)*s,(c+1)*s]],center:[(r+0.5)*s,(c+0.5)*s]};}
+function drawGrid(){GRID.clearLayers();if(MODE!=="select")return;const tier=tierOf(MAP.getZoom()),s=TIER_META[tier].cell,b=MAP.getBounds();let n=0;
+  for(let lat=Math.floor(b.getSouth()/s)*s;lat<b.getNorth()&&n<240;lat+=s)for(let lng=Math.floor(b.getWest()/s)*s;lng<b.getEast()&&n<240;lng+=s,n++)L.rectangle([[lat,lng],[lat+s,lng+s]],{color:"#10211A",weight:.5,opacity:.12,fill:false,interactive:false}).addTo(GRID);}
+function tierBadge(){const t=TIER_META[tierOf(MAP.getZoom())];document.getElementById("tier").innerHTML=`<span class="lv">${t.lv}</span> ${t.label}`;}
+function drawParcel(pc,lc){PARCEL.clearLayers();if(!pc||!pc.polygon||!pc.polygon.length)return;const c=lc?lcStyle(lc).c:"#10B95C";const latlngs=pc.polygon.map(p=>[p.lat,p.lng]);L.polygon(latlngs,{color:c,weight:2,fillColor:c,fillOpacity:.10,dashArray:"4 3"}).addTo(PARCEL);}
+async function init(){
+  MAP=L.map("map",{zoomControl:true}).setView([35.84,127.40],7);
+  let tileUrl="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",attr="© OpenStreetMap";
+  try{const cfg=await jget("/api/config");if(cfg&&cfg.payment){PAY=cfg.payment;FREEBETA=(PAY.required===false);}if(cfg&&cfg.tiles&&cfg.tiles.satellite){tileUrl=cfg.tiles.satellite;attr="© VWorld";}}catch(_){}
+  updateProBadge();const _pro=document.getElementById("pro");if(_pro)_pro.addEventListener("click",()=>{if(confirm("구매(Pro) 권한을 해제할까요? (테스트용)")){clearEnt();if(MODE==="pin"){if(pinState)renderDetailPin();}else renderSelect();}});
+  L.tileLayer(tileUrl,{maxZoom:19,attribution:attr}).addTo(MAP);
+  GRID.addTo(MAP);SELLAYER.addTo(MAP);PARCEL.addTo(MAP);EVT.addTo(MAP);REGION.addTo(MAP);
+  MAP.on("zoomend moveend",()=>{tierBadge();drawGrid();});MAP.on("click",onClick);tierBadge();startEvents();bindSearch();checkVersion();
+}
+
+async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
+  if(window.__rgnShown){clearRegionMarkers();window.__rgnShown=false;} // 새 지도 분석 시작 → 작물→지역 마커 정리
+  if(MODE==="pin"){
+    if(PIN)PIN.remove();PARCEL.clearLayers();
+    PIN=L.marker([lat,lng],{icon:pinIcon()}).addTo(MAP);
+    const g=++pinGen,st={lat,lng,tier,lc:null,override:false,rec:null,terr:null,parcel:null,crop:null,opts:defOpts(),sim:null,busy:true}; // 세대 캡처 + 로컬 상태(경쟁조건 가드 M10)
+    pinState=st;FOCUS="__pin";renderDetailPin();
+    try{
+      const lc=await apiLandClass(lat,lng);if(g!==pinGen)return;st.lc=lc;PIN.setIcon(pinIcon(lcStyle(lc).c)); // 새 탭 발생 시 stale 결과 폐기
+      if(lc.action==="block"){/* 수면 — 어느 줌단계든 차단, 추천 생략 */}
+      else if(tier==="parcel"){const rc=await recommend(lat,lng,tier);if(g!==pinGen)return;st.rec=rc;const tr=await apiTerrain(lat,lng);if(g!==pinGen)return;st.terr=tr;try{const pc=await apiParcel(lat,lng);if(g!==pinGen)return;st.parcel=pc;drawParcel(pc,lc);const _a=polygonAreaM2(pc.polygon);if(_a)st.opts.area=_a;}catch(_){}}
+      else{const rc=await recommend(lat,lng,tier);if(g!==pinGen)return;st.rec=rc;}
+    }catch(err){if(g!==pinGen)return;st.error=err.message;}
+    if(g!==pinGen)return;st.busy=false;renderDetailPin();return;}
+  const cell=cellOf(lat,lng,tier);
+  if(SEL.has(cell.key)){const it=SEL.get(cell.key);it.rect.remove();SEL.delete(cell.key);delete CHOSEN[cell.key];if(FOCUS===cell.key)FOCUS=[...SEL.keys()].pop()||null;renderSelect();return;}
+  const rect=L.rectangle(cell.bounds,{color:TIER_META[tier].color,weight:2,fillColor:TIER_META[tier].color,fillOpacity:.22}).addTo(SELLAYER);
+  const it={center:cell.center,tier,rect,rec:null,terr:null,lc:null,override:false,opts:defOpts(),key:cell.key,sim:null,busy:true};
+  SEL.set(cell.key,it);FOCUS=cell.key;renderSelect();
+  try{
+    if(tier==="parcel"){const lc=await apiLandClass(cell.center[0],cell.center[1]);it.lc=lc;it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});
+      if(lc.action!=="block"){it.rec=await recommend(cell.center[0],cell.center[1],tier);it.terr=await apiTerrain(cell.center[0],cell.center[1]);}}
+    else{it.rec=await recommend(cell.center[0],cell.center[1],tier);}
+  }catch(err){it.error=err.message;}
+  it.busy=false;renderSelect();}
+
+/* 작물 선택 → 실엔진 시뮬 (캐시 st.sim) */
+async function ensureSim(st,cropId){
+  st.crop=cropId;
+  if(!cropId||st.tier!=="parcel"||!st.terr){st.sim=null;st.simBusy=false;return;}
+  if(!SAFE_CROP.test(cropId)){st.sim=null;st.simErr="알 수 없는 작물입니다.";st.simBusy=false;return;} // 비신뢰 cropId 차단
+  if(!isPro()&&!FREEBETA){st.sim=null;st.simErr=null;st.simBusy=false;return;} // 유료 잠금 — 결제 전엔 엔진 미호출(무료 베타 FREEBETA=true면 해제)
+  const[lat,lng]=coordOf(st);
+  try{st.sim=await apiSimulate(cropId,lat,lng,st.opts,st.terr,st.rec&&st.rec.region);st.simErr=null;}
+  catch(err){st.sim=null;if(/권한|ENTITLEMENT|402/i.test(err.message||"")){clearEnt();}else st.simErr=err.message;} // 토큰 만료 등 → 페이월로
+  st.simBusy=false;
+}
+
+/* ===== 렌더 helpers ===== */
+const fmt=n=>Math.round(n).toLocaleString("ko-KR");
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); // innerHTML 주입 차단
+const SAFE_CROP=/^[a-z_]{1,40}$/; // cropId 화이트리스트(공유링크 등 비신뢰 입력 차단)
+const okN=n=>typeof n==="number"&&isFinite(n); // 유한 좌표만
+const fixTier=t=>(t==="sido"||t==="sigungu"||t==="parcel")?t:"sigungu";
+const fixCrop=c=>(typeof c==="string"&&SAFE_CROP.test(c))?c:null;
+const SUITC={h:"#10B95C",m:"#D98E1B",l:"#DA5237"};
+function suitWord(m){if(m>=0.97)return["적합","h"];if(m>=0.9)return["양호","h"];if(m>=0.8)return["검토","m"];if(m>=0.65)return["조건부","m"];return["주의","l"];}
+function axClass(ax){return ax.indexOf("지형")===0?"t":ax.indexOf("토양")===0?"s":ax.indexOf("기후")===0?"c":"v";}
+function gauge(score,color){const f=Math.max(0,Math.min(1,score/100)),C=Math.PI*40,off=C*(1-f);return `<svg viewBox="0 0 90 54" width="88" height="52"><path d="M8 46 A40 40 0 0 1 82 46" fill="none" stroke="#EAF0E8" stroke-width="11" stroke-linecap="round" transform="scale(0.9) translate(5,2)"/><path d="M8 46 A40 40 0 0 1 82 46" fill="none" stroke="${color}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="scale(0.9) translate(5,2)" style="transition:.5s"/></svg>`;}
+function bar(r,opts){opts=opts||{};let dMin=0,dMax=Math.max(r.p90,1);if(opts.zero){dMin=Math.min(0,r.p10);dMax=Math.max(0,r.p90);}const sp=(dMax-dMin)||1,pc=v=>Math.max(0,Math.min(100,((v-dMin)/sp)*100));const L1=pc(r.p10),W=Math.max(1.5,pc(r.p90)-L1),M=pc(r.p50),col=opts.col||"g";
+  return `<div class="rb"><div class="track"><div class="band ${col}" style="left:${L1}%;width:${W}%"></div>${opts.zero?`<div class="zero" style="left:${pc(0)}%"></div>`:""}<div class="tick" style="left:${M}%"></div></div><div class="easy"><span>나쁠 때 <b class="num">${fmt(r.p10)}</b></span><span>보통 <b class="num">${fmt(r.p50)}</b></span><span>좋을 때 <b class="num">${fmt(r.p90)}</b></span></div></div>`;}
+function factorList(facts){if(!facts.length)return `<div style="font-size:12px;color:var(--ink3);font-weight:600;padding:4px 0">표준과 동일 — 보정 없음.</div>`;
+  return facts.map(f=>{const p=Math.round((f.value-1)*100),cls=p<0?"down":p>0?"up":"flat",sign=p>0?"+":"",lab=f.target==="cost"?"비용":"수율";return `<div class="frow"><span class="fax ${axClass(f.axis)}">${esc(f.axis)}</span><span class="freason">${esc(f.reason)}</span><span class="fpct ${cls}">${sign}${p}%<span style="font-size:8.5px;color:var(--ink3)"> ${lab}</span></span></div>`;}).join("");}
+function cropChips(crops,chosenId){return crops.map(c=>{const hasScore=c.score!=null;const sc=hasScore?`<span class="sc num">${esc(c.score)}</span>`:"";const cls=!hasScore?"":(c.suit==="high"||c.suit==="medium_high")?"":(c.suit==="medium"||c.suit==="conditional")?"mid":"low";const sel=c.id&&c.id===chosenId?"sel":"";const cid=c.id||"";const tip=c.blockedBy&&c.blockedBy.length?` title="${esc(c.blockedBy.join(', '))}"`:"";return `<span class="crop ${cls} ${sel}" data-crop="${esc(cid)}" data-ko="${esc(c.ko)}"${tip}>${esc(c.ko)}${sc}</span>`;}).join("");}
+function bindChips(root,cb){root.querySelectorAll(".crop[data-crop]").forEach(el=>{const id=el.getAttribute("data-crop");if(!id)return;el.addEventListener("click",()=>cb(id));});}
+/* 전체 작물 보기 — 추천 top-N 밖 작물(벼·보리 등)도 직접 선택(무료 카탈로그 /api/crops). */
+function bindAllCrops(root,cb){
+  const btn=root.querySelector("#all-crops-btn");if(!btn)return;
+  btn.addEventListener("click",async()=>{
+    const box=root.querySelector("#all-crops");if(!box)return;
+    if(box.style.display!=="none"){box.style.display="none";btn.textContent="＋ 전체 작물 보기 (벼·보리 등)";return;}
+    btn.disabled=true;let list=[];try{list=(await jget("/api/crops")).crops||[];}catch(_){}
+    btn.disabled=false;btn.textContent="− 접기";
+    box.innerHTML=list.map(c=>`<span class="crop" data-crop="${esc(c.cropId)}" data-ko="${esc(c.cropNameKo)}">${esc(c.cropNameKo)} <span class="badge ${c.guideTier==='free'?'b-free':'b-paid'}" style="font-size:8px;padding:2px 4px">${c.guideTier==='free'?'무료':'유료'}</span></span>`).join("");
+    box.style.display="flex";
+    box.querySelectorAll(".crop[data-crop]").forEach(el=>{const id=el.getAttribute("data-crop");el.addEventListener("click",()=>cb(id));});
+  });
+}
+const loading=m=>`<div class="loadc"><span class="spin"></span>${m}</div>`;
+const errCard=m=>`<div class="errc">⚠ ${esc(m)}</div>`;
+const hintCard=(ic,t)=>`<div class="empty" style="padding:14px"><span class="ic">${ic}</span>${t}</div>`;
+function recHeadHtml(rec,tier,chosenId,parcel,showAll){
+  const pnu=parcel&&parcel.pnu?` · PNU ${esc(parcel.pnu)}`:"";
+  const guide=tier==='parcel'?'(누르면 소득 시뮬)':'';
+  return `<div class="card"><div class="ch"><span class="cname">${tier==='parcel'?'📍':'▦'} ${esc(rec.regionText)}</span><span class="badge b-tier">${TIER_META[tier].label}</span></div>
+    <div class="creg">${esc(rec.note)}${pnu} · <span class="badge b-free">🔓 무료 추천</span></div>
+    <div class="sectt" style="margin-bottom:6px">추천 작물 ${guide}</div>
+    <div class="tagrow">${cropChips(rec.crops,chosenId)}</div>
+    ${(showAll&&tier==='parcel')?`<div style="margin-top:7px"><button class="btn" id="all-crops-btn" style="font-size:12px;padding:5px 10px">＋ 전체 작물 보기 (벼·보리 등)</button><div class="tagrow" id="all-crops" style="display:none;margin-top:7px"></div></div>`:''}
+    ${tier==='parcel'?`<div class="lc-r" style="margin-top:7px">숫자 = <b>적합도</b>(0~100, 높을수록 적합) · 색: <span style="color:#10B95C">초록 적합</span>·<span style="color:#D98E1B">노랑 검토</span>·회색 낮음. 정밀 신뢰도·근거·인증게이트는 작물 선택 후 표시.</div>`:''}</div>`;
+}
+const STAGE_C={idle:"#eef1ec",sow:"#10B95C",growth:"#9ed8b4",bloom:"#F2B33D",harvest:"#DA5237"};
+const STAGE_T={idle:"",sow:"파종",growth:"생육",bloom:"개화",harvest:"수확"};
+function growthCard(g){
+  if(!g||!g.calendar||!Array.isArray(g.calendar.months))return"";
+  const cal=g.calendar,risk=g.risk||{};
+  const hv=cal.months.filter(m=>m.stage==="harvest").map(m=>m.month);
+  const strip=cal.months.map(m=>{const c=STAGE_C[m.stage]||STAGE_C.idle,t=STAGE_T[m.stage]||"";return `<div class="gm" title="${m.month}월${t?' · '+t:''}${m.frostRisk?' · ❄서리주의':''}${m.label?' · '+esc(m.label):''}" style="background:${c}">${m.frostRisk?'<span class="gf">❄</span>':''}<span class="gmn">${m.month}</span></div>`;}).join("");
+  const rk=(arr,ic)=>(Array.isArray(arr)?arr:[]).map(r=>`<span class="grk">${ic} ${esc(r)}</span>`).join("");
+  const ship=hv.length?`수확 <b>${hv.join("·")}월</b> = 출하 적기. 조기출하 vs 저장 후 단경기 출하에 따라 kg당 단가가 달라집니다 <span style="color:var(--ink3)">(월별 시장가 연동 예정)</span>.`:"수확월 데이터 미등록.";
+  return `<div class="card"><div class="ch"><span class="cname">🌱 생육·출하 타임라인</span><span class="badge b-tier">월력</span></div>
+    <div class="gstrip">${strip}</div>
+    <div class="glegend"><span><i style="background:${STAGE_C.sow}"></i>파종</span><span><i style="background:${STAGE_C.growth}"></i>생육</span><span><i style="background:${STAGE_C.bloom}"></i>개화</span><span><i style="background:${STAGE_C.harvest}"></i>수확·출하</span><span>❄ 서리주의</span></div>
+    ${cal.note?`<div class="src" style="margin-top:7px">📌 ${esc(cal.note)}</div>`:""}
+    <div class="sectt" style="margin:11px 0 5px">🚚 출하</div><div class="lc-r">${ship}</div>
+    <div class="sectt" style="margin:11px 0 5px">⚠ 생육 리스크</div>
+    <div class="grkrow">${rk(risk.weatherRisks,"🌦")}${rk(risk.pestRisks,"🐛")}${rk(risk.disasterRisks,"🌊")}</div></div>`;
+}
+function simCardHtml(sim,terr,opts){
+  const yf=sim.factors.filter(f=>f.target==="yield");const yieldMult=yf.reduce((a,f)=>a*f.value,1);
+  const [sw,sc]=suitWord(yieldMult),col=SUITC[sc],score=Math.round(yieldMult*100),tdelta=Math.round((yieldMult-1)*100);
+  const neg=sim.incomeKrw.p50<0,validated=sim.dataLabel==="validated",baseDemo=/데모|미검증/.test(sim.baseSource||"");
+  const cdot={A:"#10B95C",B:"#5a9b3f",C:"#F2B33D",D:"#D98E1B"}[sim.confidence]||"#D98E1B";
+  const calF=sim.factors.find(f=>f.axis==="실측보정");
+  const aspText=terr.aspect==='flat'?'평지':terr.aspect+'향';
+  return `
+   ${FREEBETA?`<div class="src" style="background:#F1F8EE;border:1px solid var(--green-line);border-radius:9px;padding:8px 10px;margin-bottom:8px;font-weight:700;color:var(--green-mid)">🎁 무료 베타 — 정밀 분석을 <b>무료</b>로 제공 중입니다 <span style="font-weight:600;color:var(--ink2)">(유료 전환은 추후 오픈 예정)</span></div>`:''}
+   <div class="decide ${neg?'neg':''}"><div class="dl">${esc(sim.cropNameKo)} · 예상 소득(보통,P50)${neg&&baseDemo?' · ⚠미검증 기준값':''}</div><div class="dv num">${fmt(sim.incomeKrw.p50)}원</div>
+     <div class="dmeta">${fmt(sim.areaM2)}㎡ · 경사 ${terr.slopeDegree}° · ${aspText} · 표고 ${terr.altitudeM}m</div>
+     ${neg&&baseDemo?`<div class="dmeta" style="margin-top:6px">※ ‘적자’가 아니라 <b>미검증 기준값(placeholder)</b> — 실 RDA 소득자료 연결 전엔 음수일 수 있습니다.</div>`:''}
+     <span class="pill">적합 ${sw} (${score})</span><span class="pill">표준 대비 ${tdelta>=0?'+':''}${tdelta}%</span><span class="pill" title="보정(플라이휠) 검증 — 기준 데이터(base) 검증과는 별개">${validated?'✓ 보정검증':'추정'}</span>${baseDemo?'<span class="pill" title="기준 소득자료가 데모(미검증) — 실 RDA 연결 전">기준값 데모</span>':''}</div>
+   <div class="card"><div class="k3"><div class="gw">${gauge(Math.min(100,Math.max(0,score)),col)}<div class="gn num">${score}<small>/100</small></div></div>
+     <div class="kbox"><div class="kl">손익분기 단가</div><div class="kv num">${fmt(sim.breakEvenPriceKrwPerKg)}<small>원/kg</small></div></div>
+     <div class="kbox"><div class="kl">매출(보통)</div><div class="kv num">${fmt(sim.revenueKrw.p50)}<small>원</small></div></div></div>
+     <div class="sectt" style="margin-top:11px">예상 소득 범위 (P10–P50–P90)</div>${bar(sim.incomeKrw,{col:neg?'w':'g',zero:true})}
+     ${neg?`<div class="src">※ 보통값이 음수 — 현 base는 농진청 소득자료 <b>구조 데모(미검증)</b>. 실 RDA 소득자료 연결 시 정상화(HUMAN GATE).</div>`:""}
+   </div>
+   <div class="card"><div class="ch"><span class="cname">⚙ 왜 이 숫자? (지형·토양·기후·위성 축)</span><span class="badge ${FREEBETA?'b-free':'b-paid'}">${FREEBETA?'🔓 무료 베타':'🔒 정밀'}</span></div>
+     <div class="fsum" style="margin:8px 0 9px"><span class="fl">표준 대비 종합 수율</span><span class="fv num ${tdelta<0?'neg':''}">${tdelta>=0?'+':''}${tdelta}%</span></div>
+     <div style="display:flex;flex-direction:column;gap:6px">${factorList(sim.factors)}</div></div>
+   <div class="src" style="background:#F1F8EE;border:1px solid var(--green-line);border-radius:9px;padding:8px 10px;margin-top:2px;line-height:1.6">📊 <b>수확 후 실측(수확량·매출)을 입력</b>하면 이 예측이 <b>'추정 → 검증'</b>으로 정밀해집니다 — 아래 <b>재배일지</b> 탭에서 기록하세요. <span style="color:var(--ink3)">여러 농가 실측이 쌓일수록 모두의 예측이 현실에 가까워집니다(해자).</span></div>
+   ${growthCard(sim.growth)}
+   <div class="card opwrap">
+     <div class="optabs">
+       <button class="optab active" data-pane="op-mkt">🚚 출하</button>
+       <button class="optab" data-pane="op-bud">💰 예산</button>
+       <button class="optab" data-pane="op-alert">🐛 병충해</button>
+       <button class="optab" data-pane="op-mon">🌤 환경</button>
+       <button class="optab" data-pane="op-sup">🏛 지원</button>
+       <button class="optab" data-pane="op-jrn">🌾 일지</button>
+     </div>
+     <div class="oppane active" id="op-mkt"><div id="mkt-panel"></div></div>
+     <div class="oppane" id="op-bud"><div id="bud-panel"></div></div>
+     <div class="oppane" id="op-alert"><div id="alert-panel"></div></div>
+     <div class="oppane" id="op-mon"><div id="monitor-panel"></div></div>
+     <div class="oppane" id="op-sup"><div id="support-panel"></div></div>
+     <div class="oppane" id="op-jrn"><div id="jrn-panel"></div></div>
+   </div>
+   <div class="card"><div class="auto-note">🏔 지형은 <b>위치 기반 자동(DEM ${terr.source||'mock'})</b> — 직접 수정 → 실엔진 재계산. 토양·위성 추가 시 정밀↑</div>
+     <div class="edit">
+       <div class="fc"><label>경사 <span class="rv" id="e-slopev">${terr.slopeDegree}°</span></label><input type="range" id="e-slope" min="0" max="35" step="0.5" value="${terr.slopeDegree}"></div>
+       <div class="fc"><label>향</label><select id="e-aspect">${["S","SE","SW","E","W","N","NE","NW","flat"].map(a=>`<option value="${a}" ${a===terr.aspect?'selected':''}>${a==='flat'?'평지':a}</option>`).join("")}</select></div>
+       <div class="fc"><label>표고(m)</label><input type="number" id="e-alt" value="${terr.altitudeM}"></div>
+       <div class="fc"><label>배수</label><select id="e-drain"><option value="good" ${opts.drain==='good'?'selected':''}>양호</option><option value="normal" ${opts.drain==='normal'?'selected':''}>보통</option><option value="poor" ${opts.drain==='poor'?'selected':''}>불량</option></select></div>
+       <div class="fc"><label>재배유형</label><select id="e-cultivation">${[["open_field","노지"],["greenhouse","시설(온실)"],["semi_facility","반시설(비가림)"]].map(o=>`<option value="${o[0]}" ${(opts.cultivation||"open_field")===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
+       <div class="fc"><label>면적(㎡)</label><input type="number" id="e-area" value="${opts.area}"></div>
+       <div class="fc"><label>판로</label><select id="e-sales">${[["wholesale","도매"],["direct","직거래"],["mixed","혼합"],["processed","가공"],["experience_farm","체험"]].map(o=>`<option value="${o[0]}" ${opts.sales===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
+       <div class="fc"><label>재배 연차</label><select id="e-year">${[["mature","성숙기"],["year1","1년차(정착)"],["year2","2년차"],["year3","3년차"]].map(o=>`<option value="${o[0]}" ${(opts.year||"mature")===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
+       <div class="fc"><label>토양 pH</label><input type="number" step="0.1" id="e-ph" value="${opts.ph??''}" placeholder="검정값"></div>
+     </div>
+     <div class="sat-row" style="margin-top:9px"><span class="tg ${opts.sat.on?'on':''}" id="e-sat">🛰 위성 ON</span><span class="tg ${opts.sat.ndviLow?'on':''}" id="e-ndvi">NDVI↓</span><span class="tg ${opts.sat.frost?'on':''}" id="e-frost">서리골</span><span class="tg ${opts.sat.wet?'on':''}" id="e-wet">과습</span></div>
+     <div class="auto-note" style="margin-top:9px">🌡 지구온난화 시점 — 미래로 바꾸면 소득(냉량성 작물↓·따뜻한 작물 저온피해↓)·시설 냉난방비가 달라집니다(KMA 근사·미검증).</div>${climCtlHtml('clim-sim')}
+   </div>
+   <div class="card"><div class="conf"><span class="d" style="background:${cdot}"></span>신뢰도 <b>&nbsp;${sim.confidence}</b> — ${({A:'토양검정+기후 확보',B:'기후/위성 일부',C:'자가신고',D:'데이터 부족(전국 표준)'})[sim.confidence]||'데이터 부족'} <span class="badge ${validated?'b-val':'b-paid'}" style="margin-left:auto">${sim.dataLabel}</span></div></div>
+   <div class="card"><div class="ch"><span class="cname">📋 실측 입력 → 보정(플라이휠 · 해자)</span>${calF?`<span class="badge b-val">보정중</span>`:''}</div>
+     <div class="creg">${calF?`이 지형버킷 보정 적용중 · ${esc(calF.reason)} · ${validated?'<b style="color:var(--green-mid)">validated</b>':'서로 다른 농가 5↑이면 validated'}`:`수확 후 실제값을 넣으면 <b>이 지형버킷</b> 보정이 학습돼 다음 예측이 현실에 가까워집니다 <b>(해자)</b>. <b>서로 다른 농가 5↑</b> → validated(혼자 여러 건은 1로 집계 · 위조 차단)`}</div>
+     <div class="edit" style="margin-top:8px"><div class="fc"><label>실제 수확량(kg)</label><input type="number" id="e-ay" placeholder="${sim.yieldKg.p50}"></div><div class="fc"><label>실제 매출(원)</label><input type="number" id="e-ar" placeholder="${sim.revenueKrw.p50}"></div></div>
+     <div style="margin-top:9px;display:flex;gap:7px;flex-wrap:wrap"><button class="btn" id="e-rec" style="background:var(--green);color:#fff;border-color:var(--green);font-weight:800">＋ 실측 기록</button><button class="btn" id="e-demo">데모: 실측 5건(+20%) — 보정만(검증은 다농가)</button></div>
+   </div>
+   ${!validated&&sim.confidence!=='A'?`<div class="upsell">💡 <span><b>토양 검정서(pH)</b>를 넣으면 정밀도·신뢰도가 올라가고 <b>validated</b>로 전환됩니다. (인증 게이트 · 업셀)</span></div>`:""}
+   <div class="card"><div class="sectt" style="margin-bottom:6px">출처 · 면책</div><div class="src">base: ${esc(sim.baseSource)}</div>${(sim.disclaimers||[]).map(d=>`<div class="src">• ${esc(d)}</div>`).join("")}</div>`;
+}
+/* 동반 패널 탭 전환(레이아웃 정리) — CSP 안전(addEventListener). */
+function bindOpTabs(){
+  document.querySelectorAll(".optab").forEach(t=>t.addEventListener("click",()=>{
+    const id=t.getAttribute("data-pane");
+    document.querySelectorAll(".optab").forEach(x=>x.classList.toggle("active",x===t));
+    document.querySelectorAll(".oppane").forEach(p=>p.classList.toggle("active",p.id===id));
+  }));
+}
+function bindSim(st,rerender){
+  const sv=document.getElementById("e-slope");if(!sv)return;
+  sv.addEventListener("input",function(){const v=document.getElementById("e-slopev");if(v)v.textContent=this.value+"°";});
+  const reSim=async()=>{st.simBusy=true;rerender();await ensureSim(st,st.crop);rerender();};
+  const apply=()=>{st.terr.slopeDegree=Number(document.getElementById("e-slope").value);st.terr.aspect=document.getElementById("e-aspect").value;st.terr.altitudeM=Number(document.getElementById("e-alt").value)||0;st.opts.drain=document.getElementById("e-drain").value;st.opts.area=Math.max(1,Number(document.getElementById("e-area").value)||3300);st.opts.sales=document.getElementById("e-sales").value;st.opts.year=document.getElementById("e-year").value;st.opts.cultivation=document.getElementById("e-cultivation").value;const ph=document.getElementById("e-ph").value;st.opts.ph=ph===""?null:Number(ph);reSim();};
+  ["e-slope","e-aspect","e-alt","e-drain","e-area","e-sales","e-year","e-ph","e-cultivation"].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener("change",apply);});
+  bindClimCtl('clim-sim',reSim); // 기후 시점(온난화) 변경 → 재시뮬(소득·시설 냉난방 반영)
+  const tg=(id,k)=>{const el=document.getElementById(id);if(el)el.addEventListener("click",()=>{st.opts.sat[k]=!st.opts.sat[k];if(k!=="on"&&st.opts.sat[k])st.opts.sat.on=true;reSim();});};
+  tg("e-sat","on");tg("e-ndvi","ndviLow");tg("e-frost","frost");tg("e-wet","wet");
+  const sim=st.sim,region=st.rec&&st.rec.region,pred={yieldKg:sim.yieldKg.p50,costKrw:sim.costKrw.p50,revenueKrw:sim.revenueKrw.p50};
+  const rec=document.getElementById("e-rec");
+  if(rec)rec.addEventListener("click",async()=>{const ay=Number(document.getElementById("e-ay").value)||null,ar=Number(document.getElementById("e-ar").value)||null;if(!ay&&!ar)return;rec.disabled=true;rec.textContent="기록 중…";try{await apiFeedback(sim.cropId,region,st.terr,pred,{actualYieldKg:ay,actualCostKrw:pred.costKrw,actualRevenueKrw:ar});}catch(_){}await reSim();});
+  const dm=document.getElementById("e-demo");
+  if(dm)dm.addEventListener("click",async()=>{dm.disabled=true;dm.textContent="기록 중…";for(let i=0;i<5;i++){try{await apiFeedback(sim.cropId,region,st.terr,pred,{actualYieldKg:Math.round(pred.yieldKg*1.2),actualCostKrw:pred.costKrw,actualRevenueKrw:Math.round(pred.revenueKrw*1.2)});}catch(_){}}await reSim();});
+  renderJournal(st); // 재배 일지 패널(#jrn-panel) 비동기 채우기 — 시뮬카드는 보존
+  renderMarket(st);  // 출하 판로 비교 패널(#mkt-panel) — 무료 /api/market
+  renderBudget(st);  // 예산·현금흐름 패널(#bud-panel) — 정밀 /api/budget(시뮬 매출/운영비 wrap)
+  renderAlerts(st);  // 병충해·재해 주의 패널(#alert-panel) — 무료 /api/alerts
+  renderMonitor(st); // 환경 점검 패널(#monitor-panel) — 무료 /api/monitor
+  renderSupport(st); // 지원금·혜택 패널(#support-panel) — 무료 /api/support
+  bindOpTabs();      // 동반 패널 탭 전환 바인딩(레이아웃 정리)
+}
+
+/* ===== 환경 점검(field-monitor) — 무료 /api/monitor: 기후 vs 작물 요구 적합 =====
+   #monitor-panel만 갱신. 모든 데이터 esc. 일일 실측·필지 시계열·알림은 Phase B(서버 seam). */
+async function renderMonitor(st){
+  const panel=document.getElementById("monitor-panel");if(!panel||!st.sim)return;
+  const c=coordOf(st)||[];
+  panel.innerHTML=`<div class="ch"><span class="cname">🌤 환경 점검</span><span class="src">불러오는 중…</span></div>`;
+  let M;try{M=(await jget(`/api/monitor?cropId=${encodeURIComponent(st.sim.cropId)}&lat=${c[0]}&lng=${c[1]}`)).monitor;}catch(_){panel.innerHTML="";return;}
+  if(!M||!Array.isArray(M.checks)){panel.innerHTML="";return;}
+  const stC={ok:"#10B95C",watch:"#D98E1B",risk:"#DA5237",unknown:"#9aa19a"},stT={ok:"양호",watch:"주의",risk:"위험",unknown:"-"};
+  const rows=M.checks.map(c=>`<div class="frow"><span class="fax" style="background:${stC[c.status]||stC.unknown};color:#fff;border:none">${stT[c.status]||'-'}</span><span class="freason"><b>${esc(c.label)}</b> ${esc(c.reading)} · ${esc(c.need)} — ${esc(c.note)}</span></div>`).join("");
+  panel.innerHTML=`<div class="ch"><span class="cname">🌤 환경 점검 (기후 vs 작물)</span><span class="badge ${M.worst==='ok'?'b-free':'b-paid'}">${stT[M.worst]||'-'}</span></div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${rows}</div>
+    <div class="src" style="margin-top:7px">${esc(M.disclaimer||'')}</div>`;
+}
+
+/* ===== 지원금·혜택(support-programs) — 무료 /api/support: 대표 제도 + 공식 확인 =====
+   #support-panel만 갱신. 모든 데이터 esc. 실시간 큐레이션(공공데이터·농협)은 Phase B(서버 seam). */
+async function renderSupport(st){
+  const panel=document.getElementById("support-panel");if(!panel)return;
+  const cid=(st.sim&&st.sim.cropId)||st.crop||"";
+  const region=(st.rec&&st.rec.region)||"";
+  panel.innerHTML=`<div class="ch"><span class="cname">🏛 지원금·혜택</span><span class="src">불러오는 중…</span></div>`;
+  let S;try{S=(await jget(`/api/support?cropId=${encodeURIComponent(cid)}&region=${encodeURIComponent(region)}`)).support;}catch(_){panel.innerHTML="";return;}
+  if(!S||!Array.isArray(S.programs)){panel.innerHTML="";return;}
+  const provC={"정부":"#2e7d4f","지자체":"#2f6fb0","농협":"#a9621c","공공":"#666"};
+  const rows=S.programs.slice(0,10).map(p=>`<div class="frow"${p.relevant?' style="background:#F1F8EE;border-radius:8px;padding:4px 6px"':''}><span class="fax" style="background:${provC[p.provider]||'#666'};color:#fff;border:none">${esc(p.provider)}</span><span class="freason">${p.relevant?'★ ':''}<b>${esc(p.name)}</b> · ${esc(p.summary)}<br><span style="color:var(--ink3)">확인: ${esc(p.officialHint)}</span></span></div>`).join("");
+  panel.innerHTML=`<div class="ch"><span class="cname">🏛 지원금·지자체·농협 혜택</span><span class="badge b-free">🔓 무료</span></div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${rows}</div>
+    <div class="src" style="margin-top:7px">${esc(S.disclaimer||'')}</div>`;
+}
+
+/* ===== 병충해·재해 주의(agri-alerts) — 무료 /api/alerts: 작물·이번 달 주의 =====
+   #alert-panel만 갱신. active(지금) 우선. 모든 데이터 esc. 실시간 예찰·특보·푸시는 Phase B(서버 seam). */
+async function renderAlerts(st){
+  const panel=document.getElementById("alert-panel");if(!panel||!st.sim)return;
+  panel.innerHTML=`<div class="ch"><span class="cname">🐛 병충해·재해 주의</span><span class="src">불러오는 중…</span></div>`;
+  const region=(okN(st.lat)&&okN(st.lng))?(regionOf(st.lat,st.lng).sido||""):""; // 시도명 → KMA 특보 매칭
+  let R;try{R=await jget("/api/alerts?cropId="+encodeURIComponent(st.sim.cropId)+(region?"&region="+encodeURIComponent(region):""));}catch(_){panel.innerHTML="";return;}
+  const A=R.alerts, WW=Array.isArray(R.weatherWarnings)?R.weatherWarnings:[]; // WW=실시간 기상특보(KMA live)
+  if(!A||!Array.isArray(A.alerts)){panel.innerHTML="";return;}
+  const sevC={warn:"#DA5237",watch:"#D98E1B",info:"#8a938a"},sevT={warn:"경계",watch:"주의",info:"정보"},kic={pest:"🐛",weather:"🌦",disaster:"🌊"};
+  const lvlC=w=>/경보/.test(w.level||"")?"#DA5237":/주의보/.test(w.level||"")?"#D98E1B":"#8a938a";
+  const wwHtml=WW.length?`<div class="src" style="margin:4px 0 3px;font-weight:800;color:var(--ink2)">🌦 실시간 기상특보 <span class="badge b-paid" style="font-size:8px">KMA LIVE</span></div><div style="display:flex;flex-direction:column;gap:5px">${WW.slice(0,8).map(w=>`<div class="frow" style="background:#FFF6EE;border-radius:8px;padding:4px 6px"><span class="fax" style="background:${lvlC(w)};color:#fff;border:none">🌦 ${esc(w.level||'')}</span><span class="freason"><b>${esc(w.regKo||'')}</b> ${esc(w.kind||'')} ${esc(w.level||'')}</span></div>`).join("")}</div>`:"";
+  const rows=A.alerts.slice(0,12).map(a=>`<div class="frow"${a.active?' style="background:#FFF6EE;border-radius:8px;padding:4px 6px"':''}><span class="fax" style="background:${sevC[a.severity]||sevC.info};color:#fff;border:none">${kic[a.kind]||"•"} ${sevT[a.severity]||""}</span><span class="freason">${a.active?'<b>지금 · </b>':''}${esc(a.title)} · ${esc(a.detail)}</span></div>`).join("")||`<div class="src">등록된 주의 항목 없음</div>`;
+  panel.innerHTML=`<div class="ch"><span class="cname">🐛 병충해·재해 주의</span><span class="badge ${(A.activeCount+WW.length)>0?'b-paid':'b-free'}">${A.month}월 · 지금 ${A.activeCount+WW.length}건</span></div>
+    ${wwHtml}
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${rows}</div>
+    <div style="margin-top:9px"><button class="btn" id="alarm-open" style="font-size:12px;padding:6px 11px">🔔 알림 신청(문자)</button></div>
+    <div class="src" style="margin-top:7px">${esc(A.disclaimer||'')}${WW.length?' · 기상특보는 KMA 실시간(발효 시 표시).':''}</div>`;
+  const ab=document.getElementById("alarm-open");if(ab)ab.addEventListener("click",openAlarmModal); // opt-in 알림 팝업
+}
+
+/* ===== 알림 opt-in 팝업(자체 팝업·VAPID 대체) — 동의+핸드폰 번호 수집 → /api/alerts/subscribe(저장만, 발송 seam) =====
+   PII: 동의 필수 · 번호 형식검증 · 발송 '준비 중' 정직 안내. CSP-safe(addEventListener), 모든 표시값 esc. */
+function openAlarmModal(){
+  if(document.getElementById("alarm-modal"))return;
+  const m=document.createElement("div");m.className="vmodal";m.id="alarm-modal";
+  m.innerHTML=`<div class="vbox" style="max-width:400px">
+    <div class="vtop" id="alarm-title">🔔 LENSMARK 알림 신청</div>
+    <div style="padding:16px 18px">
+      <div id="alarm-consent-row">
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer">
+          <input type="checkbox" id="alarm-consent" style="margin-top:2px"><span>(필수) 개인정보 수집·이용 동의</span></label>
+        <div class="src" style="margin:7px 0 0;line-height:1.6">목적: 농사 알림(특보·예찰) 발송 · 항목: 휴대폰번호 · 보유: <b>해지 시 즉시 파기</b><br>※ 동의 철회(해지)는 아래에서 언제든 가능합니다.</div>
+      </div>
+      <input type="tel" id="alarm-phone" placeholder="010-0000-0000" maxlength="13" inputmode="numeric" autocomplete="tel"
+        style="width:100%;margin-top:12px;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;letter-spacing:.5px;box-sizing:border-box">
+      <div id="alarm-msg" style="font-size:12px;font-weight:700;margin-top:9px;min-height:16px"></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn" id="alarm-cancel" style="flex:1">닫기</button>
+        <button class="btn" id="alarm-go" style="flex:1;background:var(--green);color:#fff;border-color:var(--green)">신청</button></div>
+      <div class="src" id="alarm-note" style="margin-top:10px">현재 <b>발송 준비 중</b> — 신청(번호·동의)만 저장되고, 알림 서비스가 열리면 문자로 안내드립니다.</div>
+      <div style="margin-top:9px;text-align:center"><a href="#" id="alarm-toggle" style="font-size:12px;color:var(--ink2);text-decoration:underline">이미 신청하셨나요? 알림 해지</a></div>
+    </div>`;
+  document.body.appendChild(m);
+  const close=()=>{const e=document.getElementById("alarm-modal");if(e)e.remove();};
+  m.addEventListener("click",e=>{if(e.target===m)close();}); // 배경 클릭 닫기
+  document.getElementById("alarm-cancel").addEventListener("click",close);
+  const ph=document.getElementById("alarm-phone"),msg=document.getElementById("alarm-msg"),go=document.getElementById("alarm-go");
+  // 휴대폰 자동 하이픈(표시용·길이별 분기: 11자리 3-4-4 / 10자리 3-3-4). 검증은 하이픈 제거 후 서버규칙과 동일(F1).
+  ph.addEventListener("input",()=>{let v=ph.value.replace(/\D/g,"").slice(0,11);
+    if(v.length>=11)v=v.replace(/(\d{3})(\d{4})(\d{4})/,"$1-$2-$3");
+    else if(v.length===10)v=v.replace(/(\d{3})(\d{3})(\d{0,4})/,"$1-$2-$3");
+    else if(v.length>=7)v=v.replace(/(\d{3})(\d{3,4})(\d{0,4})/,"$1-$2-$3");
+    else if(v.length>=4)v=v.replace(/(\d{3})(\d{0,4})/,"$1-$2");
+    ph.value=v.replace(/-$/,"");});
+  const phoneOk=v=>/^01[016789]\d{7,8}$/.test(v.replace(/\D/g,"")); // 서버 normalizePhone과 동일 규칙(하이픈 제거 후 검사)
+  // 해지 모드 토글 — '수집만큼 쉬운 철회'(PIPA-1). 동의 영역 숨김·버튼/문구 전환·unsubscribe 호출.
+  let unsub=false;
+  const toggle=document.getElementById("alarm-toggle"),crow=document.getElementById("alarm-consent-row"),note=document.getElementById("alarm-note"),title=document.getElementById("alarm-title");
+  toggle.addEventListener("click",e=>{e.preventDefault();unsub=!unsub;msg.textContent="";go.style.display="";go.disabled=false;
+    crow.style.display=unsub?"none":"";
+    title.textContent=unsub?"🔕 알림 해지":"🔔 LENSMARK 알림 신청";
+    go.textContent=unsub?"해지":"신청";
+    note.innerHTML=unsub?"등록하신 번호의 알림 신청을 <b>해지(개인정보 즉시 파기)</b>합니다.":"현재 <b>발송 준비 중</b> — 신청(번호·동의)만 저장되고, 알림 서비스가 열리면 문자로 안내드립니다.";
+    toggle.textContent=unsub?"← 알림 신청으로":"이미 신청하셨나요? 알림 해지";
+    document.getElementById("alarm-cancel").textContent="닫기";});
+  go.addEventListener("click",async()=>{
+    const phone=ph.value.trim();msg.style.color="#DA5237";
+    if(!unsub&&!document.getElementById("alarm-consent").checked){msg.textContent="개인정보 수집·이용에 동의해 주세요.";return;}
+    if(!phoneOk(phone)){msg.textContent="휴대폰 번호를 정확히 입력해 주세요(예: 010-1234-5678).";return;}
+    go.disabled=true;go.textContent=unsub?"해지 중…":"신청 중…";
+    try{
+      if(unsub){await jpost("/api/alerts/unsubscribe",{phone});msg.style.color="var(--green-mid)";msg.textContent="✓ 해지 완료 — 등록 정보가 파기되었습니다.";}
+      else{const r=await jpost("/api/alerts/subscribe",{phone,consent:true});msg.style.color="var(--green-mid)";msg.innerHTML="✓ "+esc(r.note||"신청 완료");}
+      go.style.display="none";document.getElementById("alarm-cancel").textContent="확인";
+    }catch(e){msg.textContent=(e&&e.message)||(unsub?"해지 실패":"신청 실패");go.disabled=false;go.textContent=unsub?"해지":"신청";}
+  });
+}
+
+/* 작물→지역 적합 시도 마커(지도). 색=적합 상태(초록 적합/노랑 주의/빨강 부적합). 클릭 시 팝업(사유). */
+function plotRegionMarkers(regions){
+  REGION.clearLayers();
+  const fc={ok:"#10B95C",watch:"#D98E1B",risk:"#DA5237",unknown:"#9aa19a"},ft={ok:"적합",watch:"주의",risk:"부적합우려",unknown:"-"};
+  (regions||[]).forEach(g=>{
+    if(!okN(g.lat)||!okN(g.lng))return;
+    const c=fc[g.fit]||fc.unknown;
+    L.marker([g.lat,g.lng],{icon:L.divIcon({className:"",html:`<div class="rgnm" style="background:${c}">${esc(g.sido)}</div>`,iconSize:[38,18],iconAnchor:[19,9]})})
+      .bindPopup(`<b>${esc(g.sido)}</b> · ${ft[g.fit]||'-'}<br>${esc((g.reasons||[]).join(", ")||"기후 적합")}`)
+      .addTo(REGION);
+  });
+  MAP.setView([36.3,127.8],7); // 전국 뷰로
+}
+function clearRegionMarkers(){REGION.clearLayers();}
+
+/* ===== 귀농 자가진단(returnfarm-assess) — 무료 앞단 깔때기. 시작화면 진입 → 폼 → 준비도 카드. /api/assess. =====
+   기존 idiom 일관: jpost·esc·errCard·card/decide/fc/frow 클래스 · 클릭은 위임(CSP 안전·재바인딩 불필요). */
+const ASSESS_FC={ok:"#10B95C",watch:"#D98E1B",risk:"#DA5237",unknown:"#9aa19a"};
+const ASSESS_BAND={ready:["준비됨","#10B95C"],prepare:["보완 필요","#D98E1B"],caution:["신중 검토","#DA5237"]};
+const ASSESS_LANDING=(document.getElementById("plist")||{}).innerHTML||""; // 시작화면 복원용(진입점 포함)
+function assessGoLanding(){const p=document.getElementById("plist");if(p)p.innerHTML=ASSESS_LANDING;const t=document.getElementById("ptitle"),s=document.getElementById("psub");if(t)t.textContent="🌱 땅을 선택하세요";if(s)s.textContent="땅 → 추천 작물 → 정밀 소득 시뮬";}
+function openAssess(){
+  const p=document.getElementById("plist");if(!p)return;
+  const t=document.getElementById("ptitle"),s=document.getElementById("psub");if(t)t.textContent="🧭 귀농 자가진단";if(s)s.textContent="준비도 점검(무료·참고)";
+  p.innerHTML=`<div class="card"><div class="ch"><span class="cname">🧭 귀농 자가진단</span><span class="badge b-free">🔓 무료</span></div>
+    <div class="creg">땅 고르기 전, 준비도를 30초 점검(참고용 · 가부 판단 아님).</div>
+    <div class="edit" style="margin-top:8px">
+      <div class="fc"><label>자기자본(원)</label><input type="number" id="as-eq" placeholder="예: 50000000"></div>
+      <div class="fc"><label>생활비 버퍼(개월)</label><input type="number" id="as-buf" placeholder="예: 12"></div>
+      <div class="fc"><label>동기</label><select id="as-mot"><option value="">선택</option><option value="clear">명확</option><option value="vague">막연</option></select></div>
+      <div class="fc"><label>영농 경험</label><select id="as-exp"><option value="">선택</option><option value="none">없음</option><option value="education">교육 이수</option><option value="experienced">현장 경험</option></select></div>
+      <div class="fc"><label>가족 동의</label><select id="as-fam"><option value="">선택</option><option value="yes">예</option><option value="no">아니오</option></select></div>
+      <div class="fc"><label>농지 확보</label><select id="as-land"><option value="">선택</option><option value="yes">예</option><option value="no">아니오</option></select></div>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:6px"><button class="btn" id="as-run" style="font-size:12px;padding:6px 12px">준비도 보기</button><button class="btn" id="as-cancel" style="font-size:12px;padding:6px 10px">닫기</button></div>
+    <div id="as-result" style="margin-top:10px"></div></div>`;
+}
+function assessResultHtml(a){
+  if(!a)return errCard("결과 없음");
+  const b=ASSESS_BAND[a.band]||["—","#9aa19a"];
+  const axes=(a.axes||[]).map(x=>`<div class="frow"><span class="fax" style="background:${ASSESS_FC[x.status]||ASSESS_FC.unknown};color:#fff;border:none">${esc(x.label)}</span><span class="freason">${esc(x.note)}</span></div>`).join("");
+  const acts=(a.nextActions||[]).map(s=>`<div class="src">• ${esc(s)}</div>`).join("");
+  const risks=(a.topRisks||[]).length?`<div class="dmeta">우선 보완: ${a.topRisks.map(esc).join(" · ")}</div>`:"";
+  return `<div class="decide" style="border-color:${b[1]}"><div class="dl">준비도(참고)</div><div class="dv num">${a.score}<small>/100</small> · ${esc(b[0])}</div>${risks}</div>
+   <div class="card"><div class="sectt" style="margin-bottom:5px">항목별</div><div style="display:flex;flex-direction:column;gap:5px">${axes}</div></div>
+   ${acts?`<div class="card"><div class="sectt" style="margin-bottom:5px">보완 액션</div>${acts}</div>`:""}
+   <div style="margin-top:8px"><button class="btn" id="as-tomap" style="font-size:12px;padding:6px 12px">→ 땅 골라 작물 추천 보기</button></div>
+   <div class="src" style="margin-top:7px">${esc(a.disclaimer||"")}</div>`;
+}
+// 위임 클릭(CSP 안전·재바인딩 불필요) — 진입/제출/닫기/지도로.
+document.addEventListener("click",async(e)=>{
+  const el=(e.target&&e.target.closest)?e.target.closest("button"):null; if(!el)return;
+  if(el.id==="assess-open"){ openAssess(); return; }
+  if(el.id==="as-cancel"||el.id==="as-tomap"){ assessGoLanding(); return; }
+  if(el.id==="as-run"){
+    const v=id=>{const x=document.getElementById(id);return x?x.value:"";};
+    const num=id=>{const n=Number(v(id));return Number.isFinite(n)&&n>=0?n:undefined;};
+    const yn=id=>{const x=v(id);return x==="yes"?true:x==="no"?false:undefined;};
+    el.disabled=true;el.textContent="분석 중…";
+    const body={equityKrw:num("as-eq"),livingBufferMonths:num("as-buf"),motivation:v("as-mot")||undefined,experience:v("as-exp")||undefined,familyConsent:yn("as-fam"),landSecured:yn("as-land")};
+    const out=document.getElementById("as-result");
+    try{const a=(await jpost("/api/assess",body)).assessment;if(out)out.innerHTML=assessResultHtml(a);}
+    catch(err){if(out)out.innerHTML=errCard(err&&err.message||"분석 실패");}
+    el.disabled=false;el.textContent="다시 보기";
+  }
+});
+
+/* ===== 지구온난화 시나리오(공유) — ΔT(미래 가정)로 적합·소득·시설 냉난방 구동 =====
+   연도+SSP → 서버가 ΔT 자동(KMA 근사·미검증), 또는 직접 ΔT override. region-fit·simulate가 함께 사용. */
+var CLIM={};try{CLIM=JSON.parse(localStorage.getItem("lansmark_clim")||"{}")||{};}catch(_){CLIM={};}
+function climGet(){return Object.assign({year:2025,path:"ssp245",dt:""},CLIM);}
+function climSave(){try{localStorage.setItem("lansmark_clim",JSON.stringify(CLIM));}catch(_){}}
+/** region-fit 쿼리스트링(현재면 빈 문자열). dt(직접) 우선, 아니면 미래연도+경로. */
+function climQuery(){const c=climGet();if(c.dt!==""&&c.dt!=null)return "&dt="+encodeURIComponent(c.dt);if(Number(c.year)>2025)return "&year="+encodeURIComponent(c.year)+"&path="+encodeURIComponent(c.path);return "";}
+/** apiSimulate용 climateScenario(현재면 undefined). */
+function climScenario(){const c=climGet();if(c.dt!==""&&c.dt!=null)return {deltaTempCOverride:Number(c.dt)};if(Number(c.year)>2025)return {year:Number(c.year),path:c.path};return undefined;}
+/** 기후 시나리오 컨트롤 HTML(pfx로 중복 id 방지). */
+function climCtlHtml(pfx){const c=climGet();const yrs=[[2025,"현재"],[2040,"2040"],[2060,"2060"],[2100,"2100"]];const paths=[["ssp245","중간(SSP2-4.5)"],["ssp585","고배출(SSP5-8.5)"]];
+  return `<div class="edit" style="margin-top:6px"><div class="fc"><label>🌡 기후 시점</label><select id="${pfx}-year">${yrs.map(y=>`<option value="${y[0]}" ${Number(c.year)===y[0]?'selected':''}>${y[1]}</option>`).join("")}</select></div>`
+    +`<div class="fc"><label>배출 경로</label><select id="${pfx}-path">${paths.map(p=>`<option value="${p[0]}" ${c.path===p[0]?'selected':''}>${p[1]}</option>`).join("")}</select></div>`
+    +`<div class="fc"><label>직접 ΔT(℃·선택)</label><input type="number" id="${pfx}-dt" step="0.5" min="0" max="6" value="${esc(c.dt)}" placeholder="자동"></div></div>`;}
+/** 컨트롤 바인딩 — 변경 시 CLIM 저장 후 onChange. */
+function bindClimCtl(pfx,onChange){const g=id=>{const e=document.getElementById(id);return e?e.value:"";};const save=()=>{CLIM={year:Number(g(pfx+"-year"))||2025,path:g(pfx+"-path")||"ssp245",dt:g(pfx+"-dt")};climSave();if(onChange)onChange();};[pfx+"-year",pfx+"-path",pfx+"-dt"].forEach(id=>{const e=document.getElementById(id);if(e)e.addEventListener("change",save);});}
+
+/* ===== 작물 검색 → 추천 지역(독립 진입) — 필지 없이 '작물만' 골라 #plist에 리스트+지도 마커 =====
+   /api/region-fit(무료) 재사용: terrainConditions(요구 지형·환경) + regions(시도 적합·중심좌표) + disclaimer.
+   원안("검색창에 작물 고르면 추천 지형을 리스트/지도로") — 선택 즉시 지도에도 표시(전국 뷰). 모든 데이터 esc. */
+let CROPVIEW=null; // 현재 작물→지역 보기 작물ID(중복 진입 stale 폐기·복귀 판정)
+async function renderCropRegion(cropId){
+  const plist=document.getElementById("plist");if(!plist||!cropId)return;
+  CROPVIEW=cropId;
+  document.getElementById("ptitle").textContent="🌱 작물 → 추천 지역";
+  document.getElementById("psub").textContent="작물 기후 적합 시도(근사) — 리스트 + 지도";
+  plist.innerHTML=loading("적합 지역 분석 중…");
+  let R;try{R=(await jget("/api/region-fit?cropId="+encodeURIComponent(cropId)+climQuery())).regionFit;}
+  catch(e){if(CROPVIEW===cropId)plist.innerHTML=errCard((e&&e.message)||"조회 실패");return;}
+  if(CROPVIEW!==cropId)return;                    // 그 사이 다른 작물 선택 → stale 결과 폐기(경쟁조건 가드)
+  if(!R||!Array.isArray(R.regions)){plist.innerHTML=errCard("적합 지역 데이터가 없습니다.");return;}
+  const fc={ok:"#10B95C",watch:"#D98E1B",risk:"#DA5237",unknown:"#9aa19a"},ft={ok:"적합",watch:"주의",risk:"부적합우려",unknown:"-"};
+  const reqs=(R.terrainConditions||[]).map(r=>`<div class="frow"><span class="fax s">${esc(r.label)}</span><span class="freason">${esc(r.value)}</span></div>`).join("")||'<div class="src">요구조건 데이터 없음</div>';
+  const SHIFT_C={개선:"#10B95C",악화:"#DA5237"};
+  const chips=R.regions.map(g=>{const show=g.fitFuture||g.fit,col=fc[show]||fc.unknown;
+    const now=g.fitFuture?`<span style="font-size:8.5px;color:var(--ink3)">${ft[g.fit]}→</span>`:"";
+    const sh=(g.shift&&SHIFT_C[g.shift])?` <span style="font-size:8.5px;color:${SHIFT_C[g.shift]}">${g.shift==='개선'?'▲':'▼'}</span>`:"";
+    return `<span class="crop" title="${esc((g.reasons||[]).join(', ')||'기후 적합')}" style="background:#fff;border-color:${col}">${now}<b style="color:${col}">${esc(g.sido)}</b> <span style="font-size:9px;color:${col}">${ft[show]||'-'}</span>${sh}</span>`;}).join("");
+  plist.innerHTML=`<div class="card"><div class="ch"><span class="cname">🌱 ${esc(R.cropNameKo)}</span><span class="badge b-free">🔓 무료</span></div>
+    <div class="creg">이 작물에 <b>기후가 맞는 시도</b>를 적합 순으로. 색: <span style="color:#10B95C">초록 적합</span>·<span style="color:#D98E1B">노랑 주의</span>·<span style="color:#DA5237">빨강 부적합우려</span>.</div>
+    <div class="sectt" style="margin:10px 0 5px">추천 재배 지형·환경</div>
+    <div style="display:flex;flex-direction:column;gap:6px">${reqs}</div>
+    <div class="sectt" style="margin:12px 0 5px">🌡 기후 시나리오 (지구온난화)</div>${climCtlHtml('clim-rgn')}
+    ${R.deltaC>0?`<div class="creg" style="margin-top:6px">🌡 <b>+${R.deltaC}℃</b>(${R.scenarioYear?R.scenarioYear+'년':'직접'}) 가정 — 아래 색은 <b>미래</b> 적합 · 개선 ${R.regions.filter(x=>x.shift==='개선').length}곳 · 악화 ${R.regions.filter(x=>x.shift==='악화').length}곳`:`<div class="src" style="margin-top:6px">‘기후 시점’을 미래로 바꾸면 같은 작물의 적합 지역이 어떻게 이동하는지 보여줍니다.</div>`}
+    <div class="sectt" style="margin:10px 0 5px">🗺 적합 지역 (시도 기후·근사)</div>
+    <div class="tagrow">${chips}</div>
+    <div style="margin-top:9px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="cr-map" style="font-size:12px;padding:5px 10px">지도 마커 지우기</button><button class="btn" id="cr-back" style="font-size:12px;padding:5px 10px">← 지도 탐색으로</button></div>
+    <div class="src" style="margin-top:8px">${esc(R.disclaimer)}</div></div>`;
+  plotRegionMarkers(R.regions);window.__rgnShown=true; // 선택 즉시 지도에도 — 원안 "지도 상에서"
+  const mb=document.getElementById("cr-map");
+  if(mb)mb.addEventListener("click",()=>{
+    if(window.__rgnShown){clearRegionMarkers();window.__rgnShown=false;mb.textContent="🗺 지도에 표시";}
+    else{plotRegionMarkers(R.regions);window.__rgnShown=true;mb.textContent="지도 마커 지우기";}
+  });
+  const bk=document.getElementById("cr-back");
+  if(bk)bk.addEventListener("click",()=>{
+    if(window.__rgnShown){clearRegionMarkers();window.__rgnShown=false;}
+    CROPVIEW=null;
+    if(pinState)renderDetailPin();               // 핀 분석이 있으면 그쪽으로 복귀
+    else if(MODE==="select"&&SEL.size)renderSelect(); // 선택 모드 + 선택 있으면 선택 패널
+    else{document.getElementById("ptitle").textContent="🌱 땅을 선택하세요";document.getElementById("psub").textContent="땅 → 추천 작물 → 정밀 소득 시뮬";plist.innerHTML=`<div class="empty"><span class="ic">📍</span>지도를 탭해 지점을 분석하세요</div>`;}
+  });
+  bindClimCtl('clim-rgn',()=>renderCropRegion(cropId)); // 기후 시점 변경 → 재조회(현재↔미래 적합 이동)
+}
+
+/* 작물→지역 적합(시도 기후) 리스트(/api/region-fit) — 적합 먼저, 색구분. 모든 데이터 esc. */
+async function renderRegionList(cropId){
+  const box=document.getElementById("region-fit");if(!box||!cropId)return;
+  let R;try{R=(await jget("/api/region-fit?cropId="+encodeURIComponent(cropId))).regionFit;}catch(_){box.innerHTML="";return;}
+  if(!R||!Array.isArray(R.regions)){box.innerHTML="";return;}
+  const fc={ok:"#10B95C",watch:"#D98E1B",risk:"#DA5237",unknown:"#9aa19a"},ft={ok:"적합",watch:"주의",risk:"부적합우려",unknown:"-"};
+  const chips=R.regions.map(g=>`<span class="crop" title="${esc((g.reasons||[]).join(', ')||'기후 적합')}" style="border-color:${fc[g.fit]||fc.unknown}"><b style="color:${fc[g.fit]||fc.unknown}">${esc(g.sido)}</b> <span style="font-size:9px;color:${fc[g.fit]||fc.unknown}">${ft[g.fit]||'-'}</span></span>`).join("");
+  box.innerHTML=`<div class="tagrow">${chips}</div><div style="margin-top:7px"><button class="btn" id="rgn-map" style="font-size:12px;padding:5px 10px">🗺 지도에 표시</button></div><div class="src" style="margin-top:6px">${esc(R.disclaimer)}</div>`;
+  const mb=document.getElementById("rgn-map");
+  if(mb)mb.addEventListener("click",()=>{
+    if(window.__rgnShown){clearRegionMarkers();window.__rgnShown=false;mb.textContent="🗺 지도에 표시";}
+    else{plotRegionMarkers(R.regions);window.__rgnShown=true;mb.textContent="지도 마커 지우기";}
+  });
+}
+
+/* 외래·임의 작물 조회 결과 카드(/api/foreign) — GBIF 분류 + 위키 설명. 모든 데이터 esc. 소득시뮬 비활성 명시. */
+function foreignResultHtml(F){
+  if(!F)return '<div class="src">조회 결과 없음</div>';
+  const t=F.taxon||{},d=F.description||{};
+  const tax=F.resolved
+    ? `<div class="frow"><span class="fax s">분류</span><span class="freason">${esc(t.scientificName||t.canonicalName||'')}${t.family?' · '+esc(t.family):''}${t.genus?' / '+esc(t.genus):''} <span style="color:var(--ink3)">(GBIF ${esc(t.matchType||'')})</span></span></div>`
+    : '<div class="src">생물분류 매칭 실패 — 학명/이름을 확인하세요.</div>';
+  const desc=d.extract?`<div class="creg" style="margin-top:6px">${esc(d.extract)} <span style="color:var(--ink3)">(${esc(d.source||'')})</span></div>`:'';
+  const cf=F.climateFit;
+  const cfHtml=cf?`<div class="frow" style="margin-top:6px;background:${cf.signal==='caution'?'#FFF6EE':cf.signal==='similar'?'#F1F8EE':'transparent'};border-radius:8px;padding:4px 6px"><span class="fax" style="background:${cf.signal==='caution'?'#DA5237':cf.signal==='similar'?'#10B95C':'#9aa19a'};color:#fff;border:none">기후대</span><span class="freason">${esc(cf.note)}</span></div>`:'';
+  return `<div class="card" style="background:#F7FAF5"><div class="ch"><span class="cname">🌍 ${esc(F.query)} (해외 참고)</span><span class="badge b-paid">소득시뮬 비활성</span></div>${tax}${desc}${cfHtml}<div class="src" style="margin-top:7px">${esc(F.disclaimer||'')}</div></div>`;
+}
+
+/* ===== 품종·재배 가이드(cultivation-guide) — 무료=대표작물 / 유료=전체 =====
+   #guide-panel만 갱신. 무료 staple은 누구나, 유료 작물은 잠금 안내. 임의·외래작물(직접 추가)은 유료 seam(Phase B). 모든 데이터 esc. */
+async function renderGuide(st){
+  const panel=document.getElementById("guide-panel");if(!panel||!st.crop)return;
+  panel.innerHTML=`<div class="ch"><span class="cname">🌱 품종·재배 가이드</span><span class="src">불러오는 중…</span></div>`;
+  let G,err;try{G=(await jget("/api/guide?cropId="+encodeURIComponent(st.crop))).guide;}catch(e){err=(e&&e.message)||"";}
+  if(err){
+    if(/유료|GUIDE_PAID/.test(err)){ // 유료 게이트 → 잠금 안내(결제 유도)
+      panel.innerHTML=`<div class="ch"><span class="cname">🌱 품종·재배 가이드</span><span class="badge b-paid">🔒 유료</span></div>
+        <div class="creg">이 작물의 <b>품종·재배 환경 가이드</b>는 유료입니다. 대표작물(사과·감자·배추 등)은 무료로 제공됩니다. 결제하면 전체 작물 품종 가이드가 열립니다.</div>`;
+    } else { panel.innerHTML=""; } // 목록밖/기타 → 패널 숨김(임의작물은 Phase B)
+    return;
+  }
+  const tierB=G.tier==="free"?'<span class="badge b-free">🔓 무료</span>':(FREEBETA?'<span class="badge b-free">🔓 무료 베타</span>':'<span class="badge b-val">🔓 유료해금</span>');
+  const vchips=(G.varieties||[]).map(v=>`<span class="crop" title="${esc(v.description||'')}">${esc(v.nameKo)}</span>`).join("")||'<span class="src">등록된 품종 정보 없음</span>';
+  const reqs=(G.requirements||[]).map(r=>`<div class="frow"><span class="fax s">${esc(r.label)}</span><span class="freason">${esc(r.value)}</span></div>`).join("");
+  panel.innerHTML=`<div class="ch"><span class="cname">🌱 품종·재배 가이드</span>${tierB}</div>
+    <div class="sectt" style="margin:8px 0 5px">품종 후보 (${(G.varieties||[]).length})</div>
+    <div class="tagrow">${vchips}</div>
+    <div class="sectt" style="margin:11px 0 5px">재배 환경 요구조건</div>
+    <div style="display:flex;flex-direction:column;gap:6px">${reqs}</div>
+    <div class="sectt" style="margin:11px 0 5px">🗺 적합 지역 (시도 기후·근사)</div>
+    <div id="region-fit"><div class="src">불러오는 중…</div></div>
+    <div class="upsell" style="margin-top:10px;flex-wrap:wrap;gap:6px"><span style="flex:1 1 100%">🌍 목록에 없는 작물(외래종 포함) 직접 조회 — 국내+해외 정보 <b>${FREEBETA?'(무료 베타)':'(유료)'}</b></span><input type="text" id="fg-name" placeholder="예: 망고 / Olea europaea" style="flex:1;min-width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px"><button class="btn" id="fg-go" style="font-size:12px;padding:6px 10px">조회</button></div>
+    <div id="fg-result" style="margin-top:8px"></div>
+    <div class="src" style="margin-top:7px">${esc(G.disclaimer||'')}</div>`;
+  renderRegionList(st.crop); // 🗺 적합 지역(시도 기후) — 무료 /api/region-fit
+  const fgBtn=document.getElementById("fg-go");
+  if(fgBtn)fgBtn.addEventListener("click",async()=>{
+    const name=(document.getElementById("fg-name").value||"").trim(),out=document.getElementById("fg-result");
+    if(!name){out.innerHTML='<div class="src">작물명을 입력하세요.</div>';return;}
+    fgBtn.disabled=true;fgBtn.textContent="조회 중…";let F,err;
+    const c=coordOf(st)||[],qc=(c[0]!=null&&c[1]!=null)?("&lat="+c[0]+"&lng="+c[1]):""; // 필지 좌표 → 기후대 적합성
+    try{F=(await jget("/api/foreign?name="+encodeURIComponent(name)+qc)).foreign;}catch(e){err=(e&&e.message)||"";}
+    fgBtn.disabled=false;fgBtn.textContent="조회";
+    if(err){out.innerHTML=/유료|FOREIGN_PAID|402/.test(err)?'<div class="creg">🔒 직접 작물 추가(외래종)는 <b>유료</b> 기능입니다. 결제 후 이용하세요.</div>':'<div class="src">조회 실패 — 잠시 후 다시 시도</div>';return;}
+    out.innerHTML=foreignResultHtml(F);
+  });
+}
+
+/* ===== 출하 판로 비교(harvest-market) — 무료 /api/market: 어디 납품하면 몇 % 더 받나 =====
+   #mkt-panel만 갱신. 모든 사용자유래 문자열 esc. KAMIS 실도매가 앵커(있으면) 또는 룰북 추정. */
+async function renderMarket(st){
+  const panel=document.getElementById("mkt-panel");if(!panel||!st.sim)return;
+  panel.innerHTML=`<div class="ch"><span class="cname">🚚 출하 판로 비교</span><span class="badge b-free">🔓 무료</span></div><div class="src">불러오는 중…</div>`;
+  let M;try{M=(await jget(`/api/market?cropId=${encodeURIComponent(st.sim.cropId)}&yieldKg=${Math.round(st.sim.yieldKg.p50)}`)).market;}catch(_){panel.innerHTML="";return;}
+  if(!M||!Array.isArray(M.channels)){panel.innerHTML="";return;}
+  const anchorBadge=`<span class="pill" title="${esc(M.anchorSource||'')}">${M.anchor==="live"?'실시세 앵커':'룰북 추정'}</span>`;
+  const bestCh=M.channels.find(c=>c.channel===M.best);
+  const bestTxt=(M.best==="wholesale"||!bestCh)?'도매가 가장 유리':`<b>${esc(bestCh.label)}</b>가 도매 대비 <b>+${M.bestDeltaPct}%</b>`;
+  const rows=M.channels.map(c=>{const best=c.channel===M.best,d=c.deltaPctVsWholesale,dc=d>0?'up':d<0?'down':'flat';
+    return `<div class="frow"${best?' style="background:#F1F8EE;border-radius:8px;padding:4px 6px"':''}><span class="fax v">${best?'★ ':''}${esc(c.label)}</span><span class="freason">${fmt(c.priceKrwPerKg.p50)}원/kg${c.expectedRevenueKrw?` · 기대매출 ${fmt(c.expectedRevenueKrw.p50)}원`:''}</span><span class="fpct ${dc}">${d>0?'+':''}${d}%</span></div>`;}).join("");
+  panel.innerHTML=`<div class="ch"><span class="cname">🚚 출하 판로 비교</span>${anchorBadge}</div>
+    <div class="creg">${bestTxt} · 수확량 ${fmt(M.yieldKg||0)}kg 기준 · 도매 기준가 ${fmt(M.wholesalePriceKrwPerKg.p50)}원/kg</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${rows}</div>
+    <div class="src" style="margin-top:7px">${esc(M.disclaimer||'')}</div>`;
+}
+
+/* ===== 예산·정착비용·현금흐름(budget-cashflow) — 시설투자+융자+보조+생활비 → 다년 회수·ROI =====
+   #bud-panel만 갱신. 시뮬의 연 매출/운영비(revenueKrw/costKrw)를 주입(wrap) — 토큰 있으면 정밀(paid)/없으면 teaser.
+   ⚠ 시설 선택은 capex에만 반영 — 시설별 수량·단가 변화는 시뮬 ‘재배유형’에서(시설 소득팩터는 범위 밖). */
+var BUD={};try{BUD=JSON.parse(localStorage.getItem("lansmark_bud")||"{}")||{};}catch(_){BUD={};}
+function budSave(){try{localStorage.setItem("lansmark_bud",JSON.stringify(BUD));}catch(_){}}
+const FAC_TIERS=[["none","노지(시설 없음)"],["single_span","비닐하우스(단동)"],["multi_span","비닐하우스(연동)"],["smartfarm_basic","스마트팜(보급형)"],["glass_complex","복합 유리온실"]];
+function budGet(){return Object.assign({tier:"single_span",equity:30000000,loanP:50000000,rate:3,term:7,subsidy:0,living:20000000,years:10},BUD);}
+
+async function renderBudget(st){
+  const panel=document.getElementById("bud-panel");if(!panel||!st.sim)return;
+  const sim=st.sim,v=budGet();
+  const opt=FAC_TIERS.map(t=>`<option value="${t[0]}" ${t[0]===v.tier?'selected':''}>${esc(t[1])}</option>`).join("");
+  panel.innerHTML=`
+   <div class="ch"><span class="cname">💰 예산·현금흐름</span><span class="badge ${FREEBETA?'b-free':'b-paid'}">${FREEBETA?'🔓 무료 베타':'🔒 정밀'}</span></div>
+   <div class="creg">시설 투자·융자·보조·생활비를 이 시뮬의 연 매출/운영비와 합쳐 <b>회수기간·ROI</b>를 계산합니다.</div>
+   <div class="edit" style="margin-top:8px">
+     <div class="fc"><label>시설 종류</label><select id="bud-tier">${opt}</select></div>
+     <div class="fc"><label>자기자본(원)</label><input type="number" id="bud-equity" value="${v.equity}"></div>
+     <div class="fc"><label>융자 원금(원)</label><input type="number" id="bud-loanP" value="${v.loanP}"></div>
+     <div class="fc"><label>연이자율(%)</label><input type="number" id="bud-rate" value="${v.rate}" step="0.1"></div>
+     <div class="fc"><label>상환기간(년)</label><input type="number" id="bud-term" value="${v.term}"></div>
+     <div class="fc"><label>보조금(원)</label><input type="number" id="bud-subsidy" value="${v.subsidy}"></div>
+     <div class="fc"><label>생활비(연,원)</label><input type="number" id="bud-living" value="${v.living}"></div>
+     <div class="fc"><label>분석기간(년)</label><input type="number" id="bud-years" value="${v.years}"></div>
+   </div>
+   <div class="src" style="margin-top:6px">기준 연 매출 ${fmt(sim.revenueKrw.p50)}원 · 운영비 ${fmt(sim.costKrw.p50)}원 (이 시뮬 P50) · 면적 ${fmt(sim.areaM2)}㎡</div>
+   <div style="margin-top:8px"><button class="btn" id="bud-run" style="font-size:12px;padding:6px 12px">현금흐름 계산</button></div>
+   <div id="bud-result" style="margin-top:10px"></div>
+   <div class="src" style="margin-top:7px">※ 예산의 시설 종류는 <b>투자비(capex)</b>에 반영됩니다. 시설별 <b>수량·운영비(소득)</b>는 시뮬의 ‘재배유형’ 선택에 반영됩니다(노지↔시설 전환 시 소득 변동).</div>
+   <div class="src" style="margin-top:4px">🌡 ‘기후 시점’이 미래면 시설 <b>난방비가 연차별로 점감</b> 반영됩니다(온난화 — 데모·미검증).</div>`;
+  const numv=id=>{const e=document.getElementById(id);return e?Math.max(0,Number(e.value)||0):0;};
+  const save=()=>{BUD={tier:(document.getElementById("bud-tier")||{}).value||"none",equity:numv("bud-equity"),loanP:numv("bud-loanP"),rate:numv("bud-rate"),term:numv("bud-term"),subsidy:numv("bud-subsidy"),living:numv("bud-living"),years:numv("bud-years")};budSave();};
+  ["bud-tier","bud-equity","bud-loanP","bud-rate","bud-term","bud-subsidy","bud-living","bud-years"].forEach(id=>{const e=document.getElementById(id);if(e)e.addEventListener("change",save);});
+  const run=document.getElementById("bud-run");
+  if(run)run.addEventListener("click",async()=>{
+    save();run.disabled=true;run.textContent="계산 중…";
+    const body={areaM2:sim.areaM2,facilityTier:BUD.tier,cultivationType:BUD.tier==="none"?"open_field":"greenhouse",
+      equityKrw:BUD.equity,subsidyKrw:BUD.subsidy,
+      annualGrossIncomeKrw:sim.revenueKrw,annualOperatingCostKrw:sim.costKrw,incomeMode:"gross_minus_opcost",
+      livingCostKrwPerYear:BUD.living,analysisYears:Math.max(1,BUD.years),climateScenario:climScenario()};
+    if(BUD.loanP>0)body.loan={principalKrw:BUD.loanP,annualRatePct:BUD.rate,termYears:Math.max(1,BUD.term)};
+    const out=document.getElementById("bud-result");
+    try{const B=(await jpost("/api/budget",body)).budget;out.innerHTML=budResultHtml(B);}
+    catch(e){out.innerHTML=errCard(e&&e.message||"계산 실패");}
+    run.disabled=false;run.textContent="다시 계산";
+  });
+}
+
+/* 예산 결과 카드(표시 전용 · 서버유래 문자열 esc). free=teaser / paid=다년 정밀. */
+function budResultHtml(B){
+  const won=n=>fmt(n)+"원";
+  if(!B)return errCard("결과 없음");
+  if(B.mode==="free"){
+    return `<div class="decide"><div class="dl">자기부담(P50)</div><div class="dv num">${won(B.equityOutlayP50Krw)}</div>
+      <div class="dmeta">총 초기투자 ${won(B.initialCapexP50Krw)} · 연 순현금(P50) ${won(B.approxAnnualNetCashP50Krw)}</div>
+      <span class="pill">회수 근사 ${B.approxPaybackYears!=null?B.approxPaybackYears+'년':'미회수'}</span></div>
+      <div class="upsell">💡 <span>${esc(B.upsell||'')}</span></div>`;
+  }
+  const m=B.metrics||{},pb=v=>v==null?'미회수':v+'년',roi=v=>v==null?'—':(v>=0?'+':'')+v+'%';
+  const yrs=(B.years||[]).slice(0,12).map(y=>`<div class="frow"><span class="fax v">${y.year}년차</span><span class="freason">순 ${won(y.netCashKrw.p50)}</span><span class="fpct ${y.cumulativeNetCashKrw.p50<0?'down':'up'}">누적 ${won(y.cumulativeNetCashKrw.p50)}</span></div>`).join("");
+  const more=(B.years||[]).length>12?`<div class="src">…외 ${B.years.length-12}년</div>`:'';
+  const warns=(B.warnings||[]).map(w=>`<div class="src" style="color:#B45309">⚠ ${esc(w)}</div>`).join("");
+  const funds=(B.fundingSources||[]).map(f=>`<div class="frow"><span class="fax c">${esc(f.name)}</span><span class="freason">${esc(f.officialHint)}</span></div>`).join("");
+  const neg=m.paybackYearP50==null;
+  return `<div class="decide ${neg?'neg':''}"><div class="dl">자기부담(P50) · 회수(P50)</div><div class="dv num">${won(B.initialEquityOutlayKrw)} · ${pb(m.paybackYearP50)}</div>
+     <span class="pill">회수 P10 ${pb(m.paybackYearP10)}</span><span class="pill">P50 ${pb(m.paybackYearP50)}</span><span class="pill">P90 ${pb(m.paybackYearP90)}</span></div>
+   <div class="card"><div class="k3">
+     <div class="kbox"><div class="kl">초기투자(P50)</div><div class="kv num">${fmt(B.initialCapexKrw.p50)}<small>원</small></div></div>
+     <div class="kbox"><div class="kl">자기부담</div><div class="kv num">${fmt(B.initialEquityOutlayKrw)}<small>원</small></div></div>
+     <div class="kbox"><div class="kl">손익분기</div><div class="kv num">${m.breakEvenYearP50!=null?m.breakEvenYearP50+'<small>년차</small>':'—'}</div></div></div>
+     <div class="fsum" style="margin:9px 0"><span class="fl">ROI(자기자본 대비) P10·P50·P90</span><span class="fv num">${roi(m.roiPctP10)} · ${roi(m.roiPctP50)} · ${roi(m.roiPctP90)}</span></div>
+     <div class="sectt" style="margin:6px 0 5px">연차별 현금흐름(P50)</div>
+     <div style="display:flex;flex-direction:column;gap:5px">${yrs}</div>${more}</div>
+   ${warns?`<div class="card">${warns}</div>`:''}
+   ${funds?`<div class="card"><div class="sectt" style="margin-bottom:5px">융자·보조 확인 경로</div>${funds}</div>`:''}
+   <div class="src" style="margin-top:6px">${esc((B.disclaimers||[])[6]||(B.disclaimers||[])[0]||'')}</div>`;
+}
+
+/* ===== 재배 일지(영농 동반) — 시뮬 예측을 결속해 작기 기록 + 수확→플라이휠(해자) =====
+   #jrn-panel만 갱신(시뮬카드 보존). 활성 일지 id는 (작물@좌표) 키로 localStorage 보관 → 재방문 시 이어쓰기. */
+var JRN={};try{JRN=JSON.parse(localStorage.getItem("lansmark_jrn")||"{}")||{};}catch(_){JRN={};}
+function jrnSave(){try{localStorage.setItem("lansmark_jrn",JSON.stringify(JRN));}catch(_){}}
+function jrnKey(st){const c=coordOf(st)||[0,0];return st.crop+"@"+(+c[0]).toFixed(4)+","+(+c[1]).toFixed(4);}
+const KIND_KO={sow:"파종",transplant:"정식",fertilize:"시비",spray:"방제",irrigate:"관수",weed:"제초",observe:"관찰",other:"기타"};
+const todayISO=()=>new Date().toISOString().slice(0,10);
+
+/* 리포트 요약 카드(표시 전용 · 사용자유래 문자열은 esc). */
+function jrnReportHtml(R){
+  const acc=R.accuracy||{},pct=v=>v==null?"—":(v>=0?"+":"")+v+"%";
+  return `<div class="card" style="background:#F7FAF5">
+    <div class="ch"><span class="cname">📄 시즌 리포트</span><span class="badge ${R.harvested?'b-val':'b-tier'}">${R.harvested?'수확완료':esc(R.status)}</span></div>
+    <div class="k3"><div class="kbox"><div class="kl">재배기간</div><div class="kv num">${R.durationDays!=null?R.durationDays+'<small>일</small>':'—'}</div></div>
+      <div class="kbox"><div class="kl">기록 투입비</div><div class="kv num">${fmt(R.totalInputCostKrw)}<small>원</small></div></div>
+      <div class="kbox"><div class="kl">작업</div><div class="kv num">${R.eventCount}<small>건</small></div></div></div>
+    ${R.harvested?`<div class="fsum" style="margin:9px 0"><span class="fl">수확 ${fmt(R.yieldKg||0)}kg · 매출 ${fmt(R.revenueKrw||0)}원</span><span class="fv num ${(R.netProfitKrw||0)<0?'neg':''}">순수익 ${fmt(R.netProfitKrw||0)}원</span></div>`:''}
+    ${R.accuracy?`<div class="creg">예측 대비 — 수확 ${pct(acc.yieldErrPct)} · 매출 ${pct(acc.revenueErrPct)} <span style="color:var(--ink3)">(해자 신뢰도 신호)</span></div>`:''}
+    <div class="src" style="margin-top:7px">${esc(R.disclaimer)}</div></div>`;
+}
+
+/* 패널 전체 렌더 — 서버에서 일지 1건을 읽어 그림(없으면 '재배 시작' 버튼). */
+async function renderJournal(st){
+  const panel=document.getElementById("jrn-panel");if(!panel||!st.sim)return;
+  const key=jrnKey(st),id=JRN[key];
+  if(!id){ // 아직 시작 전
+    panel.innerHTML=`<div class="ch"><span class="cname">🌾 재배 일지</span><span class="badge b-free">신규</span></div>
+      <div class="creg">이 분석을 <b>예측 기준값</b>으로 결속해 재배를 시작하면 작업·수확을 기록하고 <b>시즌 리포트</b>를 받습니다. 수확 실측은 <b>보정 플라이휠(해자)</b>로 환류됩니다.</div>
+      <div style="margin-top:9px"><button class="btn" id="jrn-start" style="background:var(--green);color:#fff;border-color:var(--green);font-weight:800">＋ 이 분석으로 재배 시작</button></div>`;
+    const b=document.getElementById("jrn-start");
+    if(b)b.addEventListener("click",async()=>{b.disabled=true;b.textContent="시작 중…";
+      try{const c=coordOf(st)||[],sim=st.sim;
+        const r=await jpost("/api/journal",{cropId:sim.cropId,region:(st.rec&&st.rec.region)||undefined,lat:c[0],lng:c[1],areaM2:sim.areaM2,plantedAt:todayISO(),
+          predicted:{yieldKg:sim.yieldKg.p50,costKrw:sim.costKrw.p50,revenueKrw:sim.revenueKrw.p50,terrain:{slopeDegree:st.terr.slopeDegree,aspect:st.terr.aspect,altitudeM:st.terr.altitudeM}}});
+        JRN[key]=r.id;jrnSave();
+      }catch(e){alert("재배 시작 실패: "+(e&&e.message||e));b.disabled=false;b.textContent="＋ 이 분석으로 재배 시작";return;}
+      renderJournal(st);});
+    return;
+  }
+  let entry;try{entry=(await jget("/api/journal?id="+encodeURIComponent(id))).entry;}catch(_){}
+  if(!entry){delete JRN[key];jrnSave();return renderJournal(st);} // 만료/타유저 → 리셋 후 재렌더
+  const harvested=entry.status==="harvested"||!!entry.harvest;
+  const evs=(entry.events||[]).slice(-6).reverse().map(e=>`<div class="frow"><span class="fax c">${esc(KIND_KO[e.kind]||e.kind)}</span><span class="freason">${esc(e.at)}${e.note?' · '+esc(e.note):''}</span><span class="fpct">${e.costKrw?fmt(e.costKrw)+'원':''}</span></div>`).join("")||`<div class="src">기록된 작업이 없습니다.</div>`;
+  panel.innerHTML=`<div class="ch"><span class="cname">🌾 재배 일지</span><span class="badge ${harvested?'b-val':'b-tier'}">${harvested?'수확완료':'재배중'}</span></div>
+    <div class="creg">${esc(entry.cropId)}${entry.region?' · '+esc(entry.region):''} · 시작 ${esc((entry.plantedAt||entry.createdAt||'').slice(0,10))} · 작업 ${entry.events.length}건</div>
+    <div class="sectt" style="margin:9px 0 5px">작업 기록</div>
+    <div class="edit"><div class="fc"><label>날짜</label><input type="date" id="jrn-d" value="${todayISO()}"></div>
+      <div class="fc"><label>종류</label><select id="jrn-k">${Object.keys(KIND_KO).map(k=>`<option value="${k}">${KIND_KO[k]}</option>`).join("")}</select></div>
+      <div class="fc"><label>비용(원)</label><input type="number" id="jrn-c" placeholder="선택"></div>
+      <div class="fc"><label>메모</label><input type="text" id="jrn-n" maxlength="120" placeholder="선택"></div></div>
+    <div style="margin-top:7px"><button class="btn" id="jrn-ev">＋ 작업 추가</button></div>
+    <div style="margin-top:8px">${evs}</div>
+    ${harvested?`<div class="sectt" style="margin:11px 0 5px">수확</div><div class="creg">✅ ${esc(entry.harvest.at)} · ${fmt(entry.harvest.yieldKg)}kg${entry.harvest.revenueKrw?' · '+fmt(entry.harvest.revenueKrw)+'원':''}${entry.harvest.salesChannel?' · '+esc(entry.harvest.salesChannel):''} → 플라이휠 반영</div>`
+      :`<div class="sectt" style="margin:11px 0 5px">수확 기록 (→ 보정 플라이휠)</div>
+        <div class="edit"><div class="fc"><label>수확일</label><input type="date" id="jrn-hd" value="${todayISO()}"></div>
+          <div class="fc"><label>수확량(kg)</label><input type="number" id="jrn-hy" placeholder="${st.sim.yieldKg.p50}"></div>
+          <div class="fc"><label>매출(원)</label><input type="number" id="jrn-hr" placeholder="${st.sim.revenueKrw.p50}"></div>
+          <div class="fc"><label>판로</label><input type="text" id="jrn-hs" maxlength="40" placeholder="도매/직거래…"></div></div>
+        <div style="margin-top:7px"><button class="btn" id="jrn-hv" style="background:var(--green);color:#fff;border-color:var(--green);font-weight:800">수확 기록</button></div>`}
+    <div style="margin-top:9px"><button class="btn" id="jrn-rep">📄 시즌 리포트</button></div>
+    <div id="jrn-report" style="margin-top:8px"></div>`;
+  const add=document.getElementById("jrn-ev");
+  if(add)add.addEventListener("click",async()=>{const at=document.getElementById("jrn-d").value||todayISO(),kind=document.getElementById("jrn-k").value,costKrw=Number(document.getElementById("jrn-c").value)||undefined,note=document.getElementById("jrn-n").value||undefined;add.disabled=true;add.textContent="추가 중…";try{await jpost("/api/journal/event",{id,event:{at,kind,costKrw,note}});}catch(e){alert("작업 추가 실패: "+(e&&e.message||e));}renderJournal(st);});
+  const hv=document.getElementById("jrn-hv");
+  if(hv)hv.addEventListener("click",async()=>{const at=document.getElementById("jrn-hd").value||todayISO(),yieldKg=Number(document.getElementById("jrn-hy").value);if(!yieldKg||yieldKg<=0){alert("수확량(kg)을 입력하세요.");return;}const revenueKrw=Number(document.getElementById("jrn-hr").value)||undefined,salesChannel=document.getElementById("jrn-hs").value||undefined;hv.disabled=true;hv.textContent="기록 중…";try{await jpost("/api/journal/harvest",{id,harvest:{at,yieldKg,revenueKrw,salesChannel}});}catch(e){alert("수확 기록 실패: "+(e&&e.message||e));}renderJournal(st);});
+  const rep=document.getElementById("jrn-rep");
+  if(rep)rep.addEventListener("click",async()=>{rep.disabled=true;rep.textContent="불러오는 중…";let R;try{R=(await jget("/api/journal/report?id="+encodeURIComponent(id))).report;}catch(_){rep.disabled=false;rep.textContent="📄 시즌 리포트";return;}document.getElementById("jrn-report").innerHTML=jrnReportHtml(R);rep.disabled=false;rep.textContent="📄 시즌 리포트";});
+}
+
+/* ===== PIN 상세 ===== */
+function renderDetailPin(){const st=pinState;if(!st)return;
+  document.getElementById("cnt").innerHTML=`핀 <b>1</b>`;
+  document.getElementById("ptitle").textContent="📍 지점 분석 (단일)";document.getElementById("psub").textContent="핀 — 추천 → 작물 선택 → 소득 시뮬";
+  const plist=document.getElementById("plist");
+  if(st.busy&&!st.lc){plist.innerHTML=loading("토지 유형 확인 중…");return;}
+  if(st.error){plist.innerHTML=errCard(st.error);return;}
+  if(st.lc&&st.lc.action==="block"){plist.innerHTML=landBlockCard(st.lc);return;} // 수면=어느 줌단계든 차단
+  if(st.tier==="parcel"&&st.lc&&st.lc.action==="warn"&&!st.override){plist.innerHTML=landWarnCard(st.lc);const ob=document.getElementById("lc-override");if(ob)ob.addEventListener("click",()=>{st.override=true;renderDetailPin();});return;}
+  const lcB=(st.tier==="parcel"&&st.lc)?reconfirmCard(st):"";
+  if(st.busy&&!st.rec){plist.innerHTML=lcB+loading("추천 불러오는 중…");return;}
+  const recHead=recHeadHtml(st.rec,st.tier,st.crop,st.parcel,true);
+  const guideSlot=(st.tier==="parcel"&&st.crop)?'<div class="card" id="guide-panel"></div>':''; // 품종·재배 가이드(무료=대표작물/유료=전체)
+  if(st.tier!=="parcel"||!st.crop){plist.innerHTML=lcB+recHead+(st.tier!=="parcel"?hintCard("🔍","더 확대하면(필지 단계) 실제 재배가능 작물과 <b>소득 시뮬</b>이 가능합니다."):hintCard("👆","추천 작물을 누르면 그 작물의 <b>예상 소득</b>이 계산됩니다."));}
+  else if(!isPro()&&!FREEBETA){plist.innerHTML=lcB+recHead+guideSlot+paywallCard();bindPay(async()=>{st.simBusy=true;renderDetailPin();await ensureSim(st,st.crop);renderDetailPin();});renderGuide(st);}
+  else{plist.innerHTML=lcB+recHead+guideSlot+(st.simBusy?loading("실엔진 시뮬레이션 중…"):st.simErr?errCard(st.simErr):simCardHtml(st.sim,st.terr,st.opts));if(st.sim&&!st.simBusy)bindSim(st,renderDetailPin);renderGuide(st);}
+  bindReconfirm(st,renderDetailPin);
+  const pickCrop=async(cropId)=>{st.crop=cropId;st.simBusy=true;renderDetailPin();await ensureSim(st,cropId);renderDetailPin();};
+  bindChips(plist,pickCrop);
+  bindAllCrops(plist,pickCrop);
+}
+/* ===== SELECT (단일/다중) ===== */
+function renderSelect(){const items=[...SEL.values()];document.getElementById("cnt").innerHTML=`선택 <b>${items.length}</b>`;const plist=document.getElementById("plist");
+  if(items.length===0){plist.innerHTML=`<div class="empty"><span class="ic">▦</span>토지를 탭해 선택<br/>(여러 구역 다중 선택 → 비교)</div>`;document.getElementById("ptitle").textContent="🌱 땅을 선택하세요";document.getElementById("psub").textContent="토지선택 — 다중 비교";return;}
+  if(items.length>=2){return renderCompare(items);}
+  const it=SEL.get(FOCUS)||items[0];document.getElementById("ptitle").textContent="▦ 토지 분석";document.getElementById("psub").textContent="토지 유형 → 추천 → 소득 시뮬";
+  if(it.busy&&it.tier==="parcel"&&!it.lc){plist.innerHTML=loading("토지 유형 확인 중…");return;}
+  if(it.error){plist.innerHTML=errCard(it.error);return;}
+  if(it.tier==="parcel"&&it.lc){
+    if(it.lc.action==="block"){plist.innerHTML=landBlockCard(it.lc);return;}
+    if(it.lc.action==="warn"&&!it.override){plist.innerHTML=landWarnCard(it.lc);const ob=document.getElementById("lc-override");if(ob)ob.addEventListener("click",()=>{it.override=true;renderSelect();});return;}
+  }
+  const lcB=(it.tier==="parcel"&&it.lc)?reconfirmCard(it):"";
+  if(it.busy&&!it.rec){plist.innerHTML=lcB+loading("추천 불러오는 중…");return;}
+  const chosen=CHOSEN[it.key]||it.crop;
+  const recHead=recHeadHtml(it.rec,it.tier,chosen,null);
+  if(it.tier!=="parcel"||!chosen){plist.innerHTML=lcB+recHead+(it.tier!=="parcel"?hintCard("🔍","확대(필지 단계)하면 실제 재배가능 + <b>소득 시뮬</b>."):hintCard("👆","추천 작물을 누르면 소득이 계산됩니다."));}
+  else if(!isPro()&&!FREEBETA){plist.innerHTML=lcB+recHead+paywallCard();bindPay(async()=>{it.simBusy=true;renderSelect();await ensureSim(it,it.crop);renderSelect();});}
+  else{plist.innerHTML=lcB+recHead+(it.simBusy?loading("실엔진 시뮬레이션 중…"):it.simErr?errCard(it.simErr):simCardHtml(it.sim,it.terr,it.opts));if(it.sim&&!it.simBusy)bindSim(it,renderSelect);}
+  bindReconfirm(it,renderSelect);
+  bindChips(plist,async(cropId)=>{CHOSEN[it.key]=cropId;it.crop=cropId;it.simBusy=true;renderSelect();await ensureSim(it,cropId);renderSelect();});
+}
+/* ===== 다중 비교 (따로/합쳐서) ===== */
+async function renderCompare(items){document.getElementById("ptitle").textContent=`📊 토지 비교 (${items.length})`;document.getElementById("psub").textContent=VIEW==="comb"?"합쳐서 — 최적 땅·작물 랭킹":"따로 — 구역별 추천+소득";const plist=document.getElementById("plist");
+  if(!isPro()&&!FREEBETA){const z=items.map((it,i)=>`구역 ${i+1}: ${it.rec?esc((it.rec.crops||[]).slice(0,3).map(c=>c.ko).join("·")):(it.lc?esc(it.lc.label):"…")}`).join("<br>");plist.innerHTML=paywallCard()+`<div class="card"><div class="sectt" style="margin-bottom:6px">선택 구역 ${items.length}곳(무료 추천)</div><div class="creg" style="margin:0">${z}</div></div>`;bindPay(()=>renderSelect());return;}
+  const pend=items.filter(it=>it.tier==="parcel"&&it.terr&&it.rec&&it.rec.crops[0]&&it.rec.crops[0].id).filter(it=>{const cid=CHOSEN[it.key]||it.rec.crops[0].id;return !(it.cmp&&it.cmp._cid===cid);});
+  if(pend.length){plist.innerHTML=loading("구역별 소득 계산 중…");await Promise.all(pend.map(async it=>{const cid=CHOSEN[it.key]||it.rec.crops[0].id;try{const c=coordOf(it);const s=await apiSimulate(cid,c[0],c[1],it.opts,it.terr,it.rec.region);s._cid=cid;it.cmp=s;}catch(_){it.cmp=null;}}));}
+  const rows=items.map((it,i)=>({i,it,sim:(it.tier==="parcel"&&it.cmp)||null,topText:it.rec?(it.tier==="parcel"?it.rec.crops[0].ko:it.rec.crops.slice(0,2).map(c=>c.ko).join("·")):"…"}));
+  if(VIEW==="sep"){plist.innerHTML=rows.map(r=>{
+    const nonAgri=r.it.lc&&r.it.lc.action!=="reconfirm";
+    const inc=r.sim?`<div class="sectt" style="margin:8px 0 3px">예상 소득 (보통 ${fmt(r.sim.incomeKrw.p50)}원)</div>${bar(r.sim.incomeKrw,{col:r.sim.incomeKrw.p50<0?'w':'g',zero:true})}`:(nonAgri?`<div class="lc-r" style="margin-top:7px">${esc(r.it.lc.reason)}</div>`:`<div class="tagrow" style="margin-top:7px">${cropChips(r.it.rec?r.it.rec.crops:[],null)}</div>`);
+    return `<div class="card"><div class="ch"><span class="cname">구역 ${r.i+1} · ${r.it.rec?esc(r.it.rec.regionText):(r.it.lc?esc(r.it.lc.label):'…')}</span><button class="cx" data-key="${esc(r.it.key)}">✕</button></div><div class="creg">${r.it.lc?landBadge(r.it.lc)+' ':''}${r.it.tier==='parcel'&&r.sim?`추천 1순위 <b>${esc(r.sim.cropNameKo)}</b>`:(r.it.rec?esc(r.it.rec.note):'')}</div>${inc}</div>`;}).join("")+'<div class="card"><div class="src">※ 비교는 보통값(P50) 기준 — 각 필지의 신뢰도·면책·출처·손익분기는 단일 분석에서 확인하세요. 수익·매입 보장이 아니며 모든 수치는 범위(P10–P90)입니다.</div></div>';}
+  else{const parc=rows.filter(r=>r.sim).sort((a,b)=>b.sim.incomeKrw.p50-a.sim.incomeKrw.p50);const others=rows.filter(r=>!r.sim);const best=parc[0];
+    const table=parc.length?`<div class="card"><div class="sectt" style="margin-bottom:8px">필지별 최적 작물·소득 (보통 기준 내림차순)</div>
+      <table class="cmp-table"><tr><th>구역</th><th>작물</th><th>소득(보통)</th><th>범위(P10~P90)</th><th>보정</th></tr>
+      ${parc.map(r=>`<tr class="${r===best?'best':''}"><td>${r===best?'<span class="ico">★</span> ':''}구역 ${r.i+1}</td><td>${esc(r.sim.cropNameKo)}</td><td class="num">${fmt(r.sim.incomeKrw.p50)}</td><td class="num">${fmt(r.sim.incomeKrw.p10)}~${fmt(r.sim.incomeKrw.p90)}</td><td>${r.sim.dataLabel==="validated"?'<span class="badge b-val">✓검증</span>':'<span class="badge b-paid">추정</span>'}</td></tr>`).join("")}</table>
+      ${best?`<div class="creg" style="margin-top:9px">→ <b>구역 ${best.i+1} (${esc(best.sim.cropNameKo)})</b>가 최적: 보통 소득 ${fmt(best.sim.incomeKrw.p50)}원.</div>`:""}</div>`:"";
+    const oth=others.length?`<div class="card"><div class="sectt" style="margin-bottom:7px">소득 비교 불가(비농지/미확대)</div><div class="creg" style="margin:0">${others.map(r=>`구역 ${r.i+1}: ${r.it.lc?esc(r.it.lc.label):esc(r.topText)}`).join(" / ")}</div></div>`:"";
+    plist.innerHTML=table+oth+'<div class="card"><div class="src">※ 비교는 보통값(P50) 기준 정렬 — 각 필지의 신뢰도·면책·출처·손익분기는 단일 분석에서 확인하세요. 수익·매입 보장이 아니며 모든 수치는 범위(P10–P90)입니다.</div></div>'+`<div class="upsell">💡 여러 땅의 소득을 한눈에 비교 — <b>${FREEBETA?'다중 비교 — 무료 베타 제공 중':'다중 비교는 결제(Pro)'}</b> 핵심. 토양검정 추가 시 정밀도↑.</div>`;}
+  plist.querySelectorAll(".cx").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.key,it=SEL.get(k);if(it){it.rect.remove();SEL.delete(k);delete CHOSEN[k];if(FOCUS===k)FOCUS=[...SEL.keys()].pop()||null;renderSelect();}}));
+}
+
+/* ===== 이벤트 레이어 + LIVE 피드 (C3) — mock 트리거, 실연동: KAMIS/KMA/위성 ===== */
+const EVT_TYPES=[
+  {k:"price_up",ic:"📈",color:"#089A4D",ec:"가격↑",tpl:c=>`<b>${c}</b> 도매가 상승 — KAMIS`},
+  {k:"price_down",ic:"📉",color:"#DA5237",ec:"가격↓",tpl:c=>`<b>${c}</b> 도매가 하락 — KAMIS`},
+  {k:"frost",ic:"❄️",color:"#3E92C4",ec:"서리",tpl:_=>`서리 주의보 — KMA 평년 대비 저온`},
+  {k:"demand",ic:"🛒",color:"#D98E1B",ec:"수요",tpl:c=>`<b>${c}</b> 수요 급증 신호`},
+  {k:"satellite",ic:"🛰",color:"#6f93c4",ec:"위성",tpl:_=>`위성 영상 갱신 — NDVI 재계산`},
+];
+const EVT_CROPS=["고구마","마늘","양파","사과","블루베리","딸기","배추","감자","참깨","도라지"];
+let evtTimer=null,evtPaused=false,evtSeq=0;
+function pickPt(){const pool=Math.random()<0.6?SIGUNGU_PT:SIDO_PT;const p=pool[Math.floor(Math.random()*pool.length)];return[p[1]+(Math.random()-0.5)*0.06,p[2]+(Math.random()-0.5)*0.06];}
+function emitEvent(){
+  const t=EVT_TYPES[Math.floor(Math.random()*EVT_TYPES.length)],pt=pickPt(),crop=EVT_CROPS[Math.floor(Math.random()*EVT_CROPS.length)];
+  const m=L.marker(pt,{icon:L.divIcon({className:"",html:`<div class="evtm" style="color:${t.color}"></div>`,iconSize:[14,14],iconAnchor:[7,7]})}).addTo(EVT);
+  setTimeout(()=>{try{EVT.removeLayer(m);}catch(_){}},16000);
+  const feed=document.getElementById("feed");if(!feed)return;
+  if(feed.querySelector(".empty2"))feed.innerHTML="";
+  const div=document.createElement("div");div.className="fitem";
+  div.innerHTML=`<span class="ei">${t.ic}</span><span class="et">${t.tpl(crop)} <small>· 방금</small></span><span class="ec" style="background:${t.color}22;color:${t.color}">${t.ec}</span>`;
+  div.addEventListener("click",()=>{MAP.flyTo(pt,13,{duration:.8});setTimeout(()=>openAt(pt[0],pt[1]),850);});
+  feed.prepend(div);while(feed.children.length>24)feed.removeChild(feed.lastChild);
+}
+function startEvents(){if(evtTimer)clearInterval(evtTimer);evtTimer=setInterval(()=>{if(!evtPaused)emitEvent();},4200);setTimeout(()=>{if(!evtPaused)emitEvent();},900);}
+async function openAt(lat,lng){
+  if(window.__rgnShown){clearRegionMarkers();window.__rgnShown=false;} // 주소검색·이벤트 진입 시에도 작물→지역 마커 정리
+  if(MODE!=="pin"){MODE="pin";[...document.getElementById("mode").children].forEach(x=>x.classList.toggle("on",x.dataset.m==="pin"));SELLAYER.clearLayers();SEL.clear();GRID.clearLayers();document.getElementById("hint").textContent="📍 핀 — 한 곳 탭 → 추천 → 작물 누르면 소득 시뮬";}
+  if(PIN)PIN.remove();PARCEL.clearLayers();PIN=L.marker([lat,lng],{icon:pinIcon()}).addTo(MAP);
+  const tier=tierOf(MAP.getZoom());
+  const g=++pinGen,st={lat,lng,tier,lc:null,override:false,rec:null,terr:null,parcel:null,crop:null,opts:defOpts(),sim:null,busy:true};
+  pinState=st;FOCUS="__pin";renderDetailPin();
+  try{
+    if(tier==="parcel"){const lc=await apiLandClass(lat,lng);if(g!==pinGen)return;st.lc=lc;PIN.setIcon(pinIcon(lcStyle(lc).c));
+      if(lc.action!=="block"){const rc=await recommend(lat,lng,tier);if(g!==pinGen)return;st.rec=rc;const tr=await apiTerrain(lat,lng);if(g!==pinGen)return;st.terr=tr;try{const pc=await apiParcel(lat,lng);if(g!==pinGen)return;st.parcel=pc;drawParcel(pc,lc);const _a=polygonAreaM2(pc.polygon);if(_a)st.opts.area=_a;}catch(_){}}}
+    else{const rc=await recommend(lat,lng,tier);if(g!==pinGen)return;st.rec=rc;}
+  }catch(err){if(g!==pinGen)return;st.error=err.message;}
+  if(g!==pinGen)return;st.busy=false;renderDetailPin();
+}
+
+/* ===== 컨트롤 ===== */
+document.getElementById("feedpp").addEventListener("click",function(){evtPaused=!evtPaused;this.textContent=evtPaused?"▶":"⏸";this.title=evtPaused?"재생":"일시정지";});
+document.getElementById("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;MODE=b.dataset.m;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));
+  document.getElementById("hint").textContent=MODE==="pin"?"📍 핀 — 한 곳 탭 → 추천 → 작물 누르면 소득 시뮬":"▦ 토지선택 — 구역 다중 탭 → 비교(따로/합쳐서)";
+  if(MODE==="pin"){SELLAYER.clearLayers();SEL.clear();GRID.clearLayers();FOCUS=null;document.getElementById("cnt").innerHTML=`핀 <b>0</b>`;document.getElementById("plist").innerHTML=`<div class="empty"><span class="ic">📍</span>지도를 탭해 지점을 분석하세요</div>`;}
+  else{if(PIN){PIN.remove();PIN=null;}PARCEL.clearLayers();pinState=null;drawGrid();renderSelect();}});
+document.getElementById("view").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;VIEW=b.dataset.v;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));if(MODE==="select")renderSelect();});
+document.getElementById("reset").addEventListener("click",()=>{SELLAYER.clearLayers();SEL.clear();for(const k in CHOSEN)delete CHOSEN[k];FOCUS=null;if(PIN){PIN.remove();PIN=null;}PARCEL.clearLayers();pinState=null;
+  if(MODE==="pin"){document.getElementById("cnt").innerHTML=`핀 <b>0</b>`;document.getElementById("plist").innerHTML=`<div class="empty"><span class="ic">📍</span>지도를 탭해 지점을 분석하세요</div>`;}else renderSelect();});
+/* ===== 저장/불러오기/PDF/공유 (스토리지 비의존: JSON + URL + 인쇄) ===== */
+function snapshot(){return{v:2,mode:MODE,view:VIEW,sels:[...SEL.values()].map(it=>({lat:it.center[0],lng:it.center[1],tier:it.tier,opts:it.opts,crop:CHOSEN[it.key]||it.crop||null})),pin:pinState?{lat:pinState.lat,lng:pinState.lng,tier:pinState.tier,crop:pinState.crop,opts:pinState.opts}:null};}
+function dl(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+async function restore(s){s=s||{};SELLAYER.clearLayers();SEL.clear();for(const k in CHOSEN)delete CHOSEN[k];if(PIN){PIN.remove();PIN=null;}PARCEL.clearLayers();pinState=null;MODE=(s.mode==="select")?"select":"pin";VIEW=(s.view==="comb")?"comb":"sep";
+  [...document.getElementById("mode").children].forEach(x=>x.classList.toggle("on",x.dataset.m===MODE));[...document.getElementById("view").children].forEach(x=>x.classList.toggle("on",x.dataset.v===VIEW));
+  if(MODE==="pin"&&s.pin&&okN(s.pin.lat)&&okN(s.pin.lng)){const p={lat:s.pin.lat,lng:s.pin.lng,tier:fixTier(s.pin.tier),crop:fixCrop(s.pin.crop)};MAP.setView([p.lat,p.lng],p.tier==="parcel"?14:p.tier==="sigungu"?10:7);PIN=L.marker([p.lat,p.lng],{icon:pinIcon()}).addTo(MAP);
+    const g=++pinGen,st={lat:p.lat,lng:p.lng,tier:p.tier,lc:null,override:false,rec:null,terr:null,parcel:null,crop:p.crop,opts:(s.pin&&typeof s.pin.opts==="object"&&s.pin.opts)||defOpts(),sim:null,busy:true}; // 복원 중 사용자 탭 시 stale 폐기(L5)
+    pinState=st;FOCUS="__pin";renderDetailPin();
+    try{
+      const lc=await apiLandClass(p.lat,p.lng);if(g!==pinGen)return;st.lc=lc;PIN.setIcon(pinIcon(lcStyle(lc).c)); // 모든 줌단계 분류 → 강/바다 차단
+      if(lc.action!=="block"){
+        if(p.tier==="parcel"){const rc=await recommend(p.lat,p.lng,p.tier);if(g!==pinGen)return;st.rec=rc;const tr=await apiTerrain(p.lat,p.lng);if(g!==pinGen)return;st.terr=tr;try{const pc=await apiParcel(p.lat,p.lng);if(g!==pinGen)return;st.parcel=pc;drawParcel(pc,lc);const _a=polygonAreaM2(pc.polygon);if(_a)st.opts.area=_a;}catch(_){}}
+        else{const rc=await recommend(p.lat,p.lng,p.tier);if(g!==pinGen)return;st.rec=rc;}}
+    }catch(err){if(g!==pinGen)return;st.error=err.message;}
+    if(g!==pinGen)return;st.busy=false;if(st.crop&&st.terr)await ensureSim(st,st.crop);renderDetailPin();return;}
+  GRID.clearLayers();
+  if(Array.isArray(s.sels)&&s.sels.length){for(const sv of s.sels){if(!sv||!okN(sv.lat)||!okN(sv.lng))continue;const tier=fixTier(sv.tier);const cell=cellOf(sv.lat,sv.lng,tier);const rect=L.rectangle(cell.bounds,{color:TIER_META[tier].color,weight:2,fillColor:TIER_META[tier].color,fillOpacity:.22}).addTo(SELLAYER);const it={center:cell.center,tier,rect,rec:null,terr:null,lc:null,override:false,opts:(typeof sv.opts==="object"&&sv.opts)||defOpts(),key:cell.key,sim:null,busy:true};SEL.set(cell.key,it);FOCUS=cell.key;const cr=fixCrop(sv.crop);if(cr)CHOSEN[cell.key]=cr;
+      try{if(tier==="parcel"){const lc=await apiLandClass(cell.center[0],cell.center[1]);it.lc=lc;it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});if(lc.action!=="block"){it.rec=await recommend(cell.center[0],cell.center[1],tier);it.terr=await apiTerrain(cell.center[0],cell.center[1]);}}else{it.rec=await recommend(cell.center[0],cell.center[1],tier);}}catch(_){}it.busy=false;}
+    const last=[...SEL.values()].pop();if(last)MAP.setView(last.center,last.tier==="parcel"?14:last.tier==="sigungu"?10:7);drawGrid();renderSelect();}else renderSelect();}
+document.getElementById("save").addEventListener("click",()=>dl("lansmark-session.json",JSON.stringify(snapshot())));
+document.getElementById("load").addEventListener("click",()=>document.getElementById("loadfile").click());
+document.getElementById("loadfile").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{restore(JSON.parse(r.result));}catch(err){alert("불러오기 실패: "+err.message);}};r.readAsText(f);e.target.value="";});
+document.getElementById("pdf").addEventListener("click",()=>window.print());
+document.getElementById("share").addEventListener("click",async()=>{const lite={mode:MODE,view:VIEW,sels:[...SEL.values()].map(it=>({lat:it.center[0],lng:it.center[1],tier:it.tier,crop:CHOSEN[it.key]||null})),pin:pinState?{lat:pinState.lat,lng:pinState.lng,tier:pinState.tier,crop:pinState.crop}:null};const h="#s="+btoa(unescape(encodeURIComponent(JSON.stringify(lite))));const url=location.origin+location.pathname+h;history.replaceState(null,"",h);try{await navigator.clipboard.writeText(url);alert("공유 링크 복사됨:\n"+url);}catch(_){prompt("공유 링크(복사하세요):",url);}});
+function restoreFromHash(){const m=location.hash.match(/#s=(.+)/);if(!m)return;try{const lite=JSON.parse(decodeURIComponent(escape(atob(m[1]))));restore(lite);}catch(_){}}
+init().then(handlePaymentReturn).then(restoreFromHash); // 결제창 복귀(실Toss) → 승인 → 잠금해제 → 상태복원 순
+</script>
+</body>
+</html>
