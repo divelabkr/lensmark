@@ -14,6 +14,7 @@ export interface SimulationEntitlement {
   reference?: string;
   parcelId?: string; // 발급 시 특정 필지에 결속(선택) — 결속 시 해당 필지 외 사용 거부 가능
   jti?: string;      // 토큰 고유 ID — 소진(quota)·실효(revocation) 추적용
+  exp?: number;      // 만료 epoch ms(있으면) — 계정 연결 후 만료 판정용(레드팀 #1: 만료 후에도 pro 유지 차단)
 }
 
 export class EntitlementError extends Error {
@@ -92,7 +93,7 @@ function verifyEntitlementToken(token: string): SimulationEntitlement | null {
     const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as EntitlementPayload;
     if (!payload.userId) return null;
     if (typeof payload.exp === "number" && Date.now() > payload.exp) return null;
-    return { userId: payload.userId, source: payload.source ?? "order", reference: payload.reference, parcelId: payload.parcelId, jti: payload.jti };
+    return { userId: payload.userId, source: payload.source ?? "order", reference: payload.reference, parcelId: payload.parcelId, jti: payload.jti, exp: payload.exp };
   } catch {
     return null;
   }

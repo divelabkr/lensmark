@@ -11,7 +11,7 @@
  */
 import * as crypto from "node:crypto";
 import { json, readBody } from "../respond";
-import { anonSubmitterId } from "../../src/lansmark/policy/entitlement";
+import { anonSubmitterId, assertPaidEntitlement } from "../../src/lansmark/policy/entitlement";
 import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
 import type { RouteFn } from "../context";
 
@@ -75,7 +75,31 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     const uid = sessionAccountUserId(ctx.sessions, req.headers["x-lansmark-session"]);
     const acct = uid ? ctx.accounts.get(uid.slice("acct:".length)) : undefined;
     if (!acct) { json(res, 401, { error: "로그인이 필요합니다.", code: "AUTH_REQUIRED" }); return true; }
-    json(res, 200, { ok: true, accountId: acct.id, displayName: acct.displayName, createdAt: acct.createdAt, methods: acct.authRefs.map((r) => r.method) });
+    const entitlements = acct.entitlements ?? [];
+    const now = Date.now();
+    const pro = entitlements.some((e) => !ctx.entitlement.isRevoked(e.jti) && (e.exp == null || e.exp > now)); // 비실효 + 미만료(레드팀 #1: 만료 후 pro 유지 차단)
+    json(res, 200, { ok: true, accountId: acct.id, displayName: acct.displayName, createdAt: acct.createdAt, methods: acct.authRefs.map((r) => r.method), pro, entitlementCount: entitlements.length });
+    return true;
+  }
+
+  // ── 유료권한 → 계정 연결: 로그인 세션 + 유효 엔티틀먼트 jti를 계정에 귀속(결제가 계정을 따라감) ──
+  if (p === "/api/account/link-entitlement" && req.method === "POST") {
+    const uid = sessionAccountUserId(ctx.sessions, req.headers["x-lansmark-session"]);
+    const acct = uid ? ctx.accounts.get(uid.slice("acct:".length)) : undefined;
+    if (!acct) { json(res, 401, { error: "로그인이 필요합니다.", code: "AUTH_REQUIRED" }); return true; }
+    let ent;
+    try {
+      ent = await assertPaidEntitlement({ get: (n) => { const v = req.headers[n.toLowerCase()]; return Array.isArray(v) ? (v[0] ?? null) : (v ?? null); } });
+    } catch { json(res, 402, { error: "유료권한이 필요합니다.", code: "ENTITLEMENT_REQUIRED" }); return true; }
+    const jti = ent.jti;
+    if (!jti) { json(res, 402, { error: "유료권한이 필요합니다.", code: "ENTITLEMENT_REQUIRED" }); return true; }
+    if (ctx.entitlement.isRevoked(jti)) { json(res, 402, { error: "실효된 유료권한입니다.", code: "ENTITLEMENT_REVOKED" }); return true; } // 죽은 토큰 연결 차단(레드팀 ③)
+    // 원자적 연결(배타성+추가를 await 없는 단일 블록) — acct 스테일 클론 덮어쓰기 lost-update 회피(레드팀 #2/#4)
+    const r = ctx.accounts.linkEntitlement(acct.id, { jti, exp: ent.exp });
+    if (r === "taken") { json(res, 409, { error: "이미 다른 계정에 연결된 유료권한입니다.", code: "ENTITLEMENT_TAKEN" }); return true; } // 1 jti = 1 계정(결제 증식 차단·레드팀 ③)
+    if (r === "notfound") { json(res, 401, { error: "로그인이 필요합니다.", code: "AUTH_REQUIRED" }); return true; }
+    ctx.logOps("계정", `유료권한 연결 ${acct.id.slice(0, 12)}… jti=${jti.slice(0, 16)}…`); // 감사로그(레드팀 ②)
+    json(res, 200, { ok: true, linked: jti });
     return true;
   }
 

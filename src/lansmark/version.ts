@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.33.0",
+    date: "2026-06-08",
+    title: "유료-계정 연계 + 4모델 파이프라인 실증(감독·Gemini·Codex·qwen)",
+    items: [
+      "유료-계정 연계 — 로그인 계정에 엔티틀먼트(jti)를 귀속해 결제가 '기기 토큰'이 아니라 '계정'을 따라가게 함. POST /api/account/link-entitlement(세션+엔티틀먼트 검증·1 jti=1 계정 409·멱등·감사로그·sensitive 레이트리밋) + /api/account/me에 pro·entitlementCount",
+      "4모델 파이프라인 첫 실증(7단계) — ①감독(Claude) ②사전리뷰(Gemini Flash·4건) ③사전레드팀(Claude) ④코딩(Codex gpt-5.5 초안→Claude 적용) ⑤사후레드팀(Codex·Gemini·qwen+Claude) ⑥사후리뷰(qwen 전수=0) ⑦감독승인(Claude). codex·gemini CLI를 Bash로 실제 호출",
+      "fix(레드팀 확정 2건 — Codex·Gemini가 독립 지목, Claude·qwen 미검출) — #1 만료된 토큰이 /me에서 pro로 계속 인정(exp 미검사) → SimulationEntitlement에 exp 노출 + 계정에 {jti,exp} 저장 + /me 만료검사. #2 동시 연결 lost-update(acct 클론을 await 前 읽고 後 덮어씀) → 원자적 linkEntitlement(await 없는 단일 블록)",
+      "flag(후속) — #3 bearer 토큰 선점(구매자 바인딩=결제연동 후속) · #4 멀티인스턴스 중복 귀속(DB 유니크=DB 어댑터 seam). 멀티모델 폴백 체인(토큰 소진 시 2순위→qwen/Claude) 규약화",
+      "회귀 +3(연결·me.pro·409·만료) · featureMap 등록 · tsc·vitest 389·arch 0",
+    ],
+  },
+  {
     version: "0.32.0",
     date: "2026-06-08",
     title: "휴대폰 OTP 로그인 + 로그인/내 계정 UI (가입 흐름 완성)",

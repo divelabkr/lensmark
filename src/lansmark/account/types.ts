@@ -12,7 +12,11 @@ export interface Account {
   createdAt: string;    // ISO
   displayName?: string; // 선택(표시명)
   authRefs: AuthRef[];  // 연결된 로그인 수단(여러 개 — 추후 소셜+전화 병합 가능)
+  entitlements?: AccountEntitlement[]; // 연결된 유료권한(계정 귀속 — 결제가 기기 토큰이 아니라 계정을 따라감)
 }
+
+/** 계정에 연결된 유료권한 1건 — jti + 만료(있으면). exp로 만료 후 pro 자동 해제(레드팀 #1). */
+export interface AccountEntitlement { jti: string; exp?: number; }
 export interface Session {
   token: string;        // 무작위 불투명 토큰(클라 보관 → 서버가 신원 해석). 추측 불가.
   accountId: string;

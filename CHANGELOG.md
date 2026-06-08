@@ -3,6 +3,16 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.33.0 — 2026-06-08 · 유료-계정 연계 + 4모델 파이프라인 실증
+> 사장님 결정 슬라이스. **첫 4모델 7단계 파이프라인을 실제로 가동** — codex(gpt-5.5)·gemini(flash) CLI를 Bash로 호출. 인증 최고위험 → 다모델 적대검증. tsc·vitest **389**·arch 0.
+- **유료-계정 연계** — 로그인 계정(acct:Z)에 엔티틀먼트 `jti`를 귀속 → 결제가 기기 보유 토큰이 아니라 **계정**을 따라감(타기기 pro 유지). `POST /api/account/link-entitlement`(세션 필수·`assertPaidEntitlement` 검증·**1 jti=1 계정 409**·멱등·감사로그·`account/link` sensitive 레이트리밋) + `/api/account/me`에 `pro`·`entitlementCount`
+- **4모델 파이프라인 실증(7단계)** — ①감독(Claude) ②사전리뷰(**Gemini Flash**·설계 4건) ③사전레드팀(Claude) ④코딩(**Codex gpt-5.5** 초안→Claude 적용·검토) ⑤사후레드팀(**Codex·Gemini·qwen**+Claude) ⑥사후리뷰(**qwen** 전수=`[]`) ⑦감독승인(Claude)
+- **fix(레드팀 확정 2건 — Codex·Gemini가 독립적으로 동일 지목, Claude 선행 패스·qwen은 미검출)**:
+  - **#1 만료 토큰이 pro로 유지** — `/me`가 `isRevoked`만 보고 `exp` 미검사 → 토큰 만료 후에도 pro=true 영구. `SimulationEntitlement.exp` 노출 + 계정에 `{jti,exp}` 저장 + `/me`에서 `exp>now` 검사
+  - **#2 동시 연결 lost-update** — `acct` 클론을 `await assertPaidEntitlement` *前* 읽고 *後* 덮어쓰는 read-modify-write라 병렬 요청이 서로의 jti를 지움(내 ⑤ "동기라 안전" 판단을 codex가 정정) → `accountStore.linkEntitlement`(배타성+추가를 **await 없는 단일 동기 블록**)로 원자화
+- **flag(후속·미수정)**: #3 bearer 토큰 선점(유효 토큰 첫 제출 계정에 귀속 — 구매자 바인딩은 결제연동 후속) · #4 멀티인스턴스 중복 귀속(파일락 없음 — DB 유니크 인덱스=DB 어댑터 seam). 둘 다 단일인스턴스/현 모델에선 비현실화, 문서화
+- **멀티모델 폴백 체인** 규약화(토큰/크레딧 소진 시 주→2순위→qwen/Claude로 자동 강등, 무중단) · 회귀 +3(연결·me.pro·409·만료)
+
 ## 0.32.0 — 2026-06-08 · 휴대폰 OTP 로그인 + 로그인/내 계정 UI (가입 흐름 완성)
 > 사장님 '1번 추천' — 코어 위에 휴대폰 OTP verifier를 올리고 로그인/마이페이지 UI를 붙임. 인증 최고위험 → qwen vote3=**0** + 적대검토 + 런타임 스모크. tsc·vitest **386**·arch 0.
 - **휴대폰 OTP**(`PhoneOtpVerifier`) — 기존 `smsSender` seam 재사용. start: 전화 정규화→6자리 난수 코드→SMS 발송. **키 있으면 실발송(코드 비노출)** / **dev는 미발송이라 devHint로 코드 노출(테스트)** / **운영+키없음은 `503 AUTH_NOT_CONFIGURED`(코드 비노출·fail-closed)**. verify: 코드 검증 + 챌린지당 시도 상한(brute-force)

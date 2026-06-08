@@ -10,7 +10,7 @@ import { json } from "./respond";
 import type { Ctx } from "./context";
 
 /** 민감 라우트 — 더 엄격한 레이트리밋. 결제·시뮬·피드백·웹훅 + 외부 API 쿼터를 쓰는 지오 조회(geocode/parcel/terrain, 레드팀 M8) + 인증 쓰기(journal) + PII 수집(alerts/subscribe·번호 수확 차단). */
-const SENSITIVE_RE = /^\/api\/(simulate|feedback|pay\/|pg\/|geocode|parcel|terrain|journal|market|monitor|foreign|account\/auth|alerts\/(?:un)?subscribe)/;
+const SENSITIVE_RE = /^\/api\/(simulate|feedback|pay\/|pg\/|geocode|parcel|terrain|journal|market|monitor|foreign|account\/auth|account\/link|alerts\/(?:un)?subscribe)/;
 
 /**
  * 공통 보안 헤더 + CORS를 setHeader로 깔고(이후 writeHead가 Content-Type/CSP만 덮어씀),

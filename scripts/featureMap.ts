@@ -311,7 +311,7 @@ export const FEATURES: Feature[] = [
   {
     id: "user-account", name: "계정·세션(가입 + 익명→계정 이관)", stage: "platform",
     flow: "익명(기기)→가입(휴대폰 OTP)→계정(acct:Z)·세션. 로그인 시 일지를 계정 신원으로 귀속, link-anon이 기존 익명 일지를 계정으로 이관(재시작 보존). SMS 실발송은 게이트웨이 키=HUMAN GATE(키 있으면 발송·dev는 코드 노출·운영+키없음 fail-closed). 카카오/이메일은 같은 인터페이스로 추후 드롭인",
-    endpoints: ["/api/account/auth/start", "/api/account/auth/verify", "/api/account/me", "/api/account/logout", "/api/account/link-anon"],
+    endpoints: ["/api/account/auth/start", "/api/account/auth/verify", "/api/account/me", "/api/account/logout", "/api/account/link-anon", "/api/account/link-entitlement"],
     files: ["src/lansmark/account/types.ts", "src/lansmark/account/accountStore.ts", "src/lansmark/account/sessionStore.ts", "src/lansmark/account/verifier.ts", "server/routes/account.ts"],
     tests: ["src/lansmark/tests/accountRoutes.spec.ts"],
     guardrails: ["원 식별자(전화) 미저장(authRef.subjectHash=keyed-hash)", "세션 토큰=무작위 192bit·만료", "휴대폰 OTP·운영+SMS키없음 fail-closed(코드 비노출)", "OTP 챌린지당 시도 상한(brute-force)", "auth는 sensitive 레이트리밋", "이관은 로그인 세션 필수"], status: "platform",
