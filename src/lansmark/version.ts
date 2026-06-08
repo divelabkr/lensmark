@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.34.0",
+    date: "2026-06-09",
+    title: "보안 하드닝(멀티모델 패널 P2) — 계정 해시 시크릿 분리·토큰 길이 cap",
+    items: [
+      "subjectHash 전용 시크릿 분리 — 계정 식별자 해시에 LANSMARK_ACCOUNT_SECRET(있으면) 사용 → 엔티틀먼트 시크릿 회전이 계정 조회를 깨뜨리지 않음. 미설정 시 엔티틀먼트 시크릿로 폴백(새 HUMAN GATE 불필요)",
+      "엔티틀먼트 토큰 길이 cap — verifyEntitlementToken이 4096자 초과 토큰을 HMAC/base64/JSON 처리 前 즉시 거부(비정상 큰 헤더의 요청당 CPU/메모리 증폭 차단)",
+      "출처: 멀티모델 패널(panel-review: Gemini·Codex·qwen 병렬 적대리뷰)이 P2로 지목 → Claude 트리아지 후 채택. 나머지(devHint=verifier isProd 게이트로 오탐·anonId 비암호학적 격리=기존 문서화)는 기각/기존",
+      "회귀 +1(토큰 길이 cap) · tsc·vitest 390·arch 0",
+    ],
+  },
+  {
     version: "0.33.0",
     date: "2026-06-08",
     title: "유료-계정 연계 + 4모델 파이프라인 실증(감독·Gemini·Codex·qwen)",

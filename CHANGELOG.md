@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.34.0 — 2026-06-09 · 보안 하드닝(멀티모델 패널 P2) — 계정 해시 시크릿 분리·토큰 길이 cap
+> `panel-review`(Gemini·Codex·qwen **병렬** 적대리뷰 도구·신규)가 짚은 P2 2건을 Claude 트리아지 후 수정. 패널 자체도 이번에 `--diff`·병렬·dedup으로 개선(도구는 qwen 워크스페이스). tsc·vitest **390**·arch 0.
+- **subjectHash 전용 시크릿 분리** — 계정 식별자 해시에 `LANSMARK_ACCOUNT_SECRET`(있으면) 사용 → 엔티틀먼트 시크릿을 회전해도 계정 조회(해시)가 안 깨짐. 미설정 시 엔티틀먼트 시크릿로 폴백(새 HUMAN GATE 불필요). 빈 키는 bootSafety(운영 강제)+dev ephemeral로 도달 불가
+- **엔티틀먼트 토큰 길이 cap** — `verifyEntitlementToken`이 4096자 초과 토큰을 HMAC/base64/JSON 처리 *前* 즉시 거부 → 비정상 큰 헤더의 요청당 CPU/메모리 증폭(저비용 DoS) 차단
+- **트리아지 기록**: 패널 findings 중 devHint 노출=**오탐**(verifier.ts `isProd` 게이트가 diff 밖이라 컨텍스트-갭) · link-anon anonId IDOR=**기존 문서화**(비암호학적 격리·LEGAL_CHECKLIST) · 토큰 payload 스키마검증=HMAC가 위조 차단(비악용)으로 기각
+- 회귀 +1(oversized token 거부)
+
 ## 0.33.0 — 2026-06-08 · 유료-계정 연계 + 4모델 파이프라인 실증
 > 사장님 결정 슬라이스. **첫 4모델 7단계 파이프라인을 실제로 가동** — codex(gpt-5.5)·gemini(flash) CLI를 Bash로 호출. 인증 최고위험 → 다모델 적대검증. tsc·vitest **389**·arch 0.
 - **유료-계정 연계** — 로그인 계정(acct:Z)에 엔티틀먼트 `jti`를 귀속 → 결제가 기기 보유 토큰이 아니라 **계정**을 따라감(타기기 pro 유지). `POST /api/account/link-entitlement`(세션 필수·`assertPaidEntitlement` 검증·**1 jti=1 계정 409**·멱등·감사로그·`account/link` sensitive 레이트리밋) + `/api/account/me`에 `pro`·`entitlementCount`

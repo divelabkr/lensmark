@@ -22,4 +22,8 @@ describe("entitlement", () => {
     const t = mintEntitlementToken({ userId: "u1", exp: Date.now() - 1 });
     await expect(assertPaidEntitlement(hdr(t))).rejects.toBeInstanceOf(EntitlementError);
   });
+  it("rejects oversized token (길이 cap·비용증폭 차단)", async () => {
+    const huge = "a".repeat(5000) + "." + "b".repeat(64); // >4096 → HMAC/parse 前 거부
+    await expect(assertPaidEntitlement(hdr(huge))).rejects.toMatchObject({ status: 403 });
+  });
 });

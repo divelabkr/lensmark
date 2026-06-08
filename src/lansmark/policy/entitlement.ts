@@ -81,6 +81,7 @@ export function mintEntitlementToken(payload: EntitlementPayload): string {
 function verifyEntitlementToken(token: string): SimulationEntitlement | null {
   const secret = process.env.LANSMARK_ENTITLEMENT_SECRET;
   if (!secret) return null; // fail-closed
+  if (typeof token !== "string" || token.length > 4096) return null; // 비정상 큰 토큰 → HMAC/base64/JSON 비용증폭 차단(레드팀: 입력 길이 미제한)
   const dot = token.indexOf(".");
   if (dot <= 0) return null;
   const body = token.slice(0, dot);

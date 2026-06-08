@@ -20,7 +20,9 @@ const METHODS = new Set(["phone", "kakao", "email"]); // 허용 검증기(화이
 
 /** 외부 식별자 → keyed-hash(평문 PII 미저장·오프라인 열거 차단). 시크릿은 사용처에서 직접 읽음(설정객체 비노출). */
 function subjectHash(method: string, subject: string): string {
-  const secret = process.env.LANSMARK_ENTITLEMENT_SECRET || "";
+  // 계정 식별자 해시 전용 시크릿(있으면) — 엔티틀먼트 시크릿 회전이 계정 조회를 깨뜨리지 않게 분리(레드팀: 결합 완화).
+  //   미설정 시 엔티틀먼트 시크릿로 폴백(새 HUMAN GATE 불필요). 빈 키는 bootSafety(운영 강제)+dev ephemeral로 도달 불가.
+  const secret = process.env.LANSMARK_ACCOUNT_SECRET || process.env.LANSMARK_ENTITLEMENT_SECRET || "";
   return crypto.createHmac("sha256", secret).update(method + ":" + subject).digest("hex");
 }
 
