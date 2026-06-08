@@ -26,6 +26,9 @@
   .btn{border:1px solid var(--line2);background:var(--card);font-family:inherit;font-size:12px;font-weight:700;color:var(--ink2);padding:6px 11px;border-radius:9px;cursor:pointer}.btn:hover{background:var(--bg2)}.btn.danger{color:var(--warn);border-color:#eecabf}
   .body{flex:1;display:flex;min-height:0}
   .mapcol{flex:1;position:relative;min-width:0}#map{position:absolute;inset:0;background:#dfe7da}
+  .mapsw{position:absolute;top:10px;right:10px;z-index:1000;display:flex;background:#fff;border:1px solid var(--line2,#cdd6cc);border-radius:9px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.18)}
+  .mapsw button{font-family:inherit;font-size:11.5px;font-weight:700;color:var(--ink2,#5B6A60);background:#fff;border:0;border-left:1px solid var(--line,#E7ECE4);padding:6px 10px;cursor:pointer}
+  .mapsw button:first-child{border-left:0}.mapsw button.on{background:var(--green,#10B95C);color:#fff}
   .hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:800;background:rgba(16,33,26,.82);color:#fff;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;pointer-events:none;max-width:92%;text-align:center}
   .pin{width:16px;height:16px;border-radius:50% 50% 50% 0;background:var(--sky);border:3px solid #fff;box-shadow:0 0 0 2px var(--sky),0 5px 10px rgba(0,0,0,.4);transform:rotate(-45deg)}
   .panel{width:392px;flex:0 0 392px;background:var(--bg);border-left:1px solid var(--line2);display:flex;flex-direction:column;min-height:0}
@@ -198,7 +201,7 @@
     <button class="btn danger" id="reset">초기화</button>
   </div>
   <div class="body">
-    <div class="mapcol"><div id="map"></div><div class="hint" id="hint">① 지도에서 땅을 탭하면 ② 추천 작물이 뜨고 ③ 작물을 누르면 소득 시뮬</div>
+    <div class="mapcol"><div id="map"></div><div class="mapsw" id="mapsw"><button type="button" data-bm="sat">위성</button><button type="button" data-bm="base">일반</button><button type="button" data-bm="topo">지형</button></div><div class="hint" id="hint">① 지도에서 땅을 탭하면 ② 추천 작물이 뜨고 ③ 작물을 누르면 소득 시뮬</div>
       <div class="livefeed" id="livefeed"><div class="lh"><span class="dot"></span>LIVE 이벤트<span class="seam">데모 트리거 · 실연동: KAMIS/KMA/위성</span><button class="pp" id="feedpp" title="일시정지/재생">⏸</button></div><div class="feed" id="feed"><div class="empty2">실시간 이벤트 수집 중…</div></div></div>
     </div>
     <aside class="panel">
@@ -411,10 +414,25 @@ function tierBadge(){const t=TIER_META[tierOf(MAP.getZoom())];document.getElemen
 function drawParcel(pc,lc){PARCEL.clearLayers();if(!pc||!pc.polygon||!pc.polygon.length)return;const c=lc?lcStyle(lc).c:"#10B95C";const latlngs=pc.polygon.map(p=>[p.lat,p.lng]);L.polygon(latlngs,{color:c,weight:2,fillColor:c,fillOpacity:.10,dashArray:"4 3"}).addTo(PARCEL);}
 async function init(){
   MAP=L.map("map",{zoomControl:true}).setView([35.84,127.40],7);
-  let tileUrl="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",attr="© OpenStreetMap";
-  try{const cfg=await jget("/api/config");if(cfg&&cfg.payment){PAY=cfg.payment;FREEBETA=(PAY.required===false);}if(cfg&&cfg.tiles&&cfg.tiles.satellite){tileUrl=cfg.tiles.satellite;attr="© VWorld";}}catch(_){}
+  let cfg=null;
+  try{cfg=await jget("/api/config");if(cfg&&cfg.payment){PAY=cfg.payment;FREEBETA=(PAY.required===false);}}catch(_){}
   updateProBadge();const _pro=document.getElementById("pro");if(_pro)_pro.addEventListener("click",()=>{if(confirm("구매(Pro) 권한을 해제할까요? (테스트용)")){clearEnt();if(MODE==="pin"){if(pinState)renderDetailPin();}else renderSelect();}});
-  L.tileLayer(tileUrl,{maxZoom:19,attribution:attr}).addTo(MAP);
+  /* ===== 지도 형태 3종(일반·위성·지형) — VWorld Base/Satellite(키 있으면) + OpenTopoMap(지형·키 불필요). CSP img-src https: 허용. 선택은 localStorage 보존. ===== */
+  const _osm={url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"© OpenStreetMap",max:19};
+  const _T=(cfg&&cfg.tiles)||{};
+  const BASEMAPS={
+    sat:_T.satellite?{url:_T.satellite,attr:"위성 © VWorld",max:19}:_osm,           // 위성
+    base:_T.base?{url:_T.base,attr:"일반 © VWorld",max:19}:_osm,                     // 일반(VWorld Base, 키 없으면 OSM)
+    topo:{url:"https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",attr:"지형 © OpenTopoMap(SRTM·CC-BY-SA)",max:17}, // 지형(등고·음영)
+  };
+  let baseLayer=null;
+  const setBasemap=k=>{const b=BASEMAPS[k]||BASEMAPS.sat;if(baseLayer)MAP.removeLayer(baseLayer);
+    baseLayer=L.tileLayer(b.url,{maxZoom:19,maxNativeZoom:b.max,attribution:b.attr});baseLayer.addTo(MAP);if(baseLayer.bringToBack)baseLayer.bringToBack();
+    try{localStorage.setItem("lansmark_basemap",k);}catch(_){}
+    document.querySelectorAll("#mapsw button").forEach(x=>x.classList.toggle("on",x.dataset.bm===k));};
+  let _bm="sat";try{_bm=localStorage.getItem("lansmark_basemap")||"sat";}catch(_){}if(!BASEMAPS[_bm])_bm="sat";
+  setBasemap(_bm);
+  document.querySelectorAll("#mapsw button").forEach(b=>b.addEventListener("click",()=>setBasemap(b.dataset.bm)));
   GRID.addTo(MAP);SELLAYER.addTo(MAP);PARCEL.addTo(MAP);EVT.addTo(MAP);REGION.addTo(MAP);
   MAP.on("zoomend moveend",()=>{tierBadge();drawGrid();});MAP.on("click",onClick);tierBadge();startEvents();bindSearch();checkVersion();
 }
@@ -540,6 +558,7 @@ function simCardHtml(sim,terr,opts){
      <div class="fsum" style="margin:8px 0 9px"><span class="fl">표준 대비 종합 수율</span><span class="fv num ${tdelta<0?'neg':''}">${tdelta>=0?'+':''}${tdelta}%</span></div>
      <div style="display:flex;flex-direction:column;gap:6px">${factorList(sim.factors)}</div></div>
    <div class="src" style="background:#F1F8EE;border:1px solid var(--green-line);border-radius:9px;padding:8px 10px;margin-top:2px;line-height:1.6">📊 <b>수확 후 실측(수확량·매출)을 입력</b>하면 이 예측이 <b>'추정 → 검증'</b>으로 정밀해집니다 — 아래 <b>재배일지</b> 탭에서 기록하세요. <span style="color:var(--ink3)">여러 농가 실측이 쌓일수록 모두의 예측이 현실에 가까워집니다(해자).</span></div>
+   <button class="btn" id="harvest-remind" style="margin-top:8px;font-size:12px;padding:8px 11px;width:100%">🔔 <b>${esc(sim.cropNameKo||'이 작물')}</b> 수확기에 시세·리마인드 받기 <span style="color:var(--ink3);font-weight:600">(무료 · 발송 준비 중)</span></button>
    ${growthCard(sim.growth)}
    <div class="card opwrap">
      <div class="optabs">
@@ -598,6 +617,9 @@ function bindSim(st,rerender){
   bindClimCtl('clim-sim',reSim); // 기후 시점(온난화) 변경 → 재시뮬(소득·시설 냉난방 반영)
   const tg=(id,k)=>{const el=document.getElementById(id);if(el)el.addEventListener("click",()=>{st.opts.sat[k]=!st.opts.sat[k];if(k!=="on"&&st.opts.sat[k])st.opts.sat.on=true;reSim();});};
   tg("e-sat","on");tg("e-ndvi","ndviLow");tg("e-frost","frost");tg("e-wet","wet");
+  // give/get 다리: 수확기 리마인드 옵트인(맥락=현재 작물·지역). 실제 발송은 SMS 키(HUMAN GATE) 후.
+  const hr=document.getElementById("harvest-remind");
+  if(hr)hr.addEventListener("click",()=>{let reg=(st.rec&&st.rec.region)||undefined;if(!reg){try{const c=coordOf(st);if(c&&c[0]!=null)reg=regionOf(c[0],c[1]).sido;}catch(_){}}openAlarmModal({cropId:st.sim&&st.sim.cropId,cropKo:st.sim&&st.sim.cropNameKo,region:reg});});
   const sim=st.sim,region=st.rec&&st.rec.region,pred={yieldKg:sim.yieldKg.p50,costKrw:sim.costKrw.p50,revenueKrw:sim.revenueKrw.p50};
   const rec=document.getElementById("e-rec");
   if(rec)rec.addEventListener("click",async()=>{const ay=Number(document.getElementById("e-ay").value)||null,ar=Number(document.getElementById("e-ar").value)||null;if(!ay&&!ar)return;rec.disabled=true;rec.textContent="기록 중…";try{await apiFeedback(sim.cropId,region,st.terr,pred,{actualYieldKg:ay,actualCostKrw:pred.costKrw,actualRevenueKrw:ar});}catch(_){}await reSim();});
@@ -661,17 +683,19 @@ async function renderAlerts(st){
     <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${rows}</div>
     <div style="margin-top:9px"><button class="btn" id="alarm-open" style="font-size:12px;padding:6px 11px">🔔 알림 신청(문자)</button></div>
     <div class="src" style="margin-top:7px">${esc(A.disclaimer||'')}${WW.length?' · 기상특보는 KMA 실시간(발효 시 표시).':''}</div>`;
-  const ab=document.getElementById("alarm-open");if(ab)ab.addEventListener("click",openAlarmModal); // opt-in 알림 팝업
+  const ab=document.getElementById("alarm-open");if(ab)ab.addEventListener("click",()=>openAlarmModal()); // opt-in 알림 팝업(일반)
 }
 
 /* ===== 알림 opt-in 팝업(자체 팝업·VAPID 대체) — 동의+핸드폰 번호 수집 → /api/alerts/subscribe(저장만, 발송 seam) =====
    PII: 동의 필수 · 번호 형식검증 · 발송 '준비 중' 정직 안내. CSP-safe(addEventListener), 모든 표시값 esc. */
-function openAlarmModal(){
+function openAlarmModal(intent){
+  intent=(intent&&typeof intent==="object"&&(intent.cropId||intent.cropKo))?intent:null; // 수확기 리마인드 맥락만 인정(click Event 등은 일반 알림 모드)
   if(document.getElementById("alarm-modal"))return;
   const m=document.createElement("div");m.className="vmodal";m.id="alarm-modal";
   m.innerHTML=`<div class="vbox" style="max-width:400px">
     <div class="vtop" id="alarm-title">🔔 LENSMARK 알림 신청</div>
     <div style="padding:16px 18px">
+      ${intent?`<div class="src" style="background:#F1F8EE;border:1px solid var(--green-line);border-radius:9px;padding:8px 10px;margin-bottom:11px;font-weight:700;color:var(--green-mid)">📌 <b>${esc(intent.cropKo||'이 작물')}</b> 수확기에 시세·실측 <b>리마인드</b>를 보내드립니다 <span style="font-weight:600;color:var(--ink3)">(발송 준비 중)</span></div>`:''}
       <div id="alarm-consent-row">
         <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer">
           <input type="checkbox" id="alarm-consent" style="margin-top:2px"><span>(필수) 개인정보 수집·이용 동의</span></label>
@@ -716,7 +740,7 @@ function openAlarmModal(){
     go.disabled=true;go.textContent=unsub?"해지 중…":"신청 중…";
     try{
       if(unsub){await jpost("/api/alerts/unsubscribe",{phone});msg.style.color="var(--green-mid)";msg.textContent="✓ 해지 완료 — 등록 정보가 파기되었습니다.";}
-      else{const r=await jpost("/api/alerts/subscribe",{phone,consent:true});msg.style.color="var(--green-mid)";msg.innerHTML="✓ "+esc(r.note||"신청 완료");}
+      else{const r=await jpost("/api/alerts/subscribe",{phone,consent:true,...(intent&&intent.cropId?{cropId:intent.cropId}:{}),...(intent&&intent.region?{region:intent.region}:{})});msg.style.color="var(--green-mid)";msg.innerHTML="✓ "+esc(r.note||"신청 완료");}
       go.style.display="none";document.getElementById("alarm-cancel").textContent="확인";
     }catch(e){msg.textContent=(e&&e.message)||(unsub?"해지 실패":"신청 실패");go.disabled=false;go.textContent=unsub?"해지":"신청";}
   });
@@ -1078,13 +1102,16 @@ async function renderJournal(st){
           <div class="fc"><label>판로</label><input type="text" id="jrn-hs" maxlength="40" placeholder="도매/직거래…"></div></div>
         <div style="margin-top:7px"><button class="btn" id="jrn-hv" style="background:var(--green);color:#fff;border-color:var(--green);font-weight:800">수확 기록</button></div>`}
     <div style="margin-top:9px"><button class="btn" id="jrn-rep">📄 시즌 리포트</button></div>
-    <div id="jrn-report" style="margin-top:8px"></div>`;
+    <div id="jrn-report" style="margin-top:8px"></div>
+    <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><button class="btn" id="jrn-del" style="font-size:11px;color:#DA5237;border-color:#DA5237;padding:5px 9px">🗑 이 일지 삭제(파기)</button> <span class="src" style="font-size:10.5px">개인정보(위치·수확) 즉시 파기</span></div>`;
   const add=document.getElementById("jrn-ev");
   if(add)add.addEventListener("click",async()=>{const at=document.getElementById("jrn-d").value||todayISO(),kind=document.getElementById("jrn-k").value,costKrw=Number(document.getElementById("jrn-c").value)||undefined,note=document.getElementById("jrn-n").value||undefined;add.disabled=true;add.textContent="추가 중…";try{await jpost("/api/journal/event",{id,event:{at,kind,costKrw,note}});}catch(e){alert("작업 추가 실패: "+(e&&e.message||e));}renderJournal(st);});
   const hv=document.getElementById("jrn-hv");
   if(hv)hv.addEventListener("click",async()=>{const at=document.getElementById("jrn-hd").value||todayISO(),yieldKg=Number(document.getElementById("jrn-hy").value);if(!yieldKg||yieldKg<=0){alert("수확량(kg)을 입력하세요.");return;}const revenueKrw=Number(document.getElementById("jrn-hr").value)||undefined,salesChannel=document.getElementById("jrn-hs").value||undefined;hv.disabled=true;hv.textContent="기록 중…";try{await jpost("/api/journal/harvest",{id,harvest:{at,yieldKg,revenueKrw,salesChannel}});}catch(e){alert("수확 기록 실패: "+(e&&e.message||e));}renderJournal(st);});
   const rep=document.getElementById("jrn-rep");
   if(rep)rep.addEventListener("click",async()=>{rep.disabled=true;rep.textContent="불러오는 중…";let R;try{R=(await jget("/api/journal/report?id="+encodeURIComponent(id))).report;}catch(_){rep.disabled=false;rep.textContent="📄 시즌 리포트";return;}document.getElementById("jrn-report").innerHTML=jrnReportHtml(R);rep.disabled=false;rep.textContent="📄 시즌 리포트";});
+  const del=document.getElementById("jrn-del"); // 정보주체 삭제권: 본인 일지 즉시 파기
+  if(del)del.addEventListener("click",async()=>{if(!confirm("이 재배일지를 영구 삭제(파기)할까요? 되돌릴 수 없습니다."))return;del.disabled=true;del.textContent="삭제 중…";try{await jpost("/api/journal/delete",{id});delete JRN[key];jrnSave();}catch(e){alert("삭제 실패: "+(e&&e.message||e));del.disabled=false;del.textContent="🗑 이 일지 삭제(파기)";return;}renderJournal(st);});
 }
 
 /* ===== PIN 상세 ===== */
