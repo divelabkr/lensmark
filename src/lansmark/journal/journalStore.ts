@@ -13,6 +13,7 @@ export interface JournalStore {
   listByUser(userId: string): JournalEntry[]; // 소유자의 일지(최신순)
   countByUser(userId: string): number;        // 소유자 건수만(복제·정렬 없이) — 상한 체크 핫패스용
   update(entry: JournalEntry): void;          // 기존 1건 전체 교체(없으면 무시)
+  delete(id: string): void;                   // 1건 삭제(정보주체 삭제권·PIPA) — 소유권 검사는 호출측
   size(): number;                             // 전체 건수(ops/상한 점검)
 }
 
@@ -53,6 +54,7 @@ export class InMemoryJournalStore implements JournalStore {
     this.map.set(entry.id, clone(entry));
     this.persist();
   }
+  delete(id: string): void { if (this.map.delete(id)) this.persist(); } // 삭제권: 즉시 파기(소유권은 호출측 loadOwned가 검사)
   size(): number { return this.map.size; }
 
   /** 전역 상한 초과분 제거(가장 오래된 삽입부터). */

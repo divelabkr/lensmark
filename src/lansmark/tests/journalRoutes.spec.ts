@@ -54,6 +54,14 @@ describe("journal routes", () => {
     await route(ctx, mockReq("POST", authA, {}), res, U("/api/journal"));
     expect(res.captured.code).toBe(400);
   });
+  it("실효(revoke)된 토큰은 일지 접근 거부 — consume 미호출 경로도 킬스위치(레드팀 P1)", async () => {
+    const tok = mintEntitlementToken({ userId: "order:R", jti: "rev-journal-1" });
+    ctx.entitlement.revoke("rev-journal-1"); // 환불/분쟁 시 admin이 실효
+    const res = mockRes();
+    await route(ctx, mockReq("GET", { "x-lansmark-entitlement": tok }), res, U("/api/journal"));
+    expect(res.captured.code).toBe(402); // 일지는 quota 미소진이라 과거엔 실효 무시됐음 → 이제 명시 거부
+    expect(JSON.parse(res.captured.body).code).toBe("ENTITLEMENT_REVOKED");
+  });
 
   it("생성 → 단건 조회(소유자), 타인은 404(존재 누설 방지)", async () => {
     const id = await createEntry(authA, { cropId: "apple", region: "전북", areaM2: 1000 });
@@ -121,6 +129,19 @@ describe("journal routes", () => {
     const bad = mockRes();
     await route(ctx, mockReq("POST", authA, { id, harvest: { at: "not-a-date", yieldKg: 10 } }), bad, U("/api/journal/harvest"));
     expect(bad.captured.code).toBe(400);
+  });
+  it("삭제(삭제권·PIPA): 타인은 404 · 소유자는 파기 후 조회불가", async () => {
+    const id = await createEntry(authA, { cropId: "tomato", lat: 35.8, lng: 127.1 });
+    const other = mockRes();
+    await route(ctx, mockReq("POST", authB, { id }), other, U("/api/journal/delete"));
+    expect(other.captured.code).toBe(404); // 타인은 삭제 불가(존재 누설 방지)
+    const del = mockRes();
+    await route(ctx, mockReq("POST", authA, { id }), del, U("/api/journal/delete"));
+    expect(del.captured.code).toBe(200);
+    expect(JSON.parse(del.captured.body).deleted).toBe(id);
+    const gone = mockRes();
+    await route(ctx, mockReq("GET", authA), gone, U("/api/journal?id=" + id));
+    expect(gone.captured.code).toBe(404); // 파기 후 조회 불가
   });
 });
 

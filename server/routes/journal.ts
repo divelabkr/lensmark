@@ -79,7 +79,11 @@ function sanitizeHarvest(raw: unknown): HarvestRecord | null {
  */
 async function requireEnt(ctx: Ctx, req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse): Promise<SimulationEntitlement | null> {
   if (!ctx.config.requireEntitlement) return { userId: anonSubmitterId(req.headers["x-lansmark-anon"]), source: "order" };
-  try { return await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null }); }
+  try {
+    const ent = await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null });
+    if (ctx.entitlement.isRevoked(ent.jti)) { json(res, 402, { error: "이 권한은 실효되었습니다.", code: "ENTITLEMENT_REVOKED" }); return null; } // 일지는 quota 미소진(L10)이라 consume이 실효를 막지 못함 → 명시 검사(레드팀 P1)
+    return ent;
+  }
   catch { json(res, 402, { error: "재배일지에는 유료 권한이 필요합니다.", code: "ENTITLEMENT_REQUIRED" }); return null; }
 }
 
@@ -180,6 +184,17 @@ export const journalRoutes: RouteFn = async (ctx, req, res, url) => {
     const ent = await requireEnt(ctx, req, res); if (!ent) return true;
     const e = loadOwned(ctx, res, url.searchParams.get("id"), ent.userId); if (!e) return true;
     json(res, 200, { ok: true, report: buildJournalReport(e) }); return true;
+  }
+
+  // ── 삭제(정보주체 삭제권·PIPA) — 소유자 본인 일지 1건 즉시 파기(위치·수확 PII) ──
+  if (p === "/api/journal/delete" && req.method === "POST") {
+    const ent = await requireEnt(ctx, req, res); if (!ent) return true;
+    let b: unknown;
+    try { b = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    const e = loadOwned(ctx, res, isObject(b) ? b.id : undefined, ent.userId); if (!e) return true; // 소유권 검사(타인 일지 404)
+    ctx.journal.delete(e.id);
+    ctx.logOps("journal", `일지 삭제 ${e.cropId}`);
+    json(res, 200, { ok: true, deleted: e.id }); return true;
   }
 
   return false; // /api/journal* 이지만 매칭 메서드 없음 → 라우터가 404

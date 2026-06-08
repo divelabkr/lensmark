@@ -19,7 +19,9 @@ const SENSITIVE_RE = /^\/api\/(simulate|feedback|pay\/|pg\/|geocode|parcel|terra
  */
 export function applySecurity(req: http.IncomingMessage, res: http.ServerResponse, ctx: Ctx, pathname: string): boolean {
   // 1) 공통 헤더(helmet 상당) + CORS — 모든 응답에 적용.
-  const baseH = { ...baseSecurityHeaders({ https: isHttps(req, ctx.config.trustProxyHops) }), ...corsHeaders(req.headers.origin, ctx.config.corsAllow) };
+  const cors = corsHeaders(req.headers.origin, ctx.config.corsAllow);
+  if (pathname.startsWith("/api/ops")) delete (cors as Record<string, string>)["Access-Control-Allow-Origin"]; // 운영 콘솔은 cross-origin 공유 금지(dev-open이어도 타 출처 JS 판독 차단·방어심도·레드팀 P2)
+  const baseH = { ...baseSecurityHeaders({ https: isHttps(req, ctx.config.trustProxyHops) }), ...cors };
   for (const k in baseH) res.setHeader(k, baseH[k]);
   res.setHeader("Content-Security-Policy", API_CSP); // 기본 strict(JSON/404) · HTML 라우트는 sendHtml이 덮어씀
 
