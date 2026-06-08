@@ -3,6 +3,37 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.29.0 — 2026-06-08 · 유료 전환 전 법무 마무리 — 일지 삭제권·at-rest 암호화 seam·ops 방어심도
+> "전부진행해" — LEGAL_CHECKLIST ③(at-rest 암호화)·④(일지 삭제 UI) 코드 갭 마감 + 레드팀 flag(ops CORS) 방어심도. 표준 규율: 빌드→qwen Mode1(vote3=**0건**)→Claude 직접검토(**데이터손실 footgun 1건 발견·수정**)→그린. tsc·vitest **374**·arch 그린.
+- **일지 삭제권(PIPA 정보주체 삭제권)** — 재배일지 패널에 "🗑 이 일지 삭제(파기)" + `POST /api/journal/delete`. `loadOwned`로 소유권 검사(타인 일지 404·존재 누설 방지) → `journalStore.delete()` 즉시 파기(정확 PII=위치·수확). 익명 보정 레코드(`feedbackStore`)는 **지역단위 가명정보**라 잔존 → 처리방침에 "실측은 지역단위 익명집계로 보정 활용, 개별 식별정보는 일지 삭제 시 파기" 명시 대상
+- **at-rest 암호화 seam**(`db/jsonFile.ts`) — `LANSMARK_DATA_KEY`(hex 64자=32B) 설정 시 **AES-256-GCM**(iv12|tag16|ct·`ENC1:` 프리픽스), 미설정이면 평문+0600(**기존 동작 무영향**). 평문↔암호 자동 이행(로드는 프리픽스 감지, 다음 flush에서 암호화). 키는 운영자 주입(**HUMAN GATE**) — 코드/AI 생성 금지
+- **fix(데이터손실 가드 · Claude 직접검토 — qwen 못 잡음)** — 암호화 파일을 키 없이/불일치로 열면 `initial` 로드 후 **첫 flush가 암호문을 평문으로 덮어써 원본 파기**되던 footgun(운영 키 누락 오설정 시 일지 전체 손실). `sealed` 플래그 도입 → 못 읽은 암호화 파일은 flush no-op(원본 보존, 메모리-only로 degrade + 경고). 의미론적·상태의존 결함이라 qwen 파일별 그물이 못 잡음 → 직접검토의 가치
+- **ops CORS 방어심도(레드팀 P2 flag 해소)** — `middleware.applySecurity`가 `/api/ops/*`에서 `Access-Control-Allow-Origin` 제거 → **dev-open(CORS\*)이어도 타 출처 JS가 운영 집계를 cross-origin 판독 불가**(prod `bootSafety`와 이중 방어). 동일출처 운영콘솔은 영향 없음
+- 회귀가드 +4(`jsonFile.spec`: 암호화 라운드트립·PII 평문 미노출·sealed 덮어쓰기 차단 / `journalRoutes.spec`: 삭제 소유권·파기 후 404) · `featureMap` `/api/journal/delete` 등록(arch 드리프트 해소)
+
+## 0.28.0 — 2026-06-05 · 2차 보안검증(교차파일 Workflow) — 확정 5건 중 3건 수정
+> 무료근육+Claude 2트랙. qwen 전수 스윕(55파일×vote3=165호출·**0건**·무료) = 넓이 / Claude Workflow 6축 교차파일 적대검증(11→**확정5·기각6**) = 깊이. qwen이 구조상 못 잡는 교차파일·의미 결함을 Workflow가 포착. tsc·vitest **370**·arch 그린.
+- **fix(P1) 엔티틀먼트 실효(revoke) 갭** — revoke 검사가 `EntitlementStore.consume()` 안에만 있어, consume을 호출 안 하는 유료 surface(guide 유료작물·foreign·journal)는 환불/분쟁으로 admin이 `/api/ops/revoke` 해도 **실효 토큰이 계속 동작**(킬스위치가 6개 중 3개에만 적용). → `EntitlementStore.isRevoked(jti)` 추가 + guide/foreign/journal에 실효 거부(`ENTITLEMENT_REVOKED`). 현재 무료베타라 dormant지만 페이월 활성(유료) 시 현실화 → 전환 前 필수. 회귀가드(journalRoutes.spec)
+- **fix(P2) ops 검증 정합** — 운영콘솔 `validated` 버킷이 `actuals≥5`(익명 포함)로 판정 → 고객측 SSOT(`distinctSubmitters`, anon-* 제외, `VALIDATED_THRESHOLD`)와 불일치. **인증 제출자 distinct ≥ 임계**로 변경(익명 5회로 운영지표 위조 차단)
+- **fix(P2) quota 소진 순서** — `/api/simulate`·`/api/feedback`이 입력검증 *前*에 `consume` → 깨진/cropId없는 본문에도 quota 1회 차감. **검증 통과 後 소진**으로 이동(budget 패턴과 통일)
+- **flag(수정 안 함 — 결정/방어심도)**: ① 무료베타 익명 feedback의 보정 영향 = 이미 `anon-pool` 가중캡으로 바운드(collect-only 전환은 사장님 결정) ② dev-open+CORS* 시 ops 집계 cross-origin 읽힘 = prod `bootSafety` 이중차단(ALLOW_OPEN_CORS+ALLOW_OPEN_CONSOLE)으로 무력 → 운영 배포(.env.production.example=도메인 제한+admin토큰)에선 비해당
+- 기각 6건 타당(parcelId seam·테스트격차·정책 삭제미구현=`LEGAL_CHECKLIST.md` ③에 이미 등재·mock-pay jti=dev한정)
+
+## 0.27.0 — 2026-06-05 · 지도 형태 3종(일반·위성·지형) 전환
+> 사용자 요청. 지도 basemap을 일반/위성/지형으로 구분·전환. 프론트 전용. tsc·vitest 369·arch 그린 · 브라우저 검증.
+- **지도 토글**(`dashboard/lansmark_app.html`) — 우상단 `#mapsw` 3버튼: **일반**(VWorld Base)·**위성**(VWorld Satellite)·**지형**(OpenTopoMap). `setBasemap(k)`가 Leaflet 타일레이어 교체 + 활성표시 + `localStorage("lansmark_basemap")` 보존(기본 위성). VWorld 키 없으면 OSM 폴백
+- **지형 소스** — VWorld는 지형(terrain) basemap 미제공이라 **OpenTopoMap**(SRTM 등고·음영, 키 불필요, CC-BY-SA) 사용. CSP `img-src https:`가 허용·출처표기. `maxNativeZoom`(17)으로 필지 고배율에서도 스케일 표시(공백 방지)
+- 백엔드 무변경(`/api/config`의 `tiles.base/satellite` 재사용) · 브라우저 검증: 3종 전환 시 OpenTopoMap·VWorld WMTS 타일 실제 로드 확인
+- 참고(기존): VWorld WMTS는 키가 타일 URL에 포함(클라 노출) — VWorld 콘솔에서 **도메인 제한** 필요(운영 HUMAN GATE)
+
+## 0.26.0 — 2026-06-05 · give/get B — 수확기 리마인드 옵트인 다리(익명→연락처)
+> 사장님 결정(give/get 로드맵 B). Phase A(계측)로 '무엇을 원하나'를 잡았으니, 이제 익명→재방문 가능(연락처)으로 전환하는 다리. 발송(C)은 SMS 키=HUMAN GATE라 '저장만'. tsc·vitest **369**·arch 그린 · qwen 1차 리뷰 + 브라우저 검증.
+- **수확기 리마인드 다리**(`dashboard/lansmark_app.html`) — 시뮬 카드에 "🔔 {작물} 수확기에 시세·리마인드 받기(무료·발송 준비 중)" 맥락 CTA → `openAlarmModal(intent)`(기존 알림 옵트인 재사용, 작물·지역 맥락 배너 + cropId/region 전송). `AlertSubscription`/`buildSubscription`에 **cropId 의도 캡처**(화이트리스트 `^[a-z_]{1,40}$` · PII 아님)
+- **정직성·PIPA 유지** — 실제 발송은 SMS 게이트웨이 키(HUMAN GATE) 후. 지금은 **"발송 준비 중"** 라벨로 동의·번호·의도만 저장. 번호 마스킹·해지 즉시 파기·가입여부 열거방지(고정 ok 응답) 그대로. 동의 없으면 거부
+- **로컬 qwen '무료 근육' 첫 실전(Mode 1)** — B 백엔드(`alertSubscription`·`notify`·spec)를 `review-files`로 1차 리뷰 → **삼각검증 결과 확정 0**. qwen이 *enumeration-safe unsubscribe*(고정 ok)를 거꾸로 '존재여부 노출 위험'이라 오판한 것 등 노이즈를 걸러냄 → "qwen=1차 보조, 최종판단은 Claude/사람" 워크플로 입증
+- 회귀가드: `notifySubscription.spec`에 cropId 캡처 + 화이트리스트 거부(대문자·한글·과길이·비문자열) · 브라우저 검증(작물 CTA→모달 맥락 배너) · tsc·vitest **369**·arch 그린
+- 다음: **C**(SMS 발송 live → 수확기 실제 리마인드, ⛔ SMS 키 HUMAN GATE) · **D**(전환 신호 코호트)
+
 ## 0.25.0 — 2026-06-05 · 익명 수요·퍼널 계측 (Phase A) — 무료 베타에서 '무엇을 얻는가'
 > 사장님 결정(익명 give/get → A.계측부터). 서버측 집계(PII0·새 공개 엔드포인트0)로 진짜 수요·퍼널·데이터갭. 집중 레드팀(H0·확정 M2 PII·L3) 전부 수정. tsc·vitest **368**·arch 그린 · 런타임 검증.
 - **수요·퍼널 계측**(`src/lansmark/analytics/{types,eventStore}.ts` + `db/stores.ts` FileAnalyticsStore) — 기존 라우트 성공 시점에 집계: `recommend/simulate/guide/foreign/journal/subscribe` funnel + `simulate`의 작물×지역 **demand 히트맵** + 미등록 작물 **dataGap**. `/api/ops/stats`(adminOk) → 운영콘솔 '수요·퍼널' 패널(`lansmark_ops.html`)

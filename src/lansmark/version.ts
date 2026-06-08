@@ -13,6 +13,51 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.29.0",
+    date: "2026-06-08",
+    title: "유료 전환 전 법무 마무리 — 일지 삭제권·at-rest 암호화 seam·ops 방어심도",
+    items: [
+      "일지 삭제권(PIPA 정보주체 삭제권) — 재배일지에 '삭제(파기)' 버튼 + POST /api/journal/delete(소유권 loadOwned 검사·타인 404). 정확 PII(위치·수확)를 즉시 파기. 익명 보정 레코드는 지역단위 가명정보로 잔존(처리방침 명시 대상)",
+      "at-rest 암호화 seam — db/jsonFile.ts에 AES-256-GCM(LANSMARK_DATA_KEY=hex64/32B 설정 시 활성, 미설정이면 평문+0600으로 기존 동작 무영향). PII 스토어(휴대폰·일지 좌표/매출) 디스크 암호화. 키는 운영자 주입(HUMAN GATE) — 코드/AI가 만들지 않음",
+      "fix(데이터손실 가드 · Claude 직접검토 발견 — qwen vote3=0건) — 암호화 파일을 키 없이/불일치로 열면 initial 로드 후 첫 flush가 암호문을 평문으로 덮어써 원본 파기되던 footgun. sealed 플래그로 '못 읽은 암호화 파일은 flush 차단' → 운영 키 누락 오설정 시 데이터 손실 방지",
+      "ops CORS 방어심도(레드팀 P2) — /api/ops/* 응답에서 Access-Control-Allow-Origin 제거 → dev-open(CORS*)이어도 타 출처 JS가 운영 집계를 cross-origin 판독 불가(prod bootSafety와 이중 방어)",
+      "회귀가드 +4(jsonFile 암호화 라운드트립·PII 평문 미노출·sealed 덮어쓰기 차단·일지 삭제 소유권) · featureMap 등록(/api/journal/delete) · tsc·vitest 374·arch 그린",
+    ],
+  },
+  {
+    version: "0.28.0",
+    date: "2026-06-05",
+    title: "2차 보안검증(교차파일 Workflow) — 확정 5건 중 3건 수정",
+    items: [
+      "2트랙 보안검증: qwen 무료 전수 스윕(보안+core+integ 55파일×vote3=165호출·0건) + Claude Workflow 6축 교차파일 적대검증(11→확정 5·기각 6). qwen이 구조상 못 잡는 '교차파일·의미' 결함을 Workflow가 포착.",
+      "fix(P1 실효 갭) — 엔티틀먼트 revoke 검사가 consume() 안에만 있어, consume을 안 부르는 유료 surface(guide 유료작물·foreign·journal)는 환불/분쟁 실효 후에도 동작하던 갭. EntitlementStore.isRevoked 도입 + 3개 라우트에 실효 거부(ENTITLEMENT_REVOKED) — 킬스위치를 전 유료 surface로 확장(유료 전환 전 필수). 회귀가드 추가",
+      "fix(P2 ops 검증 정합) — 운영콘솔 'validated' 버킷이 raw actuals≥5로 익명 포함 판정 → SSOT(distinctSubmitters·anon-* 제외, VALIDATED_THRESHOLD)와 일치하게 '인증 제출자 distinct'로 변경. 무료 익명 5회로 운영지표 위조 차단",
+      "fix(P2 quota 순서) — /api/simulate·/api/feedback이 입력검증 前에 quota 소진 → 깨진/cropId없는 본문에도 1회 차감되던 것을, 검증 통과 後 소진으로 이동(budget 패턴과 통일)",
+      "flag(수정 안 함·결정/방어심도): 무료베타 익명 feedback의 보정 영향(이미 anon-pool 가중캡으로 바운드 — collect-only 전환은 결정사항) · dev-open+CORS* 시 ops cross-origin 읽힘(prod bootSafety 이중차단으로 무력). tsc·vitest 370·arch 그린",
+    ],
+  },
+  {
+    version: "0.27.0",
+    date: "2026-06-05",
+    title: "지도 형태 3종(일반·위성·지형) 전환",
+    items: [
+      "지도 basemap 토글 — 일반(VWorld Base)·위성(VWorld Satellite)·지형(OpenTopoMap 등고·음영). 지도 우상단 토글, 선택은 localStorage 보존(기본 위성). VWorld 키 없으면 OSM 폴백",
+      "지형은 VWorld 미제공이라 OpenTopoMap(SRTM·CC-BY-SA·키 불필요) 사용 — CSP img-src https: 허용·출처표기. maxNativeZoom으로 고배율(필지) 스케일 표시",
+      "프론트 전용(백엔드 무변경 · /api/config의 tiles.base/satellite 재사용) · tsc·vitest 369·arch 그린 · 브라우저 검증(3종 전환·타일 실로드 확인)",
+    ],
+  },
+  {
+    version: "0.26.0",
+    date: "2026-06-05",
+    title: "give/get B — 수확기 리마인드 옵트인 다리(익명→연락처)",
+    items: [
+      "수확기 리마인드 다리 — 시뮬 카드에 '이 작물 수확기 시세·리마인드 받기' 맥락 CTA. 기존 알림 옵트인 재사용 + 작물·지역 맥락 전달, 구독에 cropId 의도 캡처. 익명→'재방문 가능(연락처)' 전환 = slow loop(실측 회수)·유료 전환의 연료",
+      "정직성·PIPA 유지 — 실제 발송은 SMS 게이트웨이 키(HUMAN GATE) 후. 지금은 '발송 준비 중' 라벨로 동의·번호·의도만 저장(번호 마스킹·해지 즉시 파기·가입여부 열거방지 그대로). cropId는 화이트리스트(소문자·밑줄) 검증 — PII 아님",
+      "로컬 qwen '무료 근육' 첫 실전 — B 백엔드를 qwen 1차 리뷰(Mode 1) → 삼각검증으로 확정 0(qwen이 enumeration-safe unsubscribe를 '위험'으로 오판한 것 등 걸러냄). 'qwen=1차 보조·최종판단 아님' 워크플로 입증",
+      "tsc·vitest 369(+cropId 화이트리스트 회귀)·arch 그린 · 브라우저 검증(작물 CTA→모달 맥락 배너·발송 준비 중)",
+    ],
+  },
+  {
     version: "0.25.0",
     date: "2026-06-05",
     title: "익명 수요·퍼널 계측 (Phase A) — 무료 베타에서 '무엇을 얻는가'",

@@ -147,10 +147,10 @@ export const FEATURES: Feature[] = [
   {
     id: "cultivation-journal", name: "재배 기록·시즌 리포트", stage: "operate",
     flow: "재배 시작(시뮬 예측 결속) → 작업·수확 기록 → 시즌 리포트(투입·수확·수익·예측대비) · 수확→플라이휠 승격(해자)",
-    endpoints: ["/api/journal", "/api/journal/event", "/api/journal/harvest", "/api/journal/report"],
+    endpoints: ["/api/journal", "/api/journal/event", "/api/journal/harvest", "/api/journal/report", "/api/journal/delete"],
     files: ["src/lansmark/journal/types.ts", "src/lansmark/journal/report.ts", "src/lansmark/journal/journalStore.ts", "server/routes/journal.ts"],
     tests: ["src/lansmark/tests/journalReport.spec.ts", "src/lansmark/tests/journalRoutes.spec.ts"],
-    guardrails: ["엔티틀먼트 게이트", "소유권 격리(404)", "입력 클램프(변조/DoS)", "수확 1회만 플라이휠(중복방지)", "수익보장 금지", "면책"], status: "live",
+    guardrails: ["엔티틀먼트 게이트", "소유권 격리(404)", "입력 클램프(변조/DoS)", "수확 1회만 플라이휠(중복방지)", "삭제권(본인 일지 즉시 파기·PIPA)", "수익보장 금지", "면책"], status: "live",
     notes: "영농 동반 1번 슬라이스(buildable-now) · FileJournalStore(재시작 보존) · 수확 실측이 해자 데이터로 자동 환류(actualCost는 부분원가라 미전송) · FileJournalStore는 persistence(db/stores.ts) 소속",
   },
   {
