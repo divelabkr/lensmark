@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.32.0",
+    date: "2026-06-08",
+    title: "휴대폰 OTP 로그인 + 로그인/내 계정 UI (가입 흐름 완성)",
+    items: [
+      "휴대폰 OTP 로그인 — PhoneOtpVerifier(기존 SMS seam 재사용): 6자리 코드 발송→검증. 키 있으면 실발송 / dev는 코드 노출(테스트) / 운영+키없음은 fail-closed(코드 비노출). 카카오·이메일은 같은 AuthVerifier 인터페이스로 추후 드롭인",
+      "로그인/내 계정 UI — 헤더 '로그인' 버튼 → 2단계 모달(번호→인증번호) → 세션 저장 + 기존 익명 일지 자동 이관(link-anon). 로그인 시 '👤 계정'(가입정보·로그아웃). 세션 헤더를 모든 요청에 동봉(계정 신원이 일지에 따라옴)",
+      "보안 — 잘못된 번호 400(BAD_PHONE)·미지원 method 503·OTP 챌린지당 시도 상한(brute-force)·운영 fail-closed. qwen vote3=0 + 적대검토 + 런타임 스모크(start→devHint→verify→세션·이관)",
+      "SMS 실발송 = HUMAN GATE: 알리고/네이버 SENS/CoolSMS 키 + 동의화면 위탁 고지 추가 후 LiveSmsSender 드롭인. 그 전까지 dev는 화면에 인증번호 노출로 테스트 가능",
+      "tsc·vitest 386·arch 0 · 로그인 모달은 검증된 알림모달 패턴(CSP-safe·esc·전화 자동하이픈) 재사용",
+    ],
+  },
+  {
     version: "0.31.0",
     date: "2026-06-08",
     title: "계정·세션 코어 + 익명→계정 이관 (가입 기반 서비스 토대)",

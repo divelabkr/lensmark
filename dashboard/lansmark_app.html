@@ -199,6 +199,7 @@
     <button class="btn" id="share">🔗 공유</button>
     <input type="file" id="loadfile" accept="application/json" style="display:none">
     <button class="btn danger" id="reset">초기화</button>
+    <button class="btn" id="acctbtn" title="로그인 · 내 계정" style="font-weight:700">로그인</button>
   </div>
   <div class="body">
     <div class="mapcol"><div id="map"></div><div class="mapsw" id="mapsw"><button type="button" data-bm="sat">위성</button><button type="button" data-bm="base">일반</button><button type="button" data-bm="topo">지형</button></div><div class="hint" id="hint">① 지도에서 땅을 탭하면 ② 추천 작물이 뜨고 ③ 작물을 누르면 소득 시뮬</div>
@@ -225,6 +226,8 @@ const API={ base:"" };
 let ENT=null;try{ENT=localStorage.getItem("lansmark_ent")||null;}catch(_){}
 /* 무료 베타 익명ID(브라우저당 1회·localStorage): 재배일지를 사용자별 격리(IDOR 차단) + 실측 제출자 식별(per-user 캡). 'anon-' 접두사라 서버 '✓검증' 카운트에선 제외(위조 차단). 비밀이 아님(무작위·PII 아님). */
 let ANON="anon-0";try{ANON=localStorage.getItem("lansmark_anon")||"";if(!/^anon-[a-f0-9]{8,64}$/.test(ANON)){ANON="anon-"+((self.crypto&&crypto.randomUUID)?crypto.randomUUID().replace(/-/g,""):(Date.now().toString(16)+Math.floor(Math.random()*1e12).toString(16)));localStorage.setItem("lansmark_anon",ANON);}}catch(_){ANON="anon-"+Date.now().toString(16);}
+/* 로그인 세션 토큰 — 있으면 계정 신원(acct:Z)으로 일지가 기기 간 따라온다(없으면 익명ID). 무작위 불투명값(서버 발급). */
+let SESS="";try{SESS=localStorage.getItem("lansmark_session")||"";}catch(_){SESS="";}
 let PAY={mode:"mock",priceKrw:4900,tossClientKey:null,required:true};
 let FREEBETA=false; // 무료 베타: /api/config의 payment.required===false(=서버 requireEntitlement off)면 true → 정밀분석 무료(유료 추후 오픈).
 function isPro(){return !!ENT;}
@@ -296,8 +299,8 @@ function showWhatsNew(version,rels){
   m.addEventListener("click",e=>{if(e.target===m)close();});
   document.getElementById("vok").addEventListener("click",close);
 }
-async function jget(p){const h={};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;const r=await fetch(API.base+p,{headers:h});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();} // 엔티틀먼트 헤더 동봉(일지 조회/리포트 등 GET 게이트)
-async function jpost(p,b){const h={"Content-Type":"application/json"};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;const r=await fetch(API.base+p,{method:"POST",headers:h,body:JSON.stringify(b)});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();}
+async function jget(p){const h={};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;if(SESS)h["x-lansmark-session"]=SESS;const r=await fetch(API.base+p,{headers:h});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();} // 엔티틀먼트·익명·세션 헤더 동봉(세션 있으면 계정 신원 우선)
+async function jpost(p,b){const h={"Content-Type":"application/json"};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;if(SESS)h["x-lansmark-session"]=SESS;const r=await fetch(API.base+p,{method:"POST",headers:h,body:JSON.stringify(b)});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();}
 
 /* ===== 줌 → 단계(전국/시군/필지) ===== */
 function tierOf(z){ if(z<=8)return"sido"; if(z<=12)return"sigungu"; return"parcel"; }
@@ -743,6 +746,72 @@ function openAlarmModal(intent){
       else{const r=await jpost("/api/alerts/subscribe",{phone,consent:true,...(intent&&intent.cropId?{cropId:intent.cropId}:{}),...(intent&&intent.region?{region:intent.region}:{})});msg.style.color="var(--green-mid)";msg.innerHTML="✓ "+esc(r.note||"신청 완료");}
       go.style.display="none";document.getElementById("alarm-cancel").textContent="확인";
     }catch(e){msg.textContent=(e&&e.message)||(unsub?"해지 실패":"신청 실패");go.disabled=false;go.textContent=unsub?"해지":"신청";}
+  });
+}
+
+/* ===== 로그인·내 계정 모달 — 휴대폰 OTP(2단계: 번호→인증번호) → 세션 저장 → 익명 일지 이관(link-anon).
+   PII: 로그인=휴대폰 수집 동의. dev는 미발송이라 인증번호를 화면에 표시(devHint). CSP-safe(addEventListener)·esc. */
+function refreshAcctBtn(){const b=document.getElementById("acctbtn");if(b)b.textContent=SESS?"👤 계정":"로그인";}
+function openAcctModal(){
+  if(document.getElementById("acct-modal"))return;
+  const m=document.createElement("div");m.className="vmodal";m.id="acct-modal";
+  const close=()=>{const e=document.getElementById("acct-modal");if(e)e.remove();};
+  if(SESS){ // 로그인 상태 → 내 계정 + 로그아웃
+    m.innerHTML=`<div class="vbox" style="max-width:380px"><div class="vtop">👤 내 계정</div><div style="padding:16px 18px">
+      <div id="acct-info" class="src" style="line-height:1.7">불러오는 중…</div>
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="acct-close" style="flex:1">닫기</button><button class="btn danger" id="acct-logout" style="flex:1">로그아웃</button></div></div></div>`;
+    document.body.appendChild(m);
+    m.addEventListener("click",e=>{if(e.target===m)close();});
+    document.getElementById("acct-close").addEventListener("click",close);
+    jget("/api/account/me").then(d=>{const el=document.getElementById("acct-info");if(el)el.innerHTML=`계정 <b>${esc((d.accountId||"").slice(0,18))}…</b><br>로그인 수단: ${esc((d.methods||[]).join(", ")||"-")}<br>가입일: ${esc((d.createdAt||"").slice(0,10))}`;})
+      .catch(()=>{const el=document.getElementById("acct-info");if(el)el.textContent="세션이 만료되었습니다. 다시 로그인해 주세요.";});
+    document.getElementById("acct-logout").addEventListener("click",async()=>{try{await jpost("/api/account/logout",{});}catch(_){}SESS="";try{localStorage.removeItem("lansmark_session");}catch(_){}refreshAcctBtn();close();});
+    return;
+  }
+  // 로그아웃 상태 → 휴대폰 OTP 로그인/가입
+  m.innerHTML=`<div class="vbox" style="max-width:400px">
+    <div class="vtop">👤 로그인 · 가입</div>
+    <div style="padding:16px 18px">
+      <div class="src" style="margin-bottom:11px;line-height:1.6">휴대폰 번호로 간편 로그인 — 가입하면 지금까지의 <b>재배일지가 계정에 연결</b>되어 다른 기기에서도 이어집니다.</div>
+      <input type="tel" id="acct-phone" placeholder="010-0000-0000" maxlength="13" inputmode="numeric" autocomplete="tel" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;letter-spacing:.5px;box-sizing:border-box">
+      <div id="acct-code-row" style="display:none;margin-top:10px"><input type="text" id="acct-code" placeholder="인증번호 6자리" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:16px;letter-spacing:4px;text-align:center;box-sizing:border-box"></div>
+      <div id="acct-msg" style="font-size:12px;font-weight:700;margin-top:9px;min-height:16px"></div>
+      <div style="display:flex;gap:8px;margin-top:4px"><button class="btn" id="acct-cancel" style="flex:1">닫기</button><button class="btn" id="acct-go" style="flex:1;background:var(--green);color:#fff;border-color:var(--green)">인증번호 받기</button></div>
+      <div class="src" style="margin-top:10px">로그인은 개인정보(휴대폰) 수집·이용 동의를 포함합니다. 번호는 마스킹·암호화 저장되며 해지 시 파기됩니다. · <a href="/privacy" target="_blank" rel="noopener" style="color:var(--green-mid);font-weight:700">개인정보처리방침</a></div>
+    </div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click",e=>{if(e.target===m)close();});
+  document.getElementById("acct-cancel").addEventListener("click",close);
+  const ph=document.getElementById("acct-phone"),msg=document.getElementById("acct-msg"),go=document.getElementById("acct-go"),codeRow=document.getElementById("acct-code-row");
+  ph.addEventListener("input",()=>{let v=ph.value.replace(/\D/g,"").slice(0,11);
+    if(v.length>=11)v=v.replace(/(\d{3})(\d{4})(\d{4})/,"$1-$2-$3");
+    else if(v.length>=7)v=v.replace(/(\d{3})(\d{3,4})(\d{0,4})/,"$1-$2-$3");
+    else if(v.length>=4)v=v.replace(/(\d{3})(\d{0,4})/,"$1-$2");
+    ph.value=v.replace(/-$/,"");});
+  const phoneOk=v=>/^01[016789]\d{7,8}$/.test(v.replace(/\D/g,""));
+  let challengeId="";
+  go.addEventListener("click",async()=>{
+    msg.style.color="#DA5237";
+    if(!challengeId){ // 1단계: 인증번호 요청
+      const phone=ph.value.trim();
+      if(!phoneOk(phone)){msg.textContent="휴대폰 번호를 정확히 입력해 주세요(예: 010-1234-5678).";return;}
+      go.disabled=true;go.textContent="전송 중…";
+      try{const r=await jpost("/api/account/auth/start",{method:"phone",contact:phone});challengeId=r.challengeId;codeRow.style.display="";go.textContent="확인";msg.style.color="var(--green-mid)";msg.innerHTML=r.devHint?("개발 모드 인증번호: <b>"+esc(r.devHint)+"</b>"):"인증번호를 문자로 보냈습니다.";const ci=document.getElementById("acct-code");if(ci)ci.focus();}
+      catch(e){msg.textContent=(e&&e.message)||"전송 실패";}
+      go.disabled=false;return;
+    }
+    // 2단계: 인증번호 검증 → 세션 + 이관
+    const code=(document.getElementById("acct-code").value||"").trim();
+    if(!/^\d{6}$/.test(code)){msg.textContent="인증번호 6자리를 입력해 주세요.";return;}
+    go.disabled=true;go.textContent="확인 중…";
+    try{
+      const r=await jpost("/api/account/auth/verify",{challengeId,code});
+      SESS=r.session||"";try{localStorage.setItem("lansmark_session",SESS);}catch(_){}
+      let linked=0;try{linked=(await jpost("/api/account/link-anon",{})).linked||0;}catch(_){} // 익명 일지 이관(있으면)
+      msg.style.color="var(--green-mid)";msg.innerHTML="✓ 로그인 완료"+(linked?(" — 기존 일지 <b>"+linked+"</b>건이 계정에 연결되었습니다"):"");
+      go.style.display="none";document.getElementById("acct-cancel").textContent="확인";
+      refreshAcctBtn();
+    }catch(e){msg.style.color="#DA5237";msg.textContent=(e&&e.message)||"인증 실패";go.disabled=false;go.textContent="확인";}
   });
 }
 
@@ -1216,6 +1285,7 @@ async function openAt(lat,lng){
 
 /* ===== 컨트롤 ===== */
 document.getElementById("feedpp").addEventListener("click",function(){evtPaused=!evtPaused;this.textContent=evtPaused?"▶":"⏸";this.title=evtPaused?"재생":"일시정지";});
+document.getElementById("acctbtn").addEventListener("click",openAcctModal); refreshAcctBtn(); // 로그인 · 내 계정(휴대폰 OTP → 세션 → 익명 일지 이관)
 document.getElementById("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;MODE=b.dataset.m;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));
   document.getElementById("hint").textContent=MODE==="pin"?"📍 핀 — 한 곳 탭 → 추천 → 작물 누르면 소득 시뮬":"▦ 토지선택 — 구역 다중 탭 → 비교(따로/합쳐서)";
   if(MODE==="pin"){SELLAYER.clearLayers();SEL.clear();GRID.clearLayers();FOCUS=null;document.getElementById("cnt").innerHTML=`핀 <b>0</b>`;document.getElementById("plist").innerHTML=`<div class="empty"><span class="ic">📍</span>지도를 탭해 지점을 분석하세요</div>`;}

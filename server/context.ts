@@ -12,7 +12,8 @@ import type { SubscriptionStore } from "../src/lansmark/notify/subscriptionStore
 import type { AnalyticsStore } from "../src/lansmark/analytics/types";
 import { RateLimiter } from "../src/lansmark/api/security";
 import { RuntimeFlagsStore } from "./runtimeFlags";
-import { MockVerifier, DisabledVerifier, type AuthVerifier } from "../src/lansmark/account/verifier";
+import { PhoneOtpVerifier, type AuthVerifier } from "../src/lansmark/account/verifier";
+import { createSmsSender } from "../src/lansmark/notify/smsSender";
 import type { AccountStore } from "../src/lansmark/account/accountStore";
 import type { SessionStore } from "../src/lansmark/account/sessionStore";
 import type { Config } from "./config";
@@ -99,7 +100,7 @@ export function createContext(config: Config): Ctx {
     runtimeFlags,
     accounts: stores.accounts,
     sessions: stores.sessions,
-    // 검증기 seam: dev=Mock(코드 000000) · 운영=Disabled(실제 검증기 부재 시 로그인 fail-closed, mock 우회·계정탈취 차단). 실제(OTP/소셜/이메일) live 시 교체(HUMAN GATE).
-    verifier: config.isProd ? new DisabledVerifier() : new MockVerifier(),
+    // 검증기: 휴대폰 OTP(SMS seam 재사용). 키 있으면 실발송 / dev는 코드 노출(테스트) / 운영+키없음은 fail-closed(코드 비노출). 카카오/이메일은 추후 드롭인(HUMAN GATE).
+    verifier: new PhoneOtpVerifier({ isProd: config.isProd, sms: createSmsSender() }),
   };
 }

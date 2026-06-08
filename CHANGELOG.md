@@ -3,6 +3,14 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.32.0 — 2026-06-08 · 휴대폰 OTP 로그인 + 로그인/내 계정 UI (가입 흐름 완성)
+> 사장님 '1번 추천' — 코어 위에 휴대폰 OTP verifier를 올리고 로그인/마이페이지 UI를 붙임. 인증 최고위험 → qwen vote3=**0** + 적대검토 + 런타임 스모크. tsc·vitest **386**·arch 0.
+- **휴대폰 OTP**(`PhoneOtpVerifier`) — 기존 `smsSender` seam 재사용. start: 전화 정규화→6자리 난수 코드→SMS 발송. **키 있으면 실발송(코드 비노출)** / **dev는 미발송이라 devHint로 코드 노출(테스트)** / **운영+키없음은 `503 AUTH_NOT_CONFIGURED`(코드 비노출·fail-closed)**. verify: 코드 검증 + 챌린지당 시도 상한(brute-force)
+- **로그인/내 계정 UI**(`dashboard/lansmark_app.html`) — 헤더 '로그인' 버튼 → 2단계 모달(번호→인증번호 6자리) → `auth/start`→`auth/verify`→세션을 `localStorage`에 저장 → **`link-anon`으로 기존 익명 일지 자동 이관**(\"기존 일지 N건 연결됨\"). 로그인 시 '👤 계정'(가입정보·로그아웃). 세션 헤더(`x-lansmark-session`)를 jget/jpost 전체에 동봉
+- **보안** — 잘못된 번호 `400 BAD_PHONE` · 미지원 method(kakao/email) `503` · OTP 시도 상한 · 운영 fail-closed. 로그인=휴대폰 동의 고지 + 처리방침 링크. 모달은 검증된 알림모달 패턴(CSP-safe `addEventListener`·`esc`·전화 자동하이픈) 재사용
+- **SMS 실발송 = HUMAN GATE** — 알리고/네이버 SENS/CoolSMS 키 + 동의화면 '위탁·제3자 제공' 고지(`smsSender.ts` 주석) 추가 후 `LiveSmsSender` 드롭인. 카카오/이메일은 같은 `AuthVerifier`로 추가
+- 검증: qwen vote3=0 + 적대검토 + 런타임 스모크(start→devHint 318057→verify→세션·isNew) · 회귀 +1(BAD_PHONE) · 유료 모드의 결제-계정 연계는 후속
+
 ## 0.31.0 — 2026-06-08 · 계정·세션 코어 + 익명→계정 이관 (가입 기반 서비스 토대)
 > 사장님 결정('코어만 먼저' + 네이버/카카오맵·농사로 BM). 익명→가입→계정 신원 + 익명 일지 이관을 MockVerifier로 end-to-end 완성. 인증 최고위험 → qwen vote3=**0** + Claude 적대검토(**계정탈취 1건 확정·수정**) + 런타임 스모크. tsc·vitest **385**·arch 0.
 - **계정·세션 코어** — 신원 3종: `anon-Y`(기기)·`order:X`(결제)·**`acct:Z`(계정)**. `accountStore`/`sessionStore`(memory|file·영속) + 세션(무작위 192bit 토큰·30일 만료). 무료 베타 일지 신원 해석에 **세션 우선**(로그인 시 계정 귀속, 없으면 익명ID)

@@ -1,6 +1,6 @@
 /**
- * 계정·세션 라우트 — 가입(MockVerifier)·세션·로그아웃·익명→계정 이관 검증.
- *   route() 직접 호출(가짜 req/res). 무료 베타(requireEntitlement=false) ctx에서 익명↔계정 신원 전환을 확인.
+ * 계정·세션 라우트 — 휴대폰 OTP 가입·세션·로그아웃·익명→계정 이관 검증.
+ *   route() 직접 호출. dev(비운영)에선 SMS 미발송이라 start 응답의 devHint=OTP 코드 → 그것으로 verify.
  */
 import { describe, it, expect } from "vitest";
 import { Readable } from "node:stream";
@@ -26,46 +26,55 @@ function mockReq(method = "GET", headers: Record<string, string> = {}, body?: un
 }
 const U = (p: string) => new URL("http://localhost" + p);
 
-describe("account routes — 가입·세션·익명→계정 이관(코어)", () => {
+describe("account routes — 휴대폰 OTP 가입·세션·익명→계정 이관(코어)", () => {
   const ctx = createContext({ ...loadConfig(), requireEntitlement: false }); // 무료 베타
 
-  /** mock 로그인 → {session, accountId, isNew}. */
+  /** dev OTP 로그인 → {session, accountId, isNew}. */
   async function login(contact: string): Promise<{ session: string; accountId: string; isNew: boolean }> {
     const s1 = mockRes();
-    await route(ctx, mockReq("POST", {}, { method: "mock", contact }), s1, U("/api/account/auth/start"));
-    const challengeId = JSON.parse(s1.captured.body).challengeId;
+    await route(ctx, mockReq("POST", {}, { method: "phone", contact }), s1, U("/api/account/auth/start"));
+    const { challengeId, devHint } = JSON.parse(s1.captured.body); // devHint=OTP 코드(dev 미발송)
     const s2 = mockRes();
-    await route(ctx, mockReq("POST", {}, { challengeId, code: "000000" }), s2, U("/api/account/auth/verify"));
+    await route(ctx, mockReq("POST", {}, { challengeId, code: devHint }), s2, U("/api/account/auth/verify"));
     return JSON.parse(s2.captured.body);
   }
 
-  it("start → verify(코드 000000) → 세션 발급(신규)", async () => {
+  it("start → verify(devHint 코드) → 세션 발급(신규)", async () => {
     const s1 = mockRes();
-    await route(ctx, mockReq("POST", {}, { method: "mock", contact: "01011112222" }), s1, U("/api/account/auth/start"));
+    await route(ctx, mockReq("POST", {}, { method: "phone", contact: "010-1111-2222" }), s1, U("/api/account/auth/start"));
     expect(s1.captured.code).toBe(200);
-    const { challengeId } = JSON.parse(s1.captured.body);
+    const { challengeId, devHint } = JSON.parse(s1.captured.body);
     expect(challengeId).toBeTruthy();
+    expect(devHint).toMatch(/^\d{6}$/); // dev: 6자리 코드 노출
     const s2 = mockRes();
-    await route(ctx, mockReq("POST", {}, { challengeId, code: "000000" }), s2, U("/api/account/auth/verify"));
+    await route(ctx, mockReq("POST", {}, { challengeId, code: devHint }), s2, U("/api/account/auth/verify"));
     expect(s2.captured.code).toBe(200);
     const v = JSON.parse(s2.captured.body);
     expect(v.session).toBeTruthy();
     expect(v.isNew).toBe(true);
   });
 
-  it("같은 식별자 재로그인은 기존 계정(isNew=false)", async () => {
+  it("같은 번호 재로그인은 기존 계정(isNew=false)", async () => {
     const a = await login("01033334444");
     const b = await login("01033334444");
     expect(b.accountId).toBe(a.accountId);
     expect(b.isNew).toBe(false);
   });
 
+  it("잘못된 번호는 400(BAD_PHONE)", async () => {
+    const s1 = mockRes();
+    await route(ctx, mockReq("POST", {}, { method: "phone", contact: "not-a-phone" }), s1, U("/api/account/auth/start"));
+    expect(s1.captured.code).toBe(400);
+    expect(JSON.parse(s1.captured.body).code).toBe("BAD_PHONE");
+  });
+
   it("틀린 코드는 401", async () => {
     const s1 = mockRes();
-    await route(ctx, mockReq("POST", {}, { method: "mock", contact: "01055556666" }), s1, U("/api/account/auth/start"));
-    const { challengeId } = JSON.parse(s1.captured.body);
+    await route(ctx, mockReq("POST", {}, { method: "phone", contact: "01055556666" }), s1, U("/api/account/auth/start"));
+    const { challengeId, devHint } = JSON.parse(s1.captured.body);
+    const wrong = devHint === "000000" ? "111111" : "000000"; // devHint와 반드시 다른 코드
     const s2 = mockRes();
-    await route(ctx, mockReq("POST", {}, { challengeId, code: "999999" }), s2, U("/api/account/auth/verify"));
+    await route(ctx, mockReq("POST", {}, { challengeId, code: wrong }), s2, U("/api/account/auth/verify"));
     expect(s2.captured.code).toBe(401);
   });
 
@@ -85,10 +94,10 @@ describe("account routes — 가입·세션·익명→계정 이관(코어)", ()
     expect(me2.captured.code).toBe(401); // 로그아웃 후 세션 무효
   });
 
-  it("운영(prod)에선 mock 로그인 차단(503 AUTH_NOT_CONFIGURED) — 계정 탈취 방지", async () => {
+  it("운영(prod)+SMS키 없음 → 로그인 차단(503 AUTH_NOT_CONFIGURED·코드 비노출)", async () => {
     const prodCtx = createContext({ ...loadConfig(), isProd: true });
     const s1 = mockRes();
-    await route(prodCtx, mockReq("POST", {}, { method: "mock", contact: "01012345678" }), s1, U("/api/account/auth/start"));
+    await route(prodCtx, mockReq("POST", {}, { method: "phone", contact: "01012345678" }), s1, U("/api/account/auth/start"));
     expect(s1.captured.code).toBe(503);
     expect(JSON.parse(s1.captured.body).code).toBe("AUTH_NOT_CONFIGURED");
   });

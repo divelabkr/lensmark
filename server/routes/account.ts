@@ -16,7 +16,7 @@ import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
 import type { RouteFn } from "../context";
 
 const SESSION_TTL_MS = 30 * 24 * 3_600_000; // 30일
-const METHODS = new Set(["mock", "phone", "kakao", "email"]); // 허용 검증기(화이트리스트)
+const METHODS = new Set(["phone", "kakao", "email"]); // 허용 검증기(화이트리스트) — 현재 phone만 동작, 카카오/이메일은 추후 드롭인
 
 /** 외부 식별자 → keyed-hash(평문 PII 미저장·오프라인 열거 차단). 시크릿은 사용처에서 직접 읽음(설정객체 비노출). */
 function subjectHash(method: string, subject: string): string {
@@ -37,8 +37,11 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     if (!METHODS.has(method) || !contact) { json(res, 400, { error: "method·contact가 필요합니다.", code: "BAD_INPUT" }); return true; }
     let started;
     try { started = await ctx.verifier.start(method, contact); }
-    catch { json(res, 503, { error: "로그인이 아직 구성되지 않았습니다.", code: "AUTH_NOT_CONFIGURED" }); return true; } // 운영 DisabledVerifier(실제 검증기 HUMAN GATE 전)
-    json(res, 200, { ok: true, challengeId: started.challengeId, devHint: started.devHint }); // devHint는 dev에서만 의미
+    catch (e) {
+      if ((e as Error)?.message === "BAD_PHONE") { json(res, 400, { error: "휴대폰 번호 형식이 올바르지 않습니다(예: 010-1234-5678).", code: "BAD_PHONE" }); return true; }
+      json(res, 503, { error: "이 로그인 방식은 아직 구성되지 않았습니다.", code: "AUTH_NOT_CONFIGURED" }); return true; // 운영+SMS키 없음 / 미지원 method
+    }
+    json(res, 200, { ok: true, challengeId: started.challengeId, devHint: started.devHint }); // devHint=dev 미발송 시 코드(테스트용)
     return true;
   }
 
