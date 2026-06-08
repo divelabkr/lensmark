@@ -13,6 +13,7 @@ import { assessRoutes } from "./routes/assess";
 import { cropsRoutes } from "./routes/crops";
 import { regionFitRoutes } from "./routes/regionFit";
 import { journalRoutes } from "./routes/journal";
+import { accountRoutes } from "./routes/account";
 import { marketRoutes } from "./routes/market";
 import { budgetRoutes } from "./routes/budget";
 import { guideRoutes } from "./routes/guide";
@@ -25,7 +26,7 @@ import { paymentRoutes } from "./routes/payment";
 import { opsRoutes } from "./routes/ops";
 import { pageRoutes } from "./routes/pages";
 
-const ROUTES: RouteFn[] = [metaRoutes, geoRoutes, assessRoutes, analysisRoutes, cropsRoutes, regionFitRoutes, journalRoutes, marketRoutes, budgetRoutes, guideRoutes, foreignRoutes, notifyRoutes, alertsRoutes, monitorRoutes, supportRoutes, paymentRoutes, opsRoutes, pageRoutes];
+const ROUTES: RouteFn[] = [metaRoutes, geoRoutes, assessRoutes, analysisRoutes, cropsRoutes, regionFitRoutes, journalRoutes, accountRoutes, marketRoutes, budgetRoutes, guideRoutes, foreignRoutes, notifyRoutes, alertsRoutes, monitorRoutes, supportRoutes, paymentRoutes, opsRoutes, pageRoutes];
 
 export async function route(ctx: Ctx, req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<void> {
   for (const handler of ROUTES) {

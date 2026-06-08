@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.31.0",
+    date: "2026-06-08",
+    title: "계정·세션 코어 + 익명→계정 이관 (가입 기반 서비스 토대)",
+    items: [
+      "계정·세션 코어 — 익명(기기 anon-Y)→가입→계정(acct:Z) 신원 + 세션(무작위 192bit 토큰·만료). 로그인 시 일지를 계정으로 귀속, link-anon이 기존 익명 일지를 계정으로 이관. (BM: 네이버/카카오의 '로그인하면 내 기록이 따라온다' 리텐션 루프 = 가장 큰 갭이었던 자리)",
+      "인증 검증기 seam — dev=MockVerifier(코드 000000), 실제 로그인(휴대폰 OTP·카카오·이메일)은 키 확보 시 드롭인(HUMAN GATE·'코어만 먼저' 결정). 원 식별자(전화/이메일) 미저장 — authRef.subjectHash(keyed-hash)만",
+      "보안(적대검토 확정 수정) — 운영에 mock 노출 시 '아무 번호나 000000으로 로그인=계정 탈취' 발견 → DisabledVerifier로 운영 fail-closed(실제 검증기 전까지 로그인 차단) + 챌린지당 시도 상한(brute-force) + auth는 sensitive 레이트리밋",
+      "BM 반영 — 네이버/카카오맵·농사로 사용자흐름 점검: 지도 표준(검색·위치·3종 레이어)은 이미 동급, 농사로 영농일지는 소득예측 결속+플라이휠로 차별화 유지, 카카오 즐겨찾기 프라이버시 사고는 익명격리·기본비공개로 선반영",
+      "회귀 +6(accountRoutes.spec: 가입·재로그인·틀린코드·me/logout·이관·운영가드) · qwen vote3=0 + 적대검토 + 런타임 스모크(가입→이관→로그아웃) · tsc·vitest 385·arch 0",
+    ],
+  },
+  {
     version: "0.30.0",
     date: "2026-06-08",
     title: "ops 유료 게이트 런타임 토글 — 무료베타↔유료 재시작 없이 전환",

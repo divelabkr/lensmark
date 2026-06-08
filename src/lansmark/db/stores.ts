@@ -15,6 +15,9 @@ import { InMemorySubscriptionStore, type SubscriptionStore } from "../notify/sub
 import type { AlertSubscription } from "../notify/alertSubscription";
 import { InMemoryAnalyticsStore } from "../analytics/eventStore";
 import type { AnalyticsStore } from "../analytics/types";
+import { InMemoryAccountStore, type AccountStore } from "../account/accountStore";
+import { InMemorySessionStore, type SessionStore } from "../account/sessionStore";
+import type { Account, Session } from "../account/types";
 
 /** 유료권한 토큰 소진(quota)·실효(revocation) 저장소. */
 export interface EntitlementStore {
@@ -156,8 +159,21 @@ export class FileAnalyticsStore extends InMemoryAnalyticsStore {
   }
 }
 
+/* ───────────────── 계정·세션(account): 파일 ───────────────── */
+/** 메모리 어댑터 상속 — 로드/flush만 디스크로(기존 File* 패턴). PII는 authRef.subjectHash만(원 식별자 미저장) + at-rest 암호화 seam 자동 적용. */
+export class FileAccountStore extends InMemoryAccountStore {
+  private file: JsonFile<Account[]>;
+  constructor(path: string, cap?: number) { super(cap); this.file = new JsonFile(path, []); for (const a of this.file.data ?? []) this.map.set(a.id, a); }
+  protected persist(): void { this.file.data = [...this.map.values()]; this.file.flush(); }
+}
+export class FileSessionStore extends InMemorySessionStore {
+  private file: JsonFile<Session[]>;
+  constructor(path: string, cap?: number) { super(cap); this.file = new JsonFile(path, []); for (const s of this.file.data ?? []) this.map.set(s.token, s); }
+  protected persist(): void { this.file.data = [...this.map.values()]; this.file.flush(); }
+}
+
 /* ───────────────── 팩토리 ───────────────── */
-export interface Stores { feedback: FeedbackStoreEx; idem: IdempotencyStore; entitlement: EntitlementStore; journal: JournalStore; subscriptions: SubscriptionStore; analytics: AnalyticsStore; mode: "memory" | "file"; }
+export interface Stores { feedback: FeedbackStoreEx; idem: IdempotencyStore; entitlement: EntitlementStore; journal: JournalStore; subscriptions: SubscriptionStore; analytics: AnalyticsStore; accounts: AccountStore; sessions: SessionStore; mode: "memory" | "file"; }
 
 /** 모드별 스토어 3종 생성. file 모드인데 디렉터리 쓰기 불가면 메모리로 자동 폴백(무중단). */
 export function createStores(opts: { mode: "memory" | "file"; dir: string; feedbackMax?: number }): Stores {
@@ -171,6 +187,8 @@ export function createStores(opts: { mode: "memory" | "file"; dir: string; feedb
         journal: new FileJournalStore(join(opts.dir, "journal.json")),
         subscriptions: new FileSubscriptionStore(join(opts.dir, "subscriptions.json")),
         analytics: new FileAnalyticsStore(join(opts.dir, "analytics.json")),
+        accounts: new FileAccountStore(join(opts.dir, "accounts.json")),
+        sessions: new FileSessionStore(join(opts.dir, "sessions.json")),
         mode: "file",
       };
     } catch { /* 쓰기 불가 → 메모리 폴백 */ }
@@ -182,6 +200,8 @@ export function createStores(opts: { mode: "memory" | "file"; dir: string; feedb
     journal: new InMemoryJournalStore(),
     subscriptions: new InMemorySubscriptionStore(),
     analytics: new InMemoryAnalyticsStore(),
+    accounts: new InMemoryAccountStore(),
+    sessions: new InMemorySessionStore(),
     mode: "memory",
   };
 }

@@ -3,6 +3,15 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.31.0 — 2026-06-08 · 계정·세션 코어 + 익명→계정 이관 (가입 기반 서비스 토대)
+> 사장님 결정('코어만 먼저' + 네이버/카카오맵·농사로 BM). 익명→가입→계정 신원 + 익명 일지 이관을 MockVerifier로 end-to-end 완성. 인증 최고위험 → qwen vote3=**0** + Claude 적대검토(**계정탈취 1건 확정·수정**) + 런타임 스모크. tsc·vitest **385**·arch 0.
+- **계정·세션 코어** — 신원 3종: `anon-Y`(기기)·`order:X`(결제)·**`acct:Z`(계정)**. `accountStore`/`sessionStore`(memory|file·영속) + 세션(무작위 192bit 토큰·30일 만료). 무료 베타 일지 신원 해석에 **세션 우선**(로그인 시 계정 귀속, 없으면 익명ID)
+- **익명→계정 이관**(`POST /api/account/link-anon`) — 로그인 세션 + 브라우저 anonId → 기존 익명 일지를 `acct:Z`로 재귀속. (BM: 네이버/카카오 '로그인하면 내 장소·기록이 따라온다' = LENSMARK 최대 갭이었던 '저장→로그인 동기화'를 메움)
+- **인증 검증기 seam**(`verifier.ts`) — dev=`MockVerifier`(코드 000000·devHint), 실제(휴대폰 OTP·카카오·이메일)는 키 확보 시 드롭인(HUMAN GATE). 원 식별자(전화/이메일) **미저장** — `authRef.subjectHash`(HMAC keyed-hash)만(오프라인 열거 차단·PII 최소화)
+- **fix(보안·적대검토 확정)** — `ctx.verifier`가 운영에서도 mock이면 **'아무 번호나 000000으로 로그인=계정 탈취'**. → `DisabledVerifier`로 운영(prod) fail-closed(실제 검증기 전까지 `503 AUTH_NOT_CONFIGURED`) + 챌린지당 시도 상한(brute-force 차단) + `/api/account/auth`를 sensitive 레이트리밋
+- **BM 점검 결과** — 네이버/카카오맵·농사로 사용자흐름 대조: 지도 표준(검색 토글·내 위치·3종 레이어)은 **이미 동급** / 농사로 영농일지는 우리의 *소득예측 결속+플라이휠*로 차별화 / 카카오 즐겨찾기 공개사고→비공개 교훈은 **익명격리·삭제권·암호화로 선반영**. 잔여 UX 여지(이번 작업 아님): 모바일 바텀시트·작물군 카테고리칩
+- 회귀 +6(`accountRoutes.spec`) · `user-account` featureMap 등록(32기능·44엔드포인트) · 유료 모드의 결제-계정 연계는 후속
+
 ## 0.30.0 — 2026-06-08 · ops 유료 게이트 런타임 토글 — 무료베타↔유료 재시작 없이 전환
 > 사장님 요청("ops에 토글로 만들어놔, 시점 되면 반영"). 유료 게이트를 운영 콘솔에서 재시작 없이 ON/OFF. 머니 게이트라 고위험 → qwen vote3=**0건** + Claude 적대검토(무결함) + 런타임 스모크. tsc·vitest **379**·arch 0.
 - **유료 게이트 토글**(`dashboard/lansmark_ops.html` 결제 패널) — 무료베타(OFF)↔유료(ON) 버튼. 현재 상태·런타임 오버라이드 여부 표기. confirm 후 `POST /api/ops/paid-gate` → 즉시 반영(`/api/config`·프론트 FREEBETA 자동 추종)·영속(재시작 보존)

@@ -12,6 +12,9 @@ import type { SubscriptionStore } from "../src/lansmark/notify/subscriptionStore
 import type { AnalyticsStore } from "../src/lansmark/analytics/types";
 import { RateLimiter } from "../src/lansmark/api/security";
 import { RuntimeFlagsStore } from "./runtimeFlags";
+import { MockVerifier, DisabledVerifier, type AuthVerifier } from "../src/lansmark/account/verifier";
+import type { AccountStore } from "../src/lansmark/account/accountStore";
+import type { SessionStore } from "../src/lansmark/account/sessionStore";
 import type { Config } from "./config";
 
 /** 운영 대시보드 카운터(가변). */
@@ -47,6 +50,12 @@ export interface Ctx {
   analytics: AnalyticsStore;
   /** 런타임 토글(영속) — 유료 게이트 ON↔무료 베타 OFF를 ops에서 재시작 없이 전환(부팅 시 config에 적용). */
   runtimeFlags: RuntimeFlagsStore;
+  /** 계정(가입 후 신원) — 익명ID·결제토큰과 별개의 영속 신원. memory|file. */
+  accounts: AccountStore;
+  /** 로그인 세션 — 토큰→계정 신원 해석. memory|file. */
+  sessions: SessionStore;
+  /** 인증 검증기 seam — 지금은 MockVerifier(dev), 실제(OTP/소셜/이메일)는 HUMAN GATE 드롭인. */
+  verifier: AuthVerifier;
 }
 
 /** 라우트 핸들러 시그니처. 반환 true = 이 핸들러가 응답을 종료함(라우터가 중단). false = 다음 핸들러로. */
@@ -88,5 +97,9 @@ export function createContext(config: Config): Ctx {
     subscriptions: stores.subscriptions,
     analytics: stores.analytics,
     runtimeFlags,
+    accounts: stores.accounts,
+    sessions: stores.sessions,
+    // 검증기 seam: dev=Mock(코드 000000) · 운영=Disabled(실제 검증기 부재 시 로그인 fail-closed, mock 우회·계정탈취 차단). 실제(OTP/소셜/이메일) live 시 교체(HUMAN GATE).
+    verifier: config.isProd ? new DisabledVerifier() : new MockVerifier(),
   };
 }

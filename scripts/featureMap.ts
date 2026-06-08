@@ -309,6 +309,15 @@ export const FEATURES: Feature[] = [
     notes: "Phase A. 기존 라우트(recommend/simulate/guide/foreign/journal/subscribe) 성공 시점에 집계 호출 — 새 공개 엔드포인트 0(스팸·poison 표면 최소). 지도 탐색·이탈(클라 비콘)은 공개 ingress라 A.2로 분리. 발송 리마인드(slow loop)는 SMS seam·HUMAN GATE.",
   },
   {
+    id: "user-account", name: "계정·세션(가입 + 익명→계정 이관)", stage: "platform",
+    flow: "익명(기기)→가입(검증기 seam)→계정(acct:Z)·세션. 로그인 시 일지를 계정 신원으로 귀속, link-anon이 기존 익명 일지를 계정으로 이관(재시작 보존). 실제 인증(OTP/소셜/이메일)은 HUMAN GATE — 현재 MockVerifier",
+    endpoints: ["/api/account/auth/start", "/api/account/auth/verify", "/api/account/me", "/api/account/logout", "/api/account/link-anon"],
+    files: ["src/lansmark/account/types.ts", "src/lansmark/account/accountStore.ts", "src/lansmark/account/sessionStore.ts", "src/lansmark/account/verifier.ts", "server/routes/account.ts"],
+    tests: ["src/lansmark/tests/accountRoutes.spec.ts"],
+    guardrails: ["원 식별자 미저장(authRef.subjectHash=keyed-hash)", "세션 토큰=무작위 불투명값·만료", "인증 검증=verifier seam(HUMAN GATE)", "auth는 sensitive 레이트리밋(brute-force)", "이관은 로그인 세션 필수"], status: "platform",
+    notes: "코어만 먼저(사장님 결정) — 계정·세션·이관을 MockVerifier로 end-to-end 검증. 실제 로그인 방식(휴대폰 OTP/카카오/이메일)은 키 확보 시 verifier 드롭인. 유료 모드의 결제-계정 연계는 후속.",
+  },
+  {
     id: "persistence", name: "영속성(memory↔file↔DB seam)", stage: "platform",
     flow: "상태(플라이휠·멱등·토큰소진/실효) memory|file 드롭인 · 재시작 보존 · DB seam",
     endpoints: [],
