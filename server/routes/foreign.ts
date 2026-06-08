@@ -20,8 +20,10 @@ export const foreignRoutes: RouteFn = async (ctx, req, res, url) => {
   if (!NAME_RE.test(name)) { json(res, 400, { error: "작물명(한글/영문, 1~80자)이 필요합니다." }); return true; }
   // 유료 전용 — 직접 작물 추가(외래종 포함)는 유료 기능. (네트워크 호출 前 차단)
   if (ctx.config.requireEntitlement) {
-    try { await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null }); }
+    let ent;
+    try { ent = await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null }); }
     catch { json(res, 402, { error: "직접 작물 추가(외래종 포함)는 유료 기능입니다.", code: "FOREIGN_PAID" }); return true; }
+    if (ctx.entitlement.isRevoked(ent.jti)) { json(res, 402, { error: "이 권한은 실효되었습니다. 다시 결제해 주세요.", code: "ENTITLEMENT_REVOKED" }); return true; } // consume 미호출 경로도 실효 강제(레드팀 P1)
   }
   // 필지 좌표가 있으면 기후대 적합성 평가(GBIF 관측 위도대 + KMA 겨울최저).
   const lat = finiteIn(url.searchParams.get("lat"), -90, 90), lng = finiteIn(url.searchParams.get("lng"), -180, 180);

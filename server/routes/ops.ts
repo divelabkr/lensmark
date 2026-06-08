@@ -5,6 +5,7 @@
  */
 import { json, readBody } from "../respond";
 import { adminOk } from "../middleware";
+import { VALIDATED_THRESHOLD } from "../../src/lansmark/core/calibration"; // 검증 판정 SSOT(임계) — ops도 동일 기준
 import type { RouteFn } from "../context";
 
 export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
@@ -28,17 +29,18 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
   const byCrop: Record<string, number> = {};
   let withActuals = 0;
   // 작물·지형버킷별 집계(검증=실측 5건↑)
-  const bk: Record<string, { cropId: string; bucket: string; n: number; actuals: number }> = {};
+  const bk: Record<string, { cropId: string; bucket: string; n: number; actuals: number; submitters: Set<string> }> = {};
   for (const r of rows) {
     byCrop[r.cropId] = (byCrop[r.cropId] ?? 0) + 1;
     if (r.actualYieldKg != null) withActuals++;
     const key = r.cropId + "|" + (r.terrainBucket ?? "-");
-    const e = bk[key] ?? (bk[key] = { cropId: r.cropId, bucket: r.terrainBucket ?? "-", n: 0, actuals: 0 });
+    const e = bk[key] ?? (bk[key] = { cropId: r.cropId, bucket: r.terrainBucket ?? "-", n: 0, actuals: 0, submitters: new Set() });
     e.n++;
-    if (r.actualYieldKg != null) e.actuals++;
+    // 검증(validated)은 '서로 다른 인증 제출자' 기준 — 익명(anon-*)·무userId 제외(고객측 distinctSubmitters SSOT와 정합·레드팀 P2)
+    if (r.actualYieldKg != null) { e.actuals++; const u = r.userId; if (u && !u.startsWith("anon")) e.submitters.add(u); }
   }
   const validatedBuckets = Object.values(bk)
-    .map((b) => ({ ...b, validated: b.actuals >= 5 }))
+    .map((b) => ({ cropId: b.cropId, bucket: b.bucket, n: b.n, actuals: b.actuals, validated: b.submitters.size >= VALIDATED_THRESHOLD }))
     .sort((a, b) => b.actuals - a.actuals)
     .slice(0, 20);
 

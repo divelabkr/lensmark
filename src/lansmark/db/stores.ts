@@ -21,6 +21,7 @@ export interface EntitlementStore {
   consume(jti: string | undefined, quota: number): boolean; // true=허용(1회 소진) · false=초과/실효/무jti
   revoke(jti: string): void;
   revokedSize(): number;
+  isRevoked(jti: string | undefined): boolean; // 토큰 검증과 별개로 실효 여부 조회 — consume 미호출 유료 surface의 킬스위치(레드팀 P1)
 }
 /** ops가 .all()을 쓰므로 확장 인터페이스로 노출. */
 export interface FeedbackStoreEx extends FeedbackStore { all(): OutcomeRecord[]; }
@@ -56,6 +57,7 @@ export class MemoryEntitlementStore implements EntitlementStore {
     this.persist();
   }
   revokedSize(): number { return this.revoked.size; }
+  isRevoked(jti: string | undefined): boolean { return jti != null && this.revoked.has(jti); } // consume 미호출 경로(guide/foreign/journal)도 실효 강제(레드팀 P1)
   protected persist(): void { /* 메모리: no-op */ }
 }
 
