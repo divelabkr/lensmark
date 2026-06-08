@@ -27,9 +27,18 @@ describe("alertSubscription 도메인", () => {
     const ids = { id: "x", now: "2026-06-05T00:00:00Z" };
     expect(buildSubscription({ phone: "010-1234-5678", consent: false }, ids)).toMatchObject({ ok: false, code: "CONSENT_REQUIRED" });
     expect(buildSubscription({ phone: "bad", consent: true }, ids)).toMatchObject({ ok: false, code: "BAD_PHONE" });
-    const r = buildSubscription({ phone: "010-1234-5678", consent: true, region: "경북" }, ids);
+    const r = buildSubscription({ phone: "010-1234-5678", consent: true, region: "경북", cropId: "apple" }, ids);
     expect(r.ok).toBe(true);
-    if (r.ok) { expect(r.sub.phone).toBe("01012345678"); expect(r.sub.consent).toBe(true); expect(r.sub.region).toBe("경북"); }
+    if (r.ok) { expect(r.sub.phone).toBe("01012345678"); expect(r.sub.consent).toBe(true); expect(r.sub.region).toBe("경북"); expect(r.sub.cropId).toBe("apple"); }
+  });
+  it("buildSubscription(give/get B): cropId 화이트리스트 — 비신뢰 값은 미저장", () => {
+    const ids = { id: "x", now: "2026-06-05T00:00:00Z" };
+    const ok = buildSubscription({ phone: "010-1234-5678", consent: true, cropId: "sweet_potato" }, ids);
+    if (ok.ok) expect(ok.sub.cropId).toBe("sweet_potato");
+    for (const bad of ["DROP TABLE", "Apple", "양파", "a".repeat(50), 123 as unknown]) {
+      const r = buildSubscription({ phone: "010-1234-5678", consent: true, cropId: bad }, ids); // 대문자·공백·한글·과길이·비문자열 거부
+      if (r.ok) expect(r.sub.cropId).toBeUndefined();
+    }
   });
 });
 

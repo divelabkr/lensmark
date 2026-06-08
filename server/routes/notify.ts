@@ -20,7 +20,7 @@ export const notifyRoutes: RouteFn = async (ctx, req, res, url) => {
     try { b = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
     if (!isObject(b)) { json(res, 400, { error: "본문이 필요합니다." }); return true; }
     const r = buildSubscription(
-      { phone: b.phone, consent: b.consent, region: b.region },
+      { phone: b.phone, consent: b.consent, region: b.region, cropId: b.cropId },
       { id: crypto.randomUUID(), now: new Date().toISOString() },
     );
     if (!r.ok) { json(res, 400, { error: r.error, code: r.code }); return true; } // 동의 없음/번호 형식 → 400

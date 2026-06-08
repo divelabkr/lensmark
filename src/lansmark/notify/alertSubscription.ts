@@ -11,10 +11,11 @@ export interface AlertSubscription {
   consentAt: string;    // 동의 시각(ISO)
   createdAt: string;
   region?: string;      // 선택: 관심 지역(시도)
+  cropId?: string;      // 선택: 수확기 리마인드 대상 작물(give/get 다리 — 어느 작물 수확기를 알릴지 의도). PII 아님.
   channels: ["sms"];    // 현재 SMS만(발송은 seam)
 }
 
-export interface SubInput { phone?: unknown; consent?: unknown; region?: unknown; }
+export interface SubInput { phone?: unknown; consent?: unknown; region?: unknown; cropId?: unknown; }
 
 /** 한국 휴대폰 정규화: 하이픈·공백 제거 후 01[016789] + 7~8자리만 허용. 실패 시 null. */
 export function normalizePhone(raw: unknown): string | null {
@@ -37,8 +38,10 @@ export function buildSubscription(
   const phone = normalizePhone(input.phone);
   if (!phone) return { ok: false, code: "BAD_PHONE", error: "휴대폰 번호 형식이 올바르지 않습니다(예: 010-1234-5678)." };
   const region = typeof input.region === "string" && input.region.trim() ? input.region.slice(0, 20) : undefined;
+  // cropId는 화이트리스트(소문자·밑줄, ≤40)만 — 비신뢰 입력/주입 차단. 작물ID는 PII 아님(리마인드 대상 의도).
+  const cropId = typeof input.cropId === "string" && /^[a-z_]{1,40}$/.test(input.cropId) ? input.cropId : undefined;
   return {
     ok: true,
-    sub: { id: ids.id, phone, consent: true, consentAt: ids.now, createdAt: ids.now, channels: ["sms"], ...(region ? { region } : {}) },
+    sub: { id: ids.id, phone, consent: true, consentAt: ids.now, createdAt: ids.now, channels: ["sms"], ...(region ? { region } : {}), ...(cropId ? { cropId } : {}) },
   };
 }
