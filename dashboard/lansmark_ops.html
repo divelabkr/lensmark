@@ -76,6 +76,7 @@
     <section>
       <h2>💳 결제 · 유료권한</h2>
       <div class="grid g-kpi" id="payment"></div>
+      <div id="paidgate-ctrl" style="margin-top:11px"></div>
     </section>
     <section>
       <h2>🔁 플라이휠(실측 보정) · 사용량</h2>
@@ -133,6 +134,12 @@ async function load(){
     `<div class="kpi"><div class="v">${pay.requireEntitlement?'<span class="pill on">ON</span>':'<span class="pill off">OFF</span>'}</div><div class="l">유료 게이트</div></div>`+
     kpi("₩"+(pay.priceKrw||0).toLocaleString("ko-KR"),"정밀분석 단가")+
     kpi((s.usage&&s.usage.entitlementsMinted)||0,"발급 엔티틀먼트","good");
+  // 유료 게이트 런타임 토글(무료베타↔유료) — 관리자 액션. '시점 되면 반영'을 위해 재시작 없이 전환.
+  {const on=!!pay.requireEntitlement;
+    $("paidgate-ctrl").innerHTML=`<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div style="font-size:12.5px;font-weight:800">유료 게이트 ${on?'<span class="pill on">ON · 유료</span>':'<span class="pill off">OFF · 무료 베타</span>'}${pay.overridden?' <span style="font-size:10.5px;color:var(--ink3)">(런타임 오버라이드)</span>':''}</div><div style="font-size:11px;color:var(--ink3);margin-top:4px">전환 즉시 반영·재시작에도 유지. 운영 무료개방은 <code>ALLOW_OPEN_PAID=1</code> 필요.</div></div><button class="btn" id="paidgate-btn">${on?'무료 베타로 전환(끄기)':'유료로 전환(켜기)'}</button></div>`;
+    const pgb=document.getElementById("paidgate-btn");
+    if(pgb)pgb.addEventListener("click",async()=>{const next=!on;if(!confirm(next?"유료 게이트를 켭니다 — 정밀분석·가이드 등이 유료(결제 필요)로 전환됩니다. 진행할까요?":"유료 게이트를 끕니다 — 무료 베타로 정밀분석·가이드·외래·일지가 무인증 개방됩니다. 진행할까요?"))return;pgb.disabled=true;try{const r=await fetch("/api/ops/paid-gate",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({requireEntitlement:next})});const j=await r.json().catch(()=>({}));if(!r.ok){alert("실패: "+(j.error||r.status));pgb.disabled=false;return;}load();}catch(e){alert("실패: "+(e&&e.message||e));pgb.disabled=false;}});
+  }
   // 사용량
   const u=s.usage||{};
   $("usage").innerHTML=kpi(u.simRuns||0,"정밀 시뮬 실행")+kpi(u.mockPaysIssued||0,"데모 결제")+kpi((s.flywheel&&s.flywheel.records)||0,"보정 기록(누적)")+kpi((s.flywheel&&s.flywheel.withActuals)||0,"실측 포함","good")+kpi(u.requests||0,"API 요청")+kpi(u.errors||0,"5xx 에러",(u.errors>0?"warn":""));

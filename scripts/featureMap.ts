@@ -293,11 +293,11 @@ export const FEATURES: Feature[] = [
   },
   {
     id: "ops-console", name: "운영자 콘솔", stage: "ops",
-    flow: "통합 준비도·결제·플라이휠·활동로그 + 관리자 인증 + 토큰 실효(revoke)",
-    endpoints: ["/api/ops/stats", "/api/ops/revoke"],
-    files: ["dashboard/lansmark_ops.html", "server/routes/ops.ts"],
-    tests: ["src/lansmark/tests/serverRoutes.spec.ts"],
-    guardrails: ["관리자 인증(timing-safe)", "시크릿 미노출"], status: "live",
+    flow: "통합 준비도·결제·플라이휠·활동로그 + 관리자 인증 + 토큰 실효(revoke) + 유료 게이트 런타임 토글(무료베타↔유료)",
+    endpoints: ["/api/ops/stats", "/api/ops/revoke", "/api/ops/paid-gate"],
+    files: ["dashboard/lansmark_ops.html", "server/routes/ops.ts", "server/runtimeFlags.ts"],
+    tests: ["src/lansmark/tests/serverRoutes.spec.ts", "src/lansmark/tests/opsRoutes.spec.ts"],
+    guardrails: ["관리자 인증(timing-safe)", "시크릿 미노출", "운영 무료개방은 ALLOW_OPEN_PAID=1 동의(런타임 우회 차단)"], status: "live",
   },
   {
     id: "demand-analytics", name: "익명 수요·퍼널 계측", stage: "ops",

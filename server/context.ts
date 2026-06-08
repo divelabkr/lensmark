@@ -11,6 +11,7 @@ import type { JournalStore } from "../src/lansmark/journal/journalStore";
 import type { SubscriptionStore } from "../src/lansmark/notify/subscriptionStore";
 import type { AnalyticsStore } from "../src/lansmark/analytics/types";
 import { RateLimiter } from "../src/lansmark/api/security";
+import { RuntimeFlagsStore } from "./runtimeFlags";
 import type { Config } from "./config";
 
 /** 운영 대시보드 카운터(가변). */
@@ -44,6 +45,8 @@ export interface Ctx {
   subscriptions: SubscriptionStore;
   /** 익명 수요·퍼널 계측 — 집계 카운트만(PII 0). 라우트 성공 시점에 기록, /api/ops/stats로 노출. memory|file. */
   analytics: AnalyticsStore;
+  /** 런타임 토글(영속) — 유료 게이트 ON↔무료 베타 OFF를 ops에서 재시작 없이 전환(부팅 시 config에 적용). */
+  runtimeFlags: RuntimeFlagsStore;
 }
 
 /** 라우트 핸들러 시그니처. 반환 true = 이 핸들러가 응답을 종료함(라우터가 중단). false = 다음 핸들러로. */
@@ -59,6 +62,11 @@ export function createContext(config: Config): Ctx {
   const opsLog: OpsEntry[] = [];
   // 영속 스토어 3종(memory|file) — file 모드면 디스크 로드(재시작 보존). 쓰기 불가 시 메모리 자동 폴백.
   const stores = createStores({ mode: config.storeMode, dir: config.dataDir });
+  // 런타임 오버라이드(영속)가 있으면 .env 기본값을 덮어쓴다 — 운영자가 ops에서 끈 유료 게이트가 재시작에도 유지.
+  //   적용 시점: createContext(부팅) → devServer는 이 뒤에 bootSafety를 돌려 '실효값'으로 운영 fail-closed 검증.
+  const runtimeFlags = new RuntimeFlagsStore(config.storeMode, config.dataDir);
+  const reqEntOverride = runtimeFlags.requireEntitlement();
+  if (reqEntOverride !== null) config.requireEntitlement = reqEntOverride;
   return {
     config,
     providers: getProviders(),                 // auto: 키 있는 통합만 live, 나머지 mock 폴백
@@ -79,5 +87,6 @@ export function createContext(config: Config): Ctx {
     journal: stores.journal,
     subscriptions: stores.subscriptions,
     analytics: stores.analytics,
+    runtimeFlags,
   };
 }

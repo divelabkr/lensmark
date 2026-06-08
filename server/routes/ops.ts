@@ -22,6 +22,23 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     return true;
   }
 
+  // 유료 게이트 런타임 토글(영속) — 무료 베타 ON↔OFF. 관리자 전용. '시점 되면 반영'을 위해 재시작 없이 전환.
+  if (url.pathname === "/api/ops/paid-gate" && req.method === "POST") {
+    if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
+    let b: any = {};
+    try { b = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    if (typeof b.requireEntitlement !== "boolean") { json(res, 400, { error: "requireEntitlement(boolean)이 필요합니다.", code: "BAD_VALUE" }); return true; }
+    // 운영에서 유료 게이트 끄기(무료 개방)는 명시 env 동의 필요 — bootSafety와 동일 가드로 런타임 우회·실수 차단.
+    if (b.requireEntitlement === false && ctx.config.isProd && process.env.LANSMARK_ALLOW_OPEN_PAID !== "1") {
+      json(res, 400, { error: "운영에서 유료 게이트 비활성(무료 개방)은 LANSMARK_ALLOW_OPEN_PAID=1 설정이 필요합니다.", code: "OPEN_PAID_NOT_ACKED" }); return true;
+    }
+    ctx.config.requireEntitlement = b.requireEntitlement;          // 즉시 반영(요청 readers가 ctx.config 경유)
+    ctx.runtimeFlags.setRequireEntitlement(b.requireEntitlement);  // 영속(재시작 보존)
+    ctx.logOps("게이트", `유료 게이트 ${b.requireEntitlement ? "ON(유료)" : "OFF(무료 베타)"}`);
+    json(res, 200, { ok: true, requireEntitlement: ctx.config.requireEntitlement });
+    return true;
+  }
+
   if (url.pathname !== "/api/ops/stats") return false;
   if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
 
@@ -55,7 +72,7 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
       requests: ctx.metrics.reqCount,
       errors: ctx.metrics.errCount,
     },
-    payment: { mode: ctx.config.tossClientKey ? "live" : "mock", requireEntitlement: ctx.config.requireEntitlement, priceKrw: ctx.config.simPriceKrw },
+    payment: { mode: ctx.config.tossClientKey ? "live" : "mock", requireEntitlement: ctx.config.requireEntitlement, overridden: ctx.runtimeFlags.requireEntitlement() !== null, priceKrw: ctx.config.simPriceKrw },
     recent: ctx.opsLog.slice(0, 20),
     config: { dataMode: ctx.config.dataMode, port: ctx.config.port, store: ctx.storeMode },
   });

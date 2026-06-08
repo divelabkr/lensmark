@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.30.0 — 2026-06-08 · ops 유료 게이트 런타임 토글 — 무료베타↔유료 재시작 없이 전환
+> 사장님 요청("ops에 토글로 만들어놔, 시점 되면 반영"). 유료 게이트를 운영 콘솔에서 재시작 없이 ON/OFF. 머니 게이트라 고위험 → qwen vote3=**0건** + Claude 적대검토(무결함) + 런타임 스모크. tsc·vitest **379**·arch 0.
+- **유료 게이트 토글**(`dashboard/lansmark_ops.html` 결제 패널) — 무료베타(OFF)↔유료(ON) 버튼. 현재 상태·런타임 오버라이드 여부 표기. confirm 후 `POST /api/ops/paid-gate` → 즉시 반영(`/api/config`·프론트 FREEBETA 자동 추종)·영속(재시작 보존)
+- **안전(머니 게이트)** — ① 관리자 인증(timing-safe `adminOk`) ② **운영(prod)에서 무료개방은 `LANSMARK_ALLOW_OPEN_PAID=1` 필요**(bootSafety와 동일 가드 → 런타임 우회·실수 차단, `OPEN_PAID_NOT_ACKED`) ③ 켜기(유료)는 항상 허용 ④ boolean 아닌 값 400
+- **배선** — `server/runtimeFlags.ts`(RuntimeFlagsStore·file|memory 영속) 신설. `createContext`가 부팅 시 영속 오버라이드를 `config.requireEntitlement`에 적용(요청 readers 8곳 무변경) → `devServer`는 `createContext`→`bootSafety` 순서로 조정해 **bootSafety가 '실효값'을 검증**(오버라이드된 free-in-prod도 fail-closed)
+- 검증: qwen vote3=0 + 적대검토(부팅순서 안전·prod가드 정합·CSRF 안전[커스텀헤더+ops ACAO제거]·config변형 race-free) + 런타임 스모크(True→OFF→config False→영속파일→stats overridden→복구) · 회귀 +5(`opsRoutes.spec`)
+
 ## 0.29.0 — 2026-06-08 · 유료 전환 전 법무 마무리 — 일지 삭제권·at-rest 암호화 seam·ops 방어심도
 > "전부진행해" — LEGAL_CHECKLIST ③(at-rest 암호화)·④(일지 삭제 UI) 코드 갭 마감 + 레드팀 flag(ops CORS) 방어심도. 표준 규율: 빌드→qwen Mode1(vote3=**0건**)→Claude 직접검토(**데이터손실 footgun 1건 발견·수정**)→그린. tsc·vitest **374**·arch 그린.
 - **일지 삭제권(PIPA 정보주체 삭제권)** — 재배일지 패널에 "🗑 이 일지 삭제(파기)" + `POST /api/journal/delete`. `loadOwned`로 소유권 검사(타인 일지 404·존재 누설 방지) → `journalStore.delete()` 즉시 파기(정확 PII=위치·수확). 익명 보정 레코드(`feedbackStore`)는 **지역단위 가명정보**라 잔존 → 처리방침에 "실측은 지역단위 익명집계로 보정 활용, 개별 식별정보는 일지 삭제 시 파기" 명시 대상

@@ -15,8 +15,8 @@ import { json } from "./respond";
 import { APP_VERSION } from "../src/lansmark/version";
 
 const config = loadConfig();
-bootSafety(config);              // 운영에서 위조가능 기본 시크릿이면 여기서 차단
-const ctx = createContext(config);
+const ctx = createContext(config); // 영속 런타임 오버라이드(유료 게이트 등)를 config에 적용
+bootSafety(config);                // 오버라이드 반영 後 '실효 설정'으로 운영 fail-closed 검증(위조 시크릿·무료개방 등)
 
 const server = http.createServer(async (req, res) => {
   try {

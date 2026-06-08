@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.30.0",
+    date: "2026-06-08",
+    title: "ops 유료 게이트 런타임 토글 — 무료베타↔유료 재시작 없이 전환",
+    items: [
+      "운영 콘솔에 유료 게이트 토글 — 무료베타(OFF)↔유료(ON)를 관리자가 재시작 없이 즉시 전환·영속(재시작 보존). '시점 되면 반영'을 코드로. ops 결제 패널에 현재 상태·전환 버튼·오버라이드 표기",
+      "안전(머니 게이트) — 관리자 인증(timing-safe) + 운영(prod)에서 무료개방은 ALLOW_OPEN_PAID=1 동의 필요(bootSafety 불변식과 정합·런타임 우회/실수 차단). 부팅 시 영속 오버라이드를 config에 적용한 뒤 bootSafety가 '실효값'을 fail-closed 검증",
+      "배선 — RuntimeFlagsStore(영속·file|memory) + createContext에서 config.requireEntitlement에 오버라이드 적용(요청 readers 8곳 무변경) + devServer는 createContext→bootSafety 순서로 조정",
+      "검증 — qwen vote3=0건 + Claude 적대검토(부팅순서·prod가드·CSRF·config변형 무결함) + 런타임 스모크(토글 라이브 반영·영속·복구) · 회귀가드 +5(opsRoutes.spec) · tsc·vitest 379·arch 0",
+    ],
+  },
+  {
     version: "0.29.0",
     date: "2026-06-08",
     title: "유료 전환 전 법무 마무리 — 일지 삭제권·at-rest 암호화 seam·ops 방어심도",
