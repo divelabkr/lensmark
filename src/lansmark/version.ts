@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.43.0",
+    date: "2026-06-09",
+    title: "이메일 매직링크 로그인(M2) — 휴대폰 OTP와 병행",
+    items: [
+      "로그인 수단 추가 — 계정 모달에 '📱 휴대폰 / ✉️ 이메일' 탭. 이메일 입력 → 1회용 로그인 링크 수신 → 링크 클릭 시 자동 로그인(/app?lm_login 착지 → verify). 휴대폰 OTP는 그대로 병행",
+      "CompositeVerifier — challengeId의 'method:' 프리픽스로 검증기 라우팅(휴대폰/이메일). 새 엔드포인트 0(기존 auth/start·auth/verify 재사용)",
+      "보안(qwen 1차 + Claude 레드팀): 매직링크 256bit 1회용·타이밍세이프 비교·15분 TTL·시도상한 · 이메일/번호 평문 미저장(subjectHash) · 토큰 URL 즉시 제거(잔류·공유 방지) · 매직링크 토큰 유출 차단 확인(Referrer-Policy strict-origin + 서버 URL 미로깅) · 이메일 열거 불가(항상 링크 발송)",
+      "⚠ 이메일 실발송은 제공자 키=HUMAN GATE(LANSMARK_APP_ORIGIN + 이메일 제공자) — 미설정이면 dev는 화면에 링크 표시·운영은 fail-closed. 그 전까지 ConsoleEmailSender(미전송 정직)",
+      "tsc·vitest 411(+11: emailMagicLink 9·account 2)·arch 0 · end-to-end curl 검증(start→링크→verify→methods:email)",
+    ],
+  },
+  {
     version: "0.42.0",
     date: "2026-06-09",
     title: "웹푸시 알림 다리(M1) — 무과금 앱 푸시(SMS 대체) opt-in",

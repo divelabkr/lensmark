@@ -40,10 +40,12 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     let started;
     try { started = await ctx.verifier.start(method, contact); }
     catch (e) {
-      if ((e as Error)?.message === "BAD_PHONE") { json(res, 400, { error: "휴대폰 번호 형식이 올바르지 않습니다(예: 010-1234-5678).", code: "BAD_PHONE" }); return true; }
-      json(res, 503, { error: "이 로그인 방식은 아직 구성되지 않았습니다.", code: "AUTH_NOT_CONFIGURED" }); return true; // 운영+SMS키 없음 / 미지원 method
+      const msg = (e as Error)?.message;
+      if (msg === "BAD_PHONE") { json(res, 400, { error: "휴대폰 번호 형식이 올바르지 않습니다(예: 010-1234-5678).", code: "BAD_PHONE" }); return true; }
+      if (msg === "BAD_EMAIL") { json(res, 400, { error: "이메일 형식이 올바르지 않습니다.", code: "BAD_EMAIL" }); return true; }
+      json(res, 503, { error: "이 로그인 방식은 아직 구성되지 않았습니다.", code: "AUTH_NOT_CONFIGURED" }); return true; // 운영+발송키 없음 / 미지원 method
     }
-    json(res, 200, { ok: true, challengeId: started.challengeId, devHint: started.devHint }); // devHint=dev 미발송 시 코드(테스트용)
+    json(res, 200, { ok: true, challengeId: started.challengeId, devHint: started.devHint }); // devHint=dev 미발송 시 코드/링크(테스트용)
     return true;
   }
 

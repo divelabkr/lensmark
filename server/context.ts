@@ -14,8 +14,9 @@ import type { SubscriptionStore } from "../src/lansmark/notify/subscriptionStore
 import type { AnalyticsStore } from "../src/lansmark/analytics/types";
 import { RateLimiter } from "../src/lansmark/api/security";
 import { RuntimeFlagsStore } from "./runtimeFlags";
-import { PhoneOtpVerifier, type AuthVerifier } from "../src/lansmark/account/verifier";
+import { PhoneOtpVerifier, EmailMagicLinkVerifier, CompositeVerifier, type AuthVerifier } from "../src/lansmark/account/verifier";
 import { createSmsSender } from "../src/lansmark/notify/smsSender";
+import { createEmailSender } from "../src/lansmark/notify/emailSender";
 import type { AccountStore } from "../src/lansmark/account/accountStore";
 import type { SessionStore } from "../src/lansmark/account/sessionStore";
 import { createPushSender, InMemoryPushSubscriptionStore, type PushSender, type PushSubscriptionStore } from "../src/lansmark/integrations/push";
@@ -113,8 +114,11 @@ export function createContext(config: Config): Ctx {
     runtimeFlags,
     accounts: stores.accounts,
     sessions: stores.sessions,
-    // 검증기: 휴대폰 OTP(SMS seam 재사용). 키 있으면 실발송 / dev는 코드 노출(테스트) / 운영+키없음은 fail-closed(코드 비노출). 카카오/이메일은 추후 드롭인(HUMAN GATE).
-    verifier: new PhoneOtpVerifier({ isProd: config.isProd, sms: createSmsSender() }),
+    // 검증기: 휴대폰 OTP + 이메일 매직링크 병행(CompositeVerifier가 method로 라우팅). 둘 다 발송은 제공자 키=HUMAN GATE(dev는 코드/링크 노출·운영+키없음 fail-closed). 카카오는 추후 드롭인.
+    verifier: new CompositeVerifier({
+      phone: new PhoneOtpVerifier({ isProd: config.isProd, sms: createSmsSender() }),
+      email: new EmailMagicLinkVerifier({ isProd: config.isProd, email: createEmailSender(), appOrigin: config.appOrigin }),
+    }),
     // 웹푸시: 구독 저장(memory) + 발신자 seam. SMS 과금 회피 → 앱 푸시 채널(사용자 선택). 실발송은 VAPID 키 설정 후.
     pushSubs: new InMemoryPushSubscriptionStore(),
     pushSender: createPushSender(),

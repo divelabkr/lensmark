@@ -41,6 +41,7 @@ export interface Config {
   storeMode: "memory" | "file";  // 상태 영속: memory(휘발) | file(재시작 내구·단일인스턴스)
   dataDir: string;               // file 모드 데이터 디렉터리(절대경로)
   dashboardDir: string;          // 정적 HTML(앱/콘솔) 디렉터리(절대경로)
+  appOrigin: string;             // 앱 외부 절대 URL(이메일 매직링크 등) — LANSMARK_APP_ORIGIN, dev는 http://localhost:port
   isProd: boolean;               // NODE_ENV==='production'
 }
 
@@ -79,6 +80,8 @@ export function loadConfig(): Config {
       : (process.env.VITEST ? "memory" : "file"),
     dataDir: process.env.LANSMARK_DATA_DIR || join(__dirname, "..", ".data"), // 프로젝트 루트 .data (cwd 무관)
     dashboardDir: join(__dirname, "..", "dashboard"), // server/ 기준 → 저장소 루트의 dashboard/
+    // 매직링크 절대 URL의 출처. 운영은 LANSMARK_APP_ORIGIN(예: https://lensmark.kr) 필수(미설정 시 localhost라 외부메일 링크 깨짐 → 발송 승격은 HUMAN GATE라 그 전 무해).
+    appOrigin: (process.env.LANSMARK_APP_ORIGIN || `http://localhost:${Number(process.env.PORT ?? 8787)}`).replace(/\/$/, ""),
     isProd,
   };
 }

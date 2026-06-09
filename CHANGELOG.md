@@ -3,6 +3,15 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.43.0 — 2026-06-09 · 이메일 매직링크 로그인(M2) — 휴대폰 OTP와 병행
+> 휴대폰 OTP에 이메일 매직링크 로그인을 병행 추가(사용자 선택). 새 엔드포인트 0(auth/start·verify 재사용). 실발송=HUMAN GATE. tsc·vitest **411**(+11)·arch 0 · end-to-end curl 검증.
+- **로그인 수단 추가**(`dashboard/lansmark_app.html` 계정 모달) — **'📱 휴대폰 / ✉️ 이메일' 탭**. 이메일 입력 → 1회용 로그인 링크 → 링크 클릭 시 자동 로그인(`/app?lm_login=challengeId~token` 착지 → `consumeMagicLink` → verify → 세션 + 익명 일지 이관). 휴대폰 OTP는 그대로 병행
+- **CompositeVerifier**(`src/lansmark/account/verifier.ts`) — `challengeId`의 `method:` 프리픽스로 하위 검증기 라우팅(`PhoneOtpVerifier`/`EmailMagicLinkVerifier`). `EmailMagicLinkVerifier`=256bit 1회용 토큰·15분 TTL·타이밍세이프 비교·시도상한
+- **이메일 발송 seam**(`src/lansmark/notify/emailSender.ts`·HUMAN GATE) — `ConsoleEmailSender`(미전송 정직·주소 마스킹). 승격 시 `LiveEmailSender`(SMTP/SES/Postmark/Resend 키)
+- **보안**(qwen 1차 + Claude 레드팀) — 이메일/번호 평문 미저장(`subjectHash`) · 매직링크 토큰 **URL 즉시 제거**(`history.replaceState` — 히스토리·공유·재로딩 잔류 방지) · 토큰 유출 차단 확인(**Referrer-Policy strict-origin** + CDN `no-referrer` + 서버 URL 미로깅) · 이메일 **열거 불가**(항상 링크 발송) · auth는 sensitive 레이트리밋
+- **config**(`server/config.ts`) — `appOrigin`(매직링크 절대 URL · `LANSMARK_APP_ORIGIN`, dev는 `http://localhost:port`)
+- ⚠ **HUMAN GATE**: 이메일 제공자 키 + `LANSMARK_APP_ORIGIN` 미설정 → dev는 화면에 링크 표시·운영은 **fail-closed**(`AUTH_NOT_CONFIGURED`, 링크 비노출). featureMap `user-account` 갱신(이메일 병행·emailSender)
+
 ## 0.42.0 — 2026-06-09 · 웹푸시 알림 다리(M1) — 무과금 앱 푸시(SMS 대체) opt-in
 > 사용자 선택대로 SMS 과금을 피하고 무료 브라우저/PWA 푸시로 전환(ROADMAP M1). 구독+표시 다리 live, 실발송=HUMAN GATE. tsc·vitest **400**(+7 push)·arch 0(34기능·51엔드포인트).
 - **웹푸시 opt-in**(`dashboard/lansmark_app.html` 알림 모달) — **'🔔 이 브라우저로 알림 받기(무료·문자 불필요)'**: 권한 요청 → `serviceWorker.pushManager.subscribe` → `/api/push/subscribe` 저장. VAPID 미설정이면 **'준비 중'** 정직 안내(거짓 '켜짐' 금지)

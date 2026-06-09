@@ -835,6 +835,24 @@ function urlB64ToU8(b){const pad="=".repeat((4-b.length%4)%4);const s=(b+pad).re
 /* ===== 로그인·내 계정 모달 — 휴대폰 OTP(2단계: 번호→인증번호) → 세션 저장 → 익명 일지 이관(link-anon).
    PII: 로그인=휴대폰 수집 동의. dev는 미발송이라 인증번호를 화면에 표시(devHint). CSP-safe(addEventListener)·esc. */
 function refreshAcctBtn(){const b=document.getElementById("acctbtn");if(b)b.textContent=SESS?"👤 계정":"로그인";}
+/* 간단 토스트(3초 자동 소멸) — 매직링크 결과 등 비차단 안내. esc로 안전 표시. */
+function toast(text){const t=document.createElement("div");t.textContent=text;t.style.cssText="position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:#222b22;color:#fff;font-weight:800;font-size:13px;padding:11px 16px;border-radius:12px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.28);max-width:90vw;text-align:center";document.body.appendChild(t);setTimeout(()=>{t.style.transition="opacity .4s";t.style.opacity="0";setTimeout(()=>t.remove(),420);},3000);}
+/* 매직링크 착지 — URL의 ?lm_login=challengeId~token 감지 → 자동 verify → 세션 + 익명 일지 이관.
+   토큰을 URL에서 즉시 제거(히스토리·공유·재로딩 시 재사용/노출 방지). 실패는 토스트로 안내(차단 없음). */
+async function consumeMagicLink(){
+  let v="";try{v=new URLSearchParams(location.search).get("lm_login")||"";}catch(_){return;}
+  if(!v)return;
+  try{const u=new URL(location.href);u.searchParams.delete("lm_login");history.replaceState(null,"",u.pathname+(u.search||"")+(u.hash||""));}catch(_){} // 토큰 잔류 금지
+  const t=v.indexOf("~");if(t<0){toast("로그인 링크 형식이 올바르지 않습니다.");return;}
+  const challengeId=v.slice(0,t),code=v.slice(t+1);
+  try{
+    const r=await jpost("/api/account/auth/verify",{challengeId,code});
+    SESS=r.session||"";try{localStorage.setItem("lansmark_session",SESS);}catch(_){}
+    let linked=0;try{linked=(await jpost("/api/account/link-anon",{})).linked||0;}catch(_){} // 익명 일지 이관(있으면)
+    refreshAcctBtn();
+    toast("✓ 로그인 완료"+(linked?(" — 기존 일지 "+linked+"건 연결"):""));
+  }catch(e){toast("로그인 링크가 만료되었거나 유효하지 않습니다.");}
+}
 function openAcctModal(){
   if(document.getElementById("acct-modal"))return;
   const m=document.createElement("div");m.className="vmodal";m.id="acct-modal";
@@ -851,30 +869,57 @@ function openAcctModal(){
     document.getElementById("acct-logout").addEventListener("click",async()=>{try{await jpost("/api/account/logout",{});}catch(_){}SESS="";try{localStorage.removeItem("lansmark_session");}catch(_){}refreshAcctBtn();close();});
     return;
   }
-  // 로그아웃 상태 → 휴대폰 OTP 로그인/가입
+  // 로그아웃 상태 → 로그인/가입 (휴대폰 OTP + 이메일 매직링크 병행 — 탭 전환)
   m.innerHTML=`<div class="vbox" style="max-width:400px">
     <div class="vtop">👤 로그인 · 가입</div>
     <div style="padding:16px 18px">
-      <div class="src" style="margin-bottom:11px;line-height:1.6">휴대폰 번호로 간편 로그인 — 가입하면 지금까지의 <b>재배일지가 계정에 연결</b>되어 다른 기기에서도 이어집니다.</div>
-      <input type="tel" id="acct-phone" placeholder="010-0000-0000" maxlength="13" inputmode="numeric" autocomplete="tel" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;letter-spacing:.5px;box-sizing:border-box">
-      <div id="acct-code-row" style="display:none;margin-top:10px"><input type="text" id="acct-code" placeholder="인증번호 6자리" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:16px;letter-spacing:4px;text-align:center;box-sizing:border-box"></div>
+      <div class="src" style="margin-bottom:11px;line-height:1.6">간편 로그인 — 가입하면 지금까지의 <b>재배일지가 계정에 연결</b>되어 다른 기기에서도 이어집니다.</div>
+      <div id="acct-tabs" style="display:flex;gap:6px;margin-bottom:12px">
+        <button class="btn acct-tab" data-m="phone" style="flex:1;font-weight:800">📱 휴대폰</button>
+        <button class="btn acct-tab" data-m="email" style="flex:1;font-weight:800">✉️ 이메일</button></div>
+      <div id="acct-phone-wrap">
+        <input type="tel" id="acct-phone" placeholder="010-0000-0000" maxlength="13" inputmode="numeric" autocomplete="tel" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;letter-spacing:.5px;box-sizing:border-box">
+        <div id="acct-code-row" style="display:none;margin-top:10px"><input type="text" id="acct-code" placeholder="인증번호 6자리" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:16px;letter-spacing:4px;text-align:center;box-sizing:border-box"></div></div>
+      <div id="acct-email-wrap" style="display:none">
+        <input type="email" id="acct-email" placeholder="you@example.com" maxlength="200" inputmode="email" autocomplete="email" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;box-sizing:border-box"></div>
       <div id="acct-msg" style="font-size:12px;font-weight:700;margin-top:9px;min-height:16px"></div>
       <div style="display:flex;gap:8px;margin-top:4px"><button class="btn" id="acct-cancel" style="flex:1">닫기</button><button class="btn" id="acct-go" style="flex:1;background:var(--green);color:#fff;border-color:var(--green)">인증번호 받기</button></div>
-      <div class="src" style="margin-top:10px">로그인은 개인정보(휴대폰) 수집·이용 동의를 포함합니다. 번호는 마스킹·암호화 저장되며 해지 시 파기됩니다. · <a href="/privacy" target="_blank" rel="noopener" style="color:var(--green-mid);font-weight:700">개인정보처리방침</a></div>
+      <div class="src" style="margin-top:10px">로그인은 개인정보(휴대폰/이메일) 수집·이용 동의를 포함합니다. 식별자는 해시로 저장되며 해지 시 파기됩니다. · <a href="/privacy" target="_blank" rel="noopener" style="color:var(--green-mid);font-weight:700">개인정보처리방침</a></div>
     </div>`;
   document.body.appendChild(m);
   m.addEventListener("click",e=>{if(e.target===m)close();});
   document.getElementById("acct-cancel").addEventListener("click",close);
   const ph=document.getElementById("acct-phone"),msg=document.getElementById("acct-msg"),go=document.getElementById("acct-go"),codeRow=document.getElementById("acct-code-row");
+  const emailEl=document.getElementById("acct-email"),phoneWrap=document.getElementById("acct-phone-wrap"),emailWrap=document.getElementById("acct-email-wrap");
   ph.addEventListener("input",()=>{let v=ph.value.replace(/\D/g,"").slice(0,11);
     if(v.length>=11)v=v.replace(/(\d{3})(\d{4})(\d{4})/,"$1-$2-$3");
     else if(v.length>=7)v=v.replace(/(\d{3})(\d{3,4})(\d{0,4})/,"$1-$2-$3");
     else if(v.length>=4)v=v.replace(/(\d{3})(\d{0,4})/,"$1-$2");
     ph.value=v.replace(/-$/,"");});
   const phoneOk=v=>/^01[016789]\d{7,8}$/.test(v.replace(/\D/g,""));
-  let challengeId="";
+  const emailOk=v=>/^[^@\s]{1,128}@[^@\s]{1,128}\.[^@\s]{2,}$/.test((v||"").trim()); // 서버 isEmail과 동일 규칙
+  let mode="phone",challengeId="";
+  // 탭 전환(휴대폰↔이메일) — 입력 영역·버튼 문구·활성 스타일 갱신, 진행상태 초기화.
+  function setMode(mm){mode=mm;challengeId="";msg.textContent="";go.disabled=false;go.style.display="";
+    phoneWrap.style.display=mm==="phone"?"":"none";emailWrap.style.display=mm==="email"?"":"none";codeRow.style.display="none";
+    go.textContent=mm==="phone"?"인증번호 받기":"로그인 링크 받기";
+    Array.from(m.querySelectorAll(".acct-tab")).forEach(b=>{const on=b.getAttribute("data-m")===mm;b.style.background=on?"var(--green)":"";b.style.color=on?"#fff":"";b.style.borderColor=on?"var(--green)":"";});
+    document.getElementById("acct-cancel").textContent="닫기";}
+  Array.from(m.querySelectorAll(".acct-tab")).forEach(b=>b.addEventListener("click",()=>setMode(b.getAttribute("data-m"))));
+  setMode("phone");
   go.addEventListener("click",async()=>{
     msg.style.color="#DA5237";
+    if(mode==="email"){ // 이메일 매직링크 — 단일 단계(링크 발송). 링크 클릭은 ?lm_login 부트스트랩이 자동 검증.
+      const email=(emailEl.value||"").trim();
+      if(!emailOk(email)){msg.textContent="이메일 주소를 정확히 입력해 주세요.";return;}
+      go.disabled=true;go.textContent="전송 중…";
+      try{const r=await jpost("/api/account/auth/start",{method:"email",contact:email});msg.style.color="var(--green-mid)";
+        if(r.devHint)msg.innerHTML='개발 모드 — <a href="'+esc(r.devHint)+'" style="color:var(--green-mid);font-weight:800;text-decoration:underline">로그인 링크 열기</a>';
+        else msg.innerHTML="✉️ <b>"+esc(email)+"</b>로 로그인 링크를 보냈습니다. 메일의 링크를 누르면 로그인됩니다(15분 이내).";
+        go.style.display="none";document.getElementById("acct-cancel").textContent="확인";
+      }catch(e){msg.textContent=(e&&e.message)||"전송 실패";go.disabled=false;go.textContent="로그인 링크 받기";}
+      return;
+    }
     if(!challengeId){ // 1단계: 인증번호 요청
       const phone=ph.value.trim();
       if(!phoneOk(phone)){msg.textContent="휴대폰 번호를 정확히 입력해 주세요(예: 010-1234-5678).";return;}
@@ -1368,7 +1413,8 @@ async function openAt(lat,lng){
 
 /* ===== 컨트롤 ===== */
 document.getElementById("feedpp").addEventListener("click",function(){evtPaused=!evtPaused;this.textContent=evtPaused?"▶":"⏸";this.title=evtPaused?"재생":"일시정지";});
-document.getElementById("acctbtn").addEventListener("click",openAcctModal); refreshAcctBtn(); // 로그인 · 내 계정(휴대폰 OTP → 세션 → 익명 일지 이관)
+document.getElementById("acctbtn").addEventListener("click",openAcctModal); refreshAcctBtn(); // 로그인 · 내 계정(휴대폰 OTP/이메일 매직링크 → 세션 → 익명 일지 이관)
+consumeMagicLink(); // 이메일 매직링크로 들어온 경우 자동 로그인 처리
 /* 모바일 바텀시트: 핸들 탭으로 펼침/접힘 + 지도 탭 시 자동 펼침(결과 노출) */
 (function(){var P=document.querySelector(".panel"),H=document.getElementById("sheetHandle");if(!P||!H)return;
   var onM=function(){return window.matchMedia("(max-width:600px)").matches;};
