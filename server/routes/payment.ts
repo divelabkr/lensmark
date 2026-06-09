@@ -8,6 +8,7 @@ import { json, readBody } from "../respond";
 import { handlePgWebhook } from "../../src/lansmark/payment/pgWebhook";
 import { confirmPayment } from "../../src/lansmark/payment/confirm";
 import { mintEntitlementToken } from "../../src/lansmark/policy/entitlement";
+import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
 import type { RouteFn } from "../context";
 
 export const paymentRoutes: RouteFn = async (ctx, req, res, url) => {
@@ -47,6 +48,8 @@ export const paymentRoutes: RouteFn = async (ctx, req, res, url) => {
   if (p === "/api/pay/confirm" && req.method === "POST") {
     let body: any = {};
     try { body = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    // 구매자 계정 결속(레드팀 #3): 로그인 상태면 엔티틀먼트를 그 계정에 묶어 타인 선점 차단(비로그인이면 미결속=웹훅 경로와 동일).
+    const acctUid = sessionAccountUserId(ctx.sessions, req.headers["x-lansmark-session"]);
     try {
       const out = await confirmPayment({
         paymentKey: String(body.paymentKey ?? ""),
@@ -56,6 +59,7 @@ export const paymentRoutes: RouteFn = async (ctx, req, res, url) => {
         userId: "order:" + String(body.orderId ?? "anon"), // ★ 서버 유래 userId(클라 userId 무시)
         secretKey: process.env.TOSS_SECRET_KEY ?? "",
         ttlMs: ctx.config.entitlementTtlMs,
+        boundAccount: acctUid ? acctUid.slice("acct:".length) : undefined, // 로그인 계정에 결속(미로그인=undefined)
       });
       if (out.entitlementToken) ctx.metrics.entitlementsMinted++;
       json(res, 200, out);

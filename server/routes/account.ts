@@ -96,6 +96,7 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     const jti = ent.jti;
     if (!jti) { json(res, 402, { error: "유료권한이 필요합니다.", code: "ENTITLEMENT_REQUIRED" }); return true; }
     if (ctx.entitlement.isRevoked(jti)) { json(res, 402, { error: "실효된 유료권한입니다.", code: "ENTITLEMENT_REVOKED" }); return true; } // 죽은 토큰 연결 차단(레드팀 ③)
+    if (ent.boundAccount && ent.boundAccount !== acct.id) { json(res, 403, { error: "이 유료권한은 다른 계정에 결속되어 있습니다.", code: "ENTITLEMENT_BOUND_OTHER" }); return true; } // 구매자 결속 위반 — bearer 토큰 선점 차단(레드팀 #3)
     // 원자적 연결(배타성+추가를 await 없는 단일 블록) — acct 스테일 클론 덮어쓰기 lost-update 회피(레드팀 #2/#4)
     const r = ctx.accounts.linkEntitlement(acct.id, { jti, exp: ent.exp });
     if (r === "taken") { json(res, 409, { error: "이미 다른 계정에 연결된 유료권한입니다.", code: "ENTITLEMENT_TAKEN" }); return true; } // 1 jti = 1 계정(결제 증식 차단·레드팀 ③)

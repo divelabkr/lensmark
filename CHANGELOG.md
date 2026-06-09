@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.37.0 — 2026-06-09 · 결제-구매자 바인딩 — bearer 토큰 선점 차단 (레드팀 #3 해소)
+> ②(추천 순서 2번). 결제 시 엔티틀먼트를 구매자 계정에 결속 → 토큰을 훔쳐도 타 계정 연결 불가. tsc·vitest **391**·arch 0.
+- **구매자 결속**(`boundAccount`) — `/api/pay/confirm`이 로그인 세션→계정을 엔티틀먼트에 결속. `link-entitlement`는 `boundAccount`가 본인 계정과 다르면 **403 ENTITLEMENT_BOUND_OTHER** → 유효 토큰 선점(bearer) 차단. 배선: `SimulationEntitlement.boundAccount` + `confirm.ts` 전달 + payment 라우트 세션 해석 + account 라우트 검증
+- **범위**: confirm 경로(사용자 브라우저·세션)만 결속. 웹훅(서버-서버·세션 없음)·mock은 미결속 → 기존 1-jti-1계정 배타성으로 보호(완전 결속은 주문생성 시 order→account 매핑 필요·후속)
+- **멀티모델 검증 + 폴백 실증**: `panel-review --diff`로 Gemini·Codex·qwen 병렬 적대리뷰 → **Codex가 usage limit(토큰 소진)에 걸리자 자동 폴백(gemini+qwen+Claude)으로 무중단**(사장님 폴백 규칙 실전 작동). gemini 3건은 전부 **기존 문서화 항목**(subjectHash 폴백·멀티인스턴스 race·anonId 이관) — boundAccount 코드엔 신규 결함 0
+- 회귀 +1(결속 위반 403)
+
 ## 0.36.0 — 2026-06-09 · 모바일 바텀시트 — 지도 풀스크린 + 하단 시트 패널 (모바일 1단계)
 > 모바일 전환 착수. 사장님 결정: SMS 폐기(비용) → 모바일=**PWA**·알람=**웹푸시**·로그인=**이메일 매직링크**. 이번은 ③ 바텀시트(추천 순서 1번). tsc·vitest **390**·arch 0.
 - **모바일 바텀시트**(`dashboard/lansmark_app.html`) — 폰(≤600px)에서 패널을 하단 시트로 오버레이(네이버/카카오 지도 패턴). 지도 풀스크린 + 핸들 탭 펼침/접힘(peek 134px→expand 86vh) + 지도 탭 시 자동 펼침(결과 노출). 데스크탑·태블릿(>600px) 무변경

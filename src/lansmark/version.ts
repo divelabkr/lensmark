@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.37.0",
+    date: "2026-06-09",
+    title: "결제-구매자 바인딩 — bearer 토큰 선점 차단 (레드팀 #3 해소)",
+    items: [
+      "결제 confirm 시 로그인 계정에 엔티틀먼트 결속(boundAccount) — 유효 토큰을 타인이 선점해도 본인 계정 외엔 연결 거부(403 ENTITLEMENT_BOUND_OTHER). 레드팀 #3(bearer 토큰 선점) 해소",
+      "배선: SimulationEntitlement.boundAccount 노출 + confirm.ts 전달 + payment confirm 라우트가 세션→계정으로 결속 + account.link-entitlement에서 결속 위반 403",
+      "범위: confirm 경로(사용자 브라우저·세션 있음)만 결속. 웹훅(서버-서버·세션 없음)·mock은 미결속 → 기존 1-jti-1계정 배타성으로 보호(완전 결속은 주문생성 시 order→account 매핑 필요·후속)",
+      "검증: panel-review 다모델(Gemini·Codex·qwen 병렬) + 회귀 +1(결속 위반 403) · tsc·vitest 391·arch 0",
+    ],
+  },
+  {
     version: "0.36.0",
     date: "2026-06-09",
     title: "모바일 바텀시트 — 지도 풀스크린 + 하단 시트 패널 (모바일 1단계)",
