@@ -2,7 +2,12 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#2e7d32" />
+<link rel="apple-touch-icon" href="/icon.svg" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="LENSMARK" />
 <title>LENSMARK · 땅 → 추천 → 소득 시뮬</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -1335,6 +1340,8 @@ document.getElementById("pdf").addEventListener("click",()=>window.print());
 document.getElementById("share").addEventListener("click",async()=>{const lite={mode:MODE,view:VIEW,sels:[...SEL.values()].map(it=>({lat:it.center[0],lng:it.center[1],tier:it.tier,crop:CHOSEN[it.key]||null})),pin:pinState?{lat:pinState.lat,lng:pinState.lng,tier:pinState.tier,crop:pinState.crop}:null};const h="#s="+btoa(unescape(encodeURIComponent(JSON.stringify(lite))));const url=location.origin+location.pathname+h;history.replaceState(null,"",h);try{await navigator.clipboard.writeText(url);alert("공유 링크 복사됨:\n"+url);}catch(_){prompt("공유 링크(복사하세요):",url);}});
 function restoreFromHash(){const m=location.hash.match(/#s=(.+)/);if(!m)return;try{const lite=JSON.parse(decodeURIComponent(escape(atob(m[1]))));restore(lite);}catch(_){}}
 init().then(handlePaymentReturn).then(restoreFromHash); // 결제창 복귀(실Toss) → 승인 → 잠금해제 → 상태복원 순
+/* PWA: 서비스워커 등록(설치형·오프라인 쉘). 실패는 무시(앱은 정상 동작). */
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}
 </script>
 </body>
 </html>

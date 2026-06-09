@@ -14,6 +14,23 @@ export const pageRoutes: RouteFn = (ctx, req, res, url) => {
   const p = url.pathname;
   const ae = req.headers["accept-encoding"] as string | undefined; // gzip 협상 → sendHtml에 전달
 
+  // PWA 정적 에셋 — manifest·서비스워커·아이콘(올바른 content-type + SW 루트 스코프)
+  if (p === "/manifest.webmanifest" || p === "/sw.js" || p === "/icon.svg") {
+    const map: Record<string, [string, string]> = {
+      "/manifest.webmanifest": ["manifest.webmanifest", "application/manifest+json; charset=utf-8"],
+      "/sw.js": ["sw.js", "text/javascript; charset=utf-8"],
+      "/icon.svg": ["icon.svg", "image/svg+xml; charset=utf-8"],
+    };
+    const [file, ct] = map[p];
+    try {
+      const body = readFileSync(join(ctx.config.dashboardDir, file));
+      const headers: Record<string, string> = { "Content-Type": ct, "Cache-Control": p === "/sw.js" ? "no-cache" : "public, max-age=3600" };
+      if (p === "/sw.js") headers["Service-Worker-Allowed"] = "/"; // 루트 스코프 허용(앱 전체 제어)
+      res.writeHead(200, headers); res.end(body);
+    } catch { json(res, 404, { error: "not found", path: p }); }
+    return true;
+  }
+
   if (p === "/ops" || p === "/admin") {
     try { sendHtml(res, readFileSync(join(ctx.config.dashboardDir, "lansmark_ops.html"), "utf-8"), ae); }
     catch { json(res, 200, { msg: "운영 콘솔(dashboard/lansmark_ops.html) 없음" }); }

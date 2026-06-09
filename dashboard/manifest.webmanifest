@@ -1,0 +1,15 @@
+{
+  "name": "LENSMARK 렌즈마크",
+  "short_name": "LENSMARK",
+  "description": "현실 기반 작물·수확·소득 시뮬레이터",
+  "lang": "ko",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#2e7d32",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

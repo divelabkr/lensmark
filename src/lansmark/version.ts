@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.39.0",
+    date: "2026-06-09",
+    title: "PWA 쉘 — 설치형 모바일 앱 (manifest·서비스워커·아이콘)",
+    items: [
+      "LENSMARK를 설치형 PWA로 — manifest(standalone·테마 #2e7d32)·서비스워커(앱 쉘 네트워크-우선 캐시·오프라인 폴백·/api 캐시 제외)·아이콘. HTML head에 manifest/theme/apple-touch-icon + SW 등록 스크립트. 모바일 로드맵 키스톤(웹푸시의 토대)",
+      "서빙: pages.ts가 /manifest.webmanifest·/sw.js(Service-Worker-Allowed:/)·/icon.svg를 올바른 content-type으로 제공. featureMap에 pwa-shell 기능 등록",
+      "검증: 에셋 content-type curl 검증 ✓ · 에뮬레이터(API35·411px)·실기기 앱 로드 ✓. ⚠ SW 등록/설치는 보안컨텍스트(localhost·HTTPS) 필요 — 에뮬 adb reverse 불안정으로 SW-active/오프라인/설치 검증은 실기기 localhost 또는 배포 HTTPS에서",
+      "아이콘=placeholder(실디자인 HUMAN GATE) · tsc·vitest 393·arch 0",
+    ],
+  },
+  {
     version: "0.38.0",
     date: "2026-06-09",
     title: "운영 보안 — 감사 로그 영속화 + SECURITY 런북 + 실기기 모바일 검증",

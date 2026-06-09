@@ -351,4 +351,13 @@ export const FEATURES: Feature[] = [
     guardrails: ["일반화 에러(정보유출 방지)", "법무 페이지는 초안(법무검토 전 적용 금지)"], status: "platform",
     notes: "정적 페이지 서빙(nonce 주입). /terms·/privacy=무료 베타 공개·PII 수집 게이트(초안·법무검토 필요·실수집 관행 반영)",
   },
+  {
+    id: "pwa-shell", name: "PWA(설치형 모바일 앱)", stage: "platform",
+    flow: "manifest·서비스워커·아이콘으로 LENSMARK를 설치형 앱화(홈화면 설치·오프라인 쉘). 웹푸시 알람의 토대. 서빙은 pages.ts",
+    endpoints: ["/manifest.webmanifest", "/sw.js", "/icon.svg"],
+    files: ["dashboard/manifest.webmanifest", "dashboard/sw.js", "dashboard/icon.svg"],
+    tests: [],
+    guardrails: ["SW는 /api 캐시 금지(동적)", "SW 루트 스코프(Service-Worker-Allowed)", "아이콘=placeholder(실디자인 HUMAN GATE)"], status: "platform",
+    notes: "모바일 로드맵: PWA 쉘(완료) → 웹푸시 알람(VAPID·SMS 대체) → 이메일 매직링크 로그인. 네트워크-우선 쉘 캐시(오프라인 폴백).",
+  },
 ];

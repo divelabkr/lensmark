@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.39.0 — 2026-06-09 · PWA 쉘 — 설치형 모바일 앱 (manifest·서비스워커·아이콘)
+> 모바일 로드맵 키스톤(웹푸시의 토대). 에뮬레이터(API35) 검증 후 실기기. tsc·vitest **393**·arch 0.
+- **PWA 쉘** — `manifest.webmanifest`(standalone·테마 #2e7d32·`/icon.svg`) + `sw.js`(앱 쉘 **네트워크-우선 캐시**·오프라인 폴백·`/api` 캐시 제외) + `icon.svg`(placeholder). `dashboard/lansmark_app.html` head에 manifest/theme/apple-touch-icon + SW 등록 스크립트. 모바일 전환 SMS→웹푸시의 토대
+- **서빙**(`pages.ts`) — `/manifest.webmanifest`(application/manifest+json)·`/sw.js`(text/javascript + `Service-Worker-Allowed: /`)·`/icon.svg`(image/svg+xml). featureMap `pwa-shell` 기능 등록
+- **검증** — 에셋 content-type curl ✓ · 에뮬레이터(jupa_api35·411px CSS)·실기기 앱 로드 ✓. ⚠ **SW 등록/설치는 보안컨텍스트(localhost·HTTPS) 필요** — 에뮬 `adb reverse` 불안정으로 SW-active/오프라인/설치 검증은 실기기 localhost 또는 배포 HTTPS에서(10.0.2.2는 reachable하나 보안컨텍스트 아님)
+- 아이콘=placeholder(실디자인 HUMAN GATE) · 모바일 로드맵: PWA(완료)→웹푸시 알람→이메일 매직링크 로그인
+
 ## 0.38.0 — 2026-06-09 · 운영 보안 — 감사 로그 영속화 + SECURITY 런북 + 실기기 검증
 > 보안 포스처 감사 후속. 코드 보호는 견고 — 갭은 운영 HUMAN GATE(TLS·키). tsc·vitest **393**·arch 0.
 - **감사 로그 영속화(#4)** — `ctx.logOps`가 보안 이벤트(로그인·실효·결제·게이트 토글·일지 삭제)를 `audit.jsonl`에 **append-only(0600·재시작 보존)** 기록. 기존 메모리 링버퍼(40)는 콘솔 표시용 유지. 사고대응·PIPA 추적 durable화. file 모드만(memory는 휘발)
