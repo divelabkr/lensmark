@@ -3,6 +3,15 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.42.0 — 2026-06-09 · 웹푸시 알림 다리(M1) — 무과금 앱 푸시(SMS 대체) opt-in
+> 사용자 선택대로 SMS 과금을 피하고 무료 브라우저/PWA 푸시로 전환(ROADMAP M1). 구독+표시 다리 live, 실발송=HUMAN GATE. tsc·vitest **400**(+7 push)·arch 0(34기능·51엔드포인트).
+- **웹푸시 opt-in**(`dashboard/lansmark_app.html` 알림 모달) — **'🔔 이 브라우저로 알림 받기(무료·문자 불필요)'**: 권한 요청 → `serviceWorker.pushManager.subscribe` → `/api/push/subscribe` 저장. VAPID 미설정이면 **'준비 중'** 정직 안내(거짓 '켜짐' 금지)
+- **서비스워커 핸들러**(`dashboard/sw.js`) — `push`(서버 페이로드→알림 표시)·`notificationclick`(열린 앱 탭 포커스/없으면 새 창). 안전 기본값·중복 탭 방지
+- **엔드포인트 3종**(`server/routes/push.ts`) — `GET /api/push/vapid`(공개키+configured)·`POST /api/push/subscribe`·`POST /api/push/unsubscribe`. 구독 스토어=`integrations/push.ts` `InMemoryPushSubscriptionStore`(endpoint dedupe·DoS cap)
+- **보안**(qwen 1차 + Claude 레드팀) — endpoint **https URL만 허용**(발송기 SSRF 입력 위생; 실 사설IP 차단은 발송 시점 seam TODO) · cropId/키 **길이 상한**(메모리 그리핑) · subscribe/unsubscribe **민감 RL 버킷**(`SENSITIVE_RE`) · 구독 endpoint/키 **로그·응답 비노출**(PII)
+- ⚠ **HUMAN GATE**: 실제 발송(`LiveWebPushSender`: VAPID JWT ES256 + aes128gcm)·VAPID 키 생성 미완 → 그 전까지 `ConsolePushSender`(ok:false 정직 폴백). 구독 영속(File store)=follow-up
+- **featureMap** `web-push` 기능 등록 · 알림 채널을 SMS(`alert-subscribe`)에서 무과금 앱 푸시로 승격
+
 ## 0.41.0 — 2026-06-09 · 모바일 헤더 정리 — 보조 액션 '⋯ 더보기' 메뉴
 > 모바일 헤더 5줄 줄바꿈 클러터 제거(ROADMAP U1). tsc·vitest 393·arch 0.
 - **헤더 정리**(`dashboard/lansmark_app.html`) — 모바일(≤600px)에서 보조 액션(저장·불러오기·PDF·공유·초기화)을 **'⋯ 더보기' 드롭다운**으로 묶음. 데스크탑(>600px)은 인라인 유지. 항목선택·외부클릭 시 닫힘. 버튼 ID/리스너 그대로(래핑만)·CSP-safe

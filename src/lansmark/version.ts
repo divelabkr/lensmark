@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.42.0",
+    date: "2026-06-09",
+    title: "웹푸시 알림 다리(M1) — 무과금 앱 푸시(SMS 대체) opt-in",
+    items: [
+      "웹푸시 알림 채널 — SMS 과금 회피(사용자 선택)로 무료 브라우저/PWA 푸시 도입. 알림 모달에 '🔔 이 브라우저로 알림 받기(무료·문자 불필요)' opt-in: 권한 요청 → 서비스워커 pushManager.subscribe → /api/push/subscribe 저장. 서비스워커에 push(알림 표시)·notificationclick(앱 포커스/열기) 핸들러 추가",
+      "엔드포인트 3종(server/routes/push.ts) — GET /api/push/vapid(공개키+configured), POST subscribe/unsubscribe. 구독 스토어(integrations/push.ts InMemoryPushSubscriptionStore·endpoint dedupe·DoS cap)",
+      "보안(qwen 1차 + Claude 레드팀): endpoint는 https URL만 허용(발송기 SSRF 입력 위생, 실 사설IP 차단은 발송 시점 seam TODO)·cropId/키 길이 상한(메모리 그리핑)·subscribe/unsubscribe 민감 레이트리밋 버킷·구독 endpoint/키 로그·응답 비노출(PII)",
+      "⚠ 실제 발송(LiveWebPushSender: VAPID JWT ES256 + aes128gcm)·VAPID 키 생성은 HUMAN GATE — 미설정이면 configured:false로 '준비 중' 정직 안내(거짓 '켜짐' 금지). 구독 영속(File store)=follow-up",
+      "featureMap web-push 기능 등록 · tsc·vitest 400(+7 push)·arch 0(34기능·51엔드포인트)",
+    ],
+  },
+  {
     version: "0.41.0",
     date: "2026-06-09",
     title: "모바일 헤더 정리 — 보조 액션 '⋯ 더보기' 메뉴",

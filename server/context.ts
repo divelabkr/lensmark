@@ -18,6 +18,7 @@ import { PhoneOtpVerifier, type AuthVerifier } from "../src/lansmark/account/ver
 import { createSmsSender } from "../src/lansmark/notify/smsSender";
 import type { AccountStore } from "../src/lansmark/account/accountStore";
 import type { SessionStore } from "../src/lansmark/account/sessionStore";
+import { createPushSender, InMemoryPushSubscriptionStore, type PushSender, type PushSubscriptionStore } from "../src/lansmark/integrations/push";
 import type { Config } from "./config";
 
 /** 운영 대시보드 카운터(가변). */
@@ -59,6 +60,10 @@ export interface Ctx {
   sessions: SessionStore;
   /** 인증 검증기 seam — 지금은 MockVerifier(dev), 실제(OTP/소셜/이메일)는 HUMAN GATE 드롭인. */
   verifier: AuthVerifier;
+  /** 웹푸시 구독 저장(opt-in) — 브라우저 PushSubscription. 발송은 pushSender seam(VAPID 키 대기). memory|(file seam). */
+  pushSubs: PushSubscriptionStore;
+  /** 웹푸시 발신자 seam — 지금은 ConsolePushSender(미전송 정직 폴백). VAPID+LiveWebPushSender 승격=HUMAN GATE. */
+  pushSender: PushSender;
 }
 
 /** 라우트 핸들러 시그니처. 반환 true = 이 핸들러가 응답을 종료함(라우터가 중단). false = 다음 핸들러로. */
@@ -110,5 +115,8 @@ export function createContext(config: Config): Ctx {
     sessions: stores.sessions,
     // 검증기: 휴대폰 OTP(SMS seam 재사용). 키 있으면 실발송 / dev는 코드 노출(테스트) / 운영+키없음은 fail-closed(코드 비노출). 카카오/이메일은 추후 드롭인(HUMAN GATE).
     verifier: new PhoneOtpVerifier({ isProd: config.isProd, sms: createSmsSender() }),
+    // 웹푸시: 구독 저장(memory) + 발신자 seam. SMS 과금 회피 → 앱 푸시 채널(사용자 선택). 실발송은 VAPID 키 설정 후.
+    pushSubs: new InMemoryPushSubscriptionStore(),
+    pushSender: createPushSender(),
   };
 }

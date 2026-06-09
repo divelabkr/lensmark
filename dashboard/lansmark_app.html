@@ -752,6 +752,11 @@ function openAlarmModal(intent){
     <div class="vtop" id="alarm-title">🔔 LENSMARK 알림 신청</div>
     <div style="padding:16px 18px">
       ${intent?`<div class="src" style="background:#F1F8EE;border:1px solid var(--green-line);border-radius:9px;padding:8px 10px;margin-bottom:11px;font-weight:700;color:var(--green-mid)">📌 <b>${esc(intent.cropKo||'이 작물')}</b> 수확기에 시세·실측 <b>리마인드</b>를 보내드립니다 <span style="font-weight:600;color:var(--ink3)">(발송 준비 중)</span></div>`:''}
+      <div id="alarm-push-row" style="margin-bottom:13px">
+        <button class="btn" id="alarm-push" style="width:100%;background:var(--green);color:#fff;border-color:var(--green);font-weight:800">🔔 이 브라우저로 알림 받기 <span style="font-weight:600;opacity:.9">(무료·문자 불필요)</span></button>
+        <div class="src" id="alarm-push-note" style="margin-top:6px;text-align:center;min-height:14px"></div>
+        <div class="src" style="text-align:center;margin:11px 0 1px;color:var(--ink3)">— 또는 문자로 신청 —</div>
+      </div>
       <div id="alarm-consent-row">
         <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer">
           <input type="checkbox" id="alarm-consent" style="margin-top:2px"><span>(필수) 개인정보 수집·이용 동의</span></label>
@@ -770,6 +775,9 @@ function openAlarmModal(intent){
   const close=()=>{const e=document.getElementById("alarm-modal");if(e)e.remove();};
   m.addEventListener("click",e=>{if(e.target===m)close();}); // 배경 클릭 닫기
   document.getElementById("alarm-cancel").addEventListener("click",close);
+  // 웹푸시 옵트인(M1·무료) — 권한 → SW 구독 → /api/push/subscribe. VAPID 미설정이면 '준비 중' 정직 안내.
+  const pushBtn=document.getElementById("alarm-push"),pushNote=document.getElementById("alarm-push-note");
+  if(pushBtn)pushBtn.addEventListener("click",()=>enablePush(pushBtn,pushNote,intent&&intent.cropId));
   const ph=document.getElementById("alarm-phone"),msg=document.getElementById("alarm-msg"),go=document.getElementById("alarm-go");
   // 휴대폰 자동 하이픈(표시용·길이별 분기: 11자리 3-4-4 / 10자리 3-3-4). 검증은 하이픈 제거 후 서버규칙과 동일(F1).
   ph.addEventListener("input",()=>{let v=ph.value.replace(/\D/g,"").slice(0,11);
@@ -801,6 +809,28 @@ function openAlarmModal(intent){
     }catch(e){msg.textContent=(e&&e.message)||(unsub?"해지 실패":"신청 실패");go.disabled=false;go.textContent=unsub?"해지":"신청";}
   });
 }
+
+/* ===== 웹푸시 옵트인(M1) — 브라우저 알림 구독(SMS 대체·무료). 발송은 서버 VAPID 키 설정 후(HUMAN GATE).
+   흐름: /api/push/vapid(configured?) → Notification.requestPermission → SW pushManager.subscribe → /api/push/subscribe.
+   정직성: VAPID 미설정이면 '준비 중'만 안내하고 구독 시도 안 함(거짓 '켜짐' 금지). */
+async function enablePush(btn,noteEl,cropId){
+  const setN=(t,ok)=>{if(noteEl){noteEl.style.color=ok?"var(--green-mid)":"#DA5237";noteEl.textContent=t;}};
+  if(!("serviceWorker"in navigator)||!("PushManager"in window)||!("Notification"in window)){setN("이 브라우저는 알림을 지원하지 않습니다.",false);return;}
+  let cfg;try{cfg=await jget("/api/push/vapid");}catch(_){setN("알림 설정을 불러오지 못했습니다.",false);return;}
+  if(!cfg||!cfg.configured||!cfg.publicKey){setN("브라우저 알림은 준비 중입니다 — 곧 열립니다.",false);return;}
+  let perm=Notification.permission;
+  if(perm==="default"){try{perm=await Notification.requestPermission();}catch(_){perm="denied";}}
+  if(perm!=="granted"){setN("알림 권한이 필요합니다. 브라우저 설정에서 허용해 주세요.",false);return;}
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToU8(cfg.publicKey)});
+    await jpost("/api/push/subscribe",{subscription:sub.toJSON(),...(cropId?{cropId}:{})});
+    setN("✓ 이 브라우저로 알림을 받습니다.",true);if(btn)btn.disabled=true;
+  }catch(e){setN((e&&e.message)||"알림 등록에 실패했습니다.",false);}
+}
+// VAPID 공개키(URL-safe base64) → Uint8Array(applicationServerKey 요구 형식).
+function urlB64ToU8(b){const pad="=".repeat((4-b.length%4)%4);const s=(b+pad).replace(/-/g,"+").replace(/_/g,"/");const r=atob(s);const o=new Uint8Array(r.length);for(let i=0;i<r.length;i++)o[i]=r.charCodeAt(i);return o;}
 
 /* ===== 로그인·내 계정 모달 — 휴대폰 OTP(2단계: 번호→인증번호) → 세션 저장 → 익명 일지 이관(link-anon).
    PII: 로그인=휴대폰 수집 동의. dev는 미발송이라 인증번호를 화면에 표시(devHint). CSP-safe(addEventListener)·esc. */

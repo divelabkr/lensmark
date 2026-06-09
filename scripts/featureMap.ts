@@ -197,7 +197,17 @@ export const FEATURES: Feature[] = [
     tests: ["src/lansmark/tests/notifySubscription.spec.ts"],
     guardrails: ["동의 필수(consent=true만 저장)", "번호 형식검증", "PII 로그·응답 마스킹(원번호 비노출)", "민감 RL(번호 수확 차단)", "발송 미전송→정직 안내", "해지(동의철회) 제공"],
     status: "live",
-    notes: "저장만 live · 실제 SMS 발송은 smsSender seam(한국 SMS 게이트웨이 키=HUMAN GATE) · FileSubscriptionStore=persistence(db/stores) 소속 · ⚠ PII at-rest 암호화는 운영 hardening seam · VAPID(integrations/push)는 미사용 dormant로 대체",
+    notes: "저장만 live · 실제 SMS 발송은 smsSender seam(한국 SMS 게이트웨이 키=HUMAN GATE) · FileSubscriptionStore=persistence(db/stores) 소속 · ⚠ PII at-rest 암호화는 운영 hardening seam · 무과금 채널은 web-push로 승격(사용자 선택: SMS 과금 회피)",
+  },
+  {
+    id: "web-push", name: "웹푸시 알림(앱 푸시·SMS 대체)", stage: "operate",
+    flow: "알림 모달 '브라우저 알림 받기' → /api/push/vapid(configured?) → 권한 요청 → SW pushManager.subscribe → /api/push/subscribe(구독 저장). 발송 시 SW push 이벤트가 알림 표시·클릭 시 앱 포커스.",
+    endpoints: ["/api/push/vapid", "/api/push/subscribe", "/api/push/unsubscribe"],
+    files: ["server/routes/push.ts"], // 발신자·구독 스토어 seam은 integrations/push.ts(통합층 소속), SW는 dashboard/sw.js(단일파일)
+    tests: ["src/lansmark/tests/pushRoutes.spec.ts"],
+    guardrails: ["opt-in(브라우저 권한 명시 동의)", "VAPID 미설정→구독 시도 안 함·'준비 중' 정직 안내", "구독 endpoint/키 로그·응답 비노출(PII)", "구독 DoS 상한(cap)", "발송 미구현→ConsolePushSender ok:false(거짓 성공 금지)"],
+    status: "live",
+    notes: "구독 저장 + SW 표시/클릭 다리 live · 실제 발송(LiveWebPushSender: VAPID JWT ES256 + aes128gcm)·VAPID 키 생성=HUMAN GATE(integrations/push.ts) · 구독 영속(File store)=follow-up · SMS(alert-subscribe) 대신 무과금 앱 푸시 채널(사용자 선택)",
   },
   {
     id: "harvest-market", name: "출하 시세·납품처 최적화", stage: "operate",

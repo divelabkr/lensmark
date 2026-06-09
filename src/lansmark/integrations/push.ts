@@ -58,3 +58,23 @@ export function createPushSender(): PushSender {
   // TODO(승격): vapidConfigured()이면 LiveWebPushSender(VAPID JWT ES256 + aes128gcm) 반환.
   return new ConsolePushSender();
 }
+
+/** 푸시 구독 저장 — 브라우저 PushSubscription 보관(endpoint로 dedupe). memory; 영속은 file 어댑터 seam. */
+export interface PushSubscriptionStore {
+  upsert(sub: PushSubscription, meta?: { subscriberId?: string; cropId?: string }): void;
+  remove(endpoint: string): boolean;            // 해지(파기)
+  all(): PushSubscription[];                     // 발송 대상(추후 cropId/subscriber로 타깃팅)
+  size(): number;
+}
+export class InMemoryPushSubscriptionStore implements PushSubscriptionStore {
+  protected map = new Map<string, { sub: PushSubscription; subscriberId?: string; cropId?: string; at: string }>();
+  constructor(protected readonly cap = 100_000) {}
+  upsert(sub: PushSubscription, meta?: { subscriberId?: string; cropId?: string }): void {
+    if (!sub?.endpoint) return;
+    this.map.set(sub.endpoint, { sub, subscriberId: meta?.subscriberId, cropId: meta?.cropId, at: new Date().toISOString() });
+    while (this.map.size > this.cap) { const k = this.map.keys().next().value as string | undefined; if (!k) break; this.map.delete(k); } // DoS 백스톱
+  }
+  remove(endpoint: string): boolean { return this.map.delete(endpoint); }
+  all(): PushSubscription[] { return [...this.map.values()].map((e) => e.sub); }
+  size(): number { return this.map.size; }
+}
