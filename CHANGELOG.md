@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.36.0 — 2026-06-09 · 모바일 바텀시트 — 지도 풀스크린 + 하단 시트 패널 (모바일 1단계)
+> 모바일 전환 착수. 사장님 결정: SMS 폐기(비용) → 모바일=**PWA**·알람=**웹푸시**·로그인=**이메일 매직링크**. 이번은 ③ 바텀시트(추천 순서 1번). tsc·vitest **390**·arch 0.
+- **모바일 바텀시트**(`dashboard/lansmark_app.html`) — 폰(≤600px)에서 패널을 하단 시트로 오버레이(네이버/카카오 지도 패턴). 지도 풀스크린 + 핸들 탭 펼침/접힘(peek 134px→expand 86vh) + 지도 탭 시 자동 펼침(결과 노출). 데스크탑·태블릿(>600px) 무변경
+- **z-index 정합**: 시트 1200(지도·컨트롤 1000 위) / 모달·자동완성 3000(시트 위) → 충돌 없음. CSP-safe
+- **모바일 로드맵**: ③(완료) → ② 결제-구매자 바인딩 → PWA 쉘(manifest+SW) → 웹푸시 알람(① SMS 대체·VAPID) → 이메일 매직링크 로그인(verifier+콜백+이메일 seam·HUMAN GATE)
+- ⚠ 라이브 모바일 스크린샷은 Chrome 익스텐션 복구 후 검증 예정(현재 CSS·z-index·핸들 로직 코드 검증 완료)
+
 ## 0.35.0 — 2026-06-09 · 성능 최적화 — 응답 gzip + /api/version 다이어트 (실측 기반)
 > "서버 딜레이·최적화" 질문 → 실측 후 조치. **서버 연산은 <1.1ms(병목 아님)**, 비용은 페이로드 전송. tsc·vitest **390**·arch 0 · curl 실증.
 - **실측**: `/api/health` 0.99ms·`/api/config` 0.64ms·`/api/version` 0.56ms·`/api/simulate` 0.60ms·`/app` 1.09ms(로컬). 진짜 비용 = 크기: 앱 HTML **159KB**(비압축)·`/api/version` **27KB**(전체 릴리스)

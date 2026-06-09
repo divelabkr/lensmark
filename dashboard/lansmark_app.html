@@ -166,6 +166,16 @@
   .vitem{font-size:12px;color:var(--ink2);font-weight:600;line-height:1.55;margin-top:4px}
   .vbtn{margin:2px 18px 18px;width:calc(100% - 36px);border:none;border-radius:11px;padding:12px;font-family:inherit;font-size:14px;font-weight:800;color:#fff;background:var(--green);cursor:pointer}.vbtn:hover{filter:brightness(1.05)}
   @media(max-width:900px){.body{flex-direction:column}.panel{width:auto;flex:0 0 auto;max-height:52vh;border-left:none;border-top:1px solid var(--line2)}.mapcol{flex:1;min-height:260px}.livefeed{width:230px}}
+  /* 모바일 바텀시트(폰): 지도 풀스크린 + 패널을 하단 시트로 오버레이(네이버/카카오 패턴). 핸들 탭으로 펼침/접힘. */
+  .sheet-handle{display:none}
+  @media(max-width:600px){
+    .mapcol{flex:1;min-height:0}
+    .panel{position:fixed;left:0;right:0;bottom:0;width:auto;flex:none;max-height:86vh;border:none;border-radius:16px 16px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.18);transform:translateY(calc(100% - 134px));transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:1200;background:var(--card)}
+    .panel.exp{transform:translateY(0)}
+    .sheet-handle{display:block;height:22px;flex:none;position:relative;cursor:grab}
+    .sheet-handle::before{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:40px;height:4px;border-radius:2px;background:var(--line2)}
+    .plist{max-height:none}.livefeed{display:none}
+  }
   @media print{.bar .seg,.bar .btn,.bar .tier,.bar .cnt,.bar .spacer,.hint,.livefeed{display:none!important}.mapcol{display:none!important}.panel{width:100%!important;flex:1 1 auto!important;border:none!important;max-height:none!important}.plist{overflow:visible!important;display:block!important}.card{break-inside:avoid;page-break-inside:avoid}html,body,.wrap,.body{height:auto!important;display:block!important}.bar{box-shadow:none;border:none}}
   /* ===== 동반 패널 탭 그룹(레이아웃 정리 — 출하·병충해·환경·지원·일지를 한 칸에) ===== */
   .opwrap{padding:0;overflow:hidden}
@@ -206,6 +216,7 @@
       <div class="livefeed" id="livefeed"><div class="lh"><span class="dot"></span>LIVE 이벤트<span class="seam">데모 트리거 · 실연동: KAMIS/KMA/위성</span><button class="pp" id="feedpp" title="일시정지/재생">⏸</button></div><div class="feed" id="feed"><div class="empty2">실시간 이벤트 수집 중…</div></div></div>
     </div>
     <aside class="panel">
+      <div class="sheet-handle" id="sheetHandle" title="끌어올리기/내리기"></div>
       <div class="ptop"><h2 id="ptitle">🌱 땅을 선택하세요</h2><div class="sub" id="psub">땅 → 추천 작물 → 정밀 소득 시뮬</div></div>
       <div class="plist" id="plist">
         <div class="empty"><span class="ic">🗺</span>지도를 탭해 시작.<br/>줌에 따라 <b>전국=대표작물 · 시군=특산물 · 필지=실제 재배가능</b><br/><br/>📍핀=한 곳 · ▦토지선택=여러 곳 비교<br/><br/><button class="btn" id="assess-open" style="font-size:12px;padding:7px 12px">🧭 귀농 자가진단(무료)</button><div style="font-size:11px;color:var(--ink3);margin-top:5px">땅 고르기 전, 준비도 30초 점검</div></div>
@@ -1286,6 +1297,11 @@ async function openAt(lat,lng){
 /* ===== 컨트롤 ===== */
 document.getElementById("feedpp").addEventListener("click",function(){evtPaused=!evtPaused;this.textContent=evtPaused?"▶":"⏸";this.title=evtPaused?"재생":"일시정지";});
 document.getElementById("acctbtn").addEventListener("click",openAcctModal); refreshAcctBtn(); // 로그인 · 내 계정(휴대폰 OTP → 세션 → 익명 일지 이관)
+/* 모바일 바텀시트: 핸들 탭으로 펼침/접힘 + 지도 탭 시 자동 펼침(결과 노출) */
+(function(){var P=document.querySelector(".panel"),H=document.getElementById("sheetHandle");if(!P||!H)return;
+  var onM=function(){return window.matchMedia("(max-width:600px)").matches;};
+  H.addEventListener("click",function(){P.classList.toggle("exp");});
+  var m=document.getElementById("map");if(m)m.addEventListener("click",function(){if(onM())P.classList.add("exp");});})();
 document.getElementById("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;MODE=b.dataset.m;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));
   document.getElementById("hint").textContent=MODE==="pin"?"📍 핀 — 한 곳 탭 → 추천 → 작물 누르면 소득 시뮬":"▦ 토지선택 — 구역 다중 탭 → 비교(따로/합쳐서)";
   if(MODE==="pin"){SELLAYER.clearLayers();SEL.clear();GRID.clearLayers();FOCUS=null;document.getElementById("cnt").innerHTML=`핀 <b>0</b>`;document.getElementById("plist").innerHTML=`<div class="empty"><span class="ic">📍</span>지도를 탭해 지점을 분석하세요</div>`;}
