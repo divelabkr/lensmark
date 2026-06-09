@@ -21,8 +21,11 @@ self.addEventListener("fetch", (e) => {
   // 앱 쉘: 네트워크 우선(최신성) → 실패 시 캐시(오프라인). nonce는 캐시된 응답 내에서 자가일관.
   e.respondWith(
     fetch(e.request).then((r) => {
-      const cp = r.clone();
-      caches.open(CACHE).then((c) => c.put(e.request, cp)).catch(() => {});
+      // 성공(2xx) + basic/cors 응답만 캐시 — opaque(cross-origin)·에러 응답은 캐시 금지(poisoned/stale 영속 방지).
+      if (r && r.ok && (r.type === "basic" || r.type === "cors")) {
+        const cp = r.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, cp)).catch(() => {});
+      }
       return r;
     }).catch(() => caches.match(e.request).then((m) => m || caches.match("/app")))
   );

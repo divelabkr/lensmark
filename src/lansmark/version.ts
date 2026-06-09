@@ -13,6 +13,19 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.45.0",
+    date: "2026-06-09",
+    title: "출시 전 종합 테스트 — 보안 감사 확정결함 수정(P1 결속강제 + P2 4종)",
+    items: [
+      "P1 — 유료권한 '계정 결속' 미강제 결함 수정: 결속 토큰(boundAccount)이 유료 기능에서 순수 bearer로 동작하던 갭을 막음. server/paidAccess.ts(세션-인지 게이트)로 simulate·feedback·guide·foreign·budget·journal을 일관 적용 — 로그인한 타인의 유출 토큰 도용 시 403(세션 없으면 bearer 유지)",
+      "P2 — 원시 JSON 바디(null/숫자/배열)가 500 유발하던 account·ops 라우트를 isObject 정규화로 400 처리(정보누출·errCount 오염 방지)",
+      "P2 — 프론트 서버 enum 필드(신뢰도·dataLabel·DEM source) esc() 일관 적용(XSS 방어심도)",
+      "P2 — 서비스워커가 opaque/에러 응답을 캐시하던 것을 ok+basic/cors만 캐시(캐시 오염·stale 방지)",
+      "P2 — 서버 소켓 타임아웃(requestTimeout 20s·headersTimeout 10s·keepAlive 5s)로 slow-loris류 완화",
+      "검증: 3-에이전트 병렬 화이트박스 감사(인증·세션·결제 / 입력검증·DoS·누락 / 프론트·XSS·SW) + 블랙박스(오류·악성·미인증 입력)·부하/레이트리밋·기기 인수 · tsc·vitest 422(+4 결속)·arch 0",
+    ],
+  },
+  {
     version: "0.44.0",
     date: "2026-06-09",
     title: "출시 전 하드닝 — 세션 httpOnly 쿠키(S5) + 핀 분석 병렬화(U2)",

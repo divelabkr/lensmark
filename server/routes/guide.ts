@@ -6,7 +6,7 @@
  */
 import { json } from "../respond";
 import { buildCultivationGuide } from "../../src/lansmark/guide/cultivationGuide";
-import { assertPaidEntitlement } from "../../src/lansmark/policy/entitlement";
+import { assertPaidAccess } from "../paidAccess";
 import type { RouteFn } from "../context";
 
 const SAFE_CROP = /^[a-z_]{1,40}$/; // cropId 화이트리스트(비신뢰 입력 차단)
@@ -24,7 +24,7 @@ export const guideRoutes: RouteFn = async (ctx, req, res, url) => {
   // 2) 티어 게이트: 유료 작물은 엔티틀먼트 필요(대표작물은 무료 통과).
   if (guide.tier === "paid" && ctx.config.requireEntitlement) {
     let ent;
-    try { ent = await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null }); }
+    try { ent = await assertPaidAccess(ctx, req); }
     catch { json(res, 402, { error: "이 작물의 품종·재배 가이드는 유료입니다. 대표작물(사과·감자 등)은 무료로 제공됩니다.", code: "GUIDE_PAID" }); return true; }
     if (ctx.entitlement.isRevoked(ent.jti)) { json(res, 402, { error: "이 권한은 실효되었습니다. 다시 결제해 주세요.", code: "ENTITLEMENT_REVOKED" }); return true; } // consume 미호출 경로도 실효(킬스위치) 강제(레드팀 P1)
   }

@@ -640,7 +640,7 @@ function simCardHtml(sim,terr,opts){
      <div class="oppane" id="op-sup"><div id="support-panel"></div></div>
      <div class="oppane" id="op-jrn"><div id="jrn-panel"></div></div>
    </div>
-   <div class="card"><div class="auto-note">🏔 지형은 <b>위치 기반 자동(DEM ${terr.source||'mock'})</b> — 직접 수정 → 실엔진 재계산. 토양·위성 추가 시 정밀↑</div>
+   <div class="card"><div class="auto-note">🏔 지형은 <b>위치 기반 자동(DEM ${esc(terr.source||'mock')})</b> — 직접 수정 → 실엔진 재계산. 토양·위성 추가 시 정밀↑</div>
      <div class="edit">
        <div class="fc"><label>경사 <span class="rv" id="e-slopev">${terr.slopeDegree}°</span></label><input type="range" id="e-slope" min="0" max="35" step="0.5" value="${terr.slopeDegree}"></div>
        <div class="fc"><label>향</label><select id="e-aspect">${["S","SE","SW","E","W","N","NE","NW","flat"].map(a=>`<option value="${a}" ${a===terr.aspect?'selected':''}>${a==='flat'?'평지':a}</option>`).join("")}</select></div>
@@ -655,7 +655,7 @@ function simCardHtml(sim,terr,opts){
      <div class="sat-row" style="margin-top:9px"><span class="tg ${opts.sat.on?'on':''}" id="e-sat">🛰 위성 ON</span><span class="tg ${opts.sat.ndviLow?'on':''}" id="e-ndvi">NDVI↓</span><span class="tg ${opts.sat.frost?'on':''}" id="e-frost">서리골</span><span class="tg ${opts.sat.wet?'on':''}" id="e-wet">과습</span></div>
      <div class="auto-note" style="margin-top:9px">🌡 지구온난화 시점 — 미래로 바꾸면 소득(냉량성 작물↓·따뜻한 작물 저온피해↓)·시설 냉난방비가 달라집니다(KMA 근사·미검증).</div>${climCtlHtml('clim-sim')}
    </div>
-   <div class="card"><div class="conf"><span class="d" style="background:${cdot}"></span>신뢰도 <b>&nbsp;${sim.confidence}</b> — ${({A:'토양검정+기후 확보',B:'기후/위성 일부',C:'자가신고',D:'데이터 부족(전국 표준)'})[sim.confidence]||'데이터 부족'} <span class="badge ${validated?'b-val':'b-paid'}" style="margin-left:auto">${sim.dataLabel}</span></div></div>
+   <div class="card"><div class="conf"><span class="d" style="background:${cdot}"></span>신뢰도 <b>&nbsp;${esc(sim.confidence)}</b> — ${({A:'토양검정+기후 확보',B:'기후/위성 일부',C:'자가신고',D:'데이터 부족(전국 표준)'})[sim.confidence]||'데이터 부족'} <span class="badge ${validated?'b-val':'b-paid'}" style="margin-left:auto">${esc(sim.dataLabel)}</span></div></div>
    <div class="card"><div class="ch"><span class="cname">📋 실측 입력 → 보정(플라이휠 · 해자)</span>${calF?`<span class="badge b-val">보정중</span>`:''}</div>
      <div class="creg">${calF?`이 지형버킷 보정 적용중 · ${esc(calF.reason)} · ${validated?'<b style="color:var(--green-mid)">validated</b>':'서로 다른 농가 5↑이면 validated'}`:`수확 후 실제값을 넣으면 <b>이 지형버킷</b> 보정이 학습돼 다음 예측이 현실에 가까워집니다 <b>(해자)</b>. <b>서로 다른 농가 5↑</b> → validated(혼자 여러 건은 1로 집계 · 위조 차단)`}</div>
      <div class="edit" style="margin-top:8px"><div class="fc"><label>실제 수확량(kg)</label><input type="number" id="e-ay" placeholder="${sim.yieldKg.p50}"></div><div class="fc"><label>실제 매출(원)</label><input type="number" id="e-ar" placeholder="${sim.revenueKrw.p50}"></div></div>

@@ -15,7 +15,8 @@ import * as crypto from "node:crypto";
 import { json, readBody } from "../respond";
 import { isObject, sanitizeTerrain } from "../../src/lansmark/api/parcelRequest";
 import { clampNonNeg } from "../../src/lansmark/api/security";
-import { assertPaidEntitlement, anonSubmitterId, type SimulationEntitlement } from "../../src/lansmark/policy/entitlement";
+import { anonSubmitterId, type SimulationEntitlement } from "../../src/lansmark/policy/entitlement";
+import { assertPaidAccess } from "../paidAccess";
 import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
 import { sessionTokenFrom } from "../cookies";
 import { toOutcomeRecord } from "../../src/lansmark/core/feedbackStore";
@@ -86,7 +87,7 @@ async function requireEnt(ctx: Ctx, req: import("node:http").IncomingMessage, re
     return { userId: acctUid ?? anonSubmitterId(req.headers["x-lansmark-anon"]), source: "order" };
   }
   try {
-    const ent = await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null });
+    const ent = await assertPaidAccess(ctx, req);
     if (ctx.entitlement.isRevoked(ent.jti)) { json(res, 402, { error: "이 권한은 실효되었습니다.", code: "ENTITLEMENT_REVOKED" }); return null; } // 일지는 quota 미소진(L10)이라 consume이 실효를 막지 못함 → 명시 검사(레드팀 P1)
     return ent;
   }

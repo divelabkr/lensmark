@@ -12,6 +12,7 @@
 import * as crypto from "node:crypto";
 import { json, readBody } from "../respond";
 import { anonSubmitterId, assertPaidEntitlement } from "../../src/lansmark/policy/entitlement";
+import { isObject } from "../../src/lansmark/api/parcelRequest";
 import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
 import { sessionTokenFrom, sessionCookie, clearSessionCookie } from "../cookies";
 import type { RouteFn } from "../context";
@@ -34,7 +35,7 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
   // ── 인증 시작(검증기 seam) ──
   if (p === "/api/account/auth/start" && req.method === "POST") {
     let b: any = {};
-    try { b = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; } // 원시 JSON(null/숫자 등)도 {}로 정규화 → 하위 검증서 400(500 방지)
     const method = typeof b.method === "string" ? b.method : "";
     const contact = typeof b.contact === "string" ? b.contact.trim().slice(0, 200) : "";
     if (!METHODS.has(method) || !contact) { json(res, 400, { error: "method·contact가 필요합니다.", code: "BAD_INPUT" }); return true; }
@@ -53,7 +54,7 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
   // ── 인증 완료 → 계정 find-or-create → 세션 발급 ──
   if (p === "/api/account/auth/verify" && req.method === "POST") {
     let b: any = {};
-    try { b = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; } // 원시 JSON(null/숫자 등)도 {}로 정규화 → 하위 검증서 400(500 방지)
     const challengeId = typeof b.challengeId === "string" ? b.challengeId : "";
     const code = typeof b.code === "string" ? b.code : "";
     if (!challengeId || !code) { json(res, 400, { error: "challengeId·code가 필요합니다.", code: "BAD_INPUT" }); return true; }

@@ -14,7 +14,8 @@ import { terrainBucketOf, toOutcomeRecord } from "../../src/lansmark/core/feedba
 import { getCalibration, getValidationLevel, VALIDATED_THRESHOLD } from "../../src/lansmark/core/calibration";
 import { buildGrowthCalendar } from "../../src/lansmark/core/calendar";
 import { buildGrowthRiskInfo } from "../../src/lansmark/core/growthRisk";
-import { assertPaidEntitlement, anonSubmitterId, type SimulationEntitlement } from "../../src/lansmark/policy/entitlement";
+import { anonSubmitterId, type SimulationEntitlement } from "../../src/lansmark/policy/entitlement";
+import { assertPaidAccess } from "../paidAccess";
 import { clampNonNeg } from "../../src/lansmark/api/security";
 import type { LandInput } from "../../src/lansmark/types";
 import type { RouteFn } from "../context";
@@ -49,7 +50,7 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
     // 1) 서버 권위 엔티틀먼트 검증(fail-closed) — 권한은 클라이언트가 주장할 수 없다.
     let ent: SimulationEntitlement | null = null;
     if (ctx.config.requireEntitlement) {
-      try { ent = await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null }); }
+      try { ent = await assertPaidAccess(ctx, req); }
       catch (e: any) { json(res, e?.status ?? 402, { error: "유료 정밀 분석 권한이 필요합니다(결제).", code: "ENTITLEMENT_REQUIRED" }); return true; }
     }
     // 2) 입력 검증·정규화(cropId/면적/지형 sanitize) — quota 소진 前에(깨진 본문에 quota 낭비 방지·레드팀 P2)
@@ -82,7 +83,7 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
     // 실측 제출은 유료 권한 필요 — 익명 대량 변조·자기검증('✓검증') 위조 차단(레드팀 H6).
     let ent: SimulationEntitlement | null = null;
     if (ctx.config.requireEntitlement) {
-      try { ent = await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null }); }
+      try { ent = await assertPaidAccess(ctx, req); }
       catch { json(res, 402, { error: "실측 제출에는 유료 권한이 필요합니다.", code: "ENTITLEMENT_REQUIRED" }); return true; }
     }
     let b: unknown;

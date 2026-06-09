@@ -31,11 +31,16 @@ export class EntitlementError extends Error {
  * 유료 시뮬레이션 권한 검증 — 서버 권위(server-authoritative), fail-closed.
  * ⚠️ 권한은 절대 클라이언트(body/query)가 주장하게 두지 않는다.
  */
-export async function assertPaidEntitlement(headers: HeaderReader): Promise<SimulationEntitlement> {
+export async function assertPaidEntitlement(headers: HeaderReader, opts?: { sessionAccountId?: string }): Promise<SimulationEntitlement> {
   const token = headers.get("x-lansmark-entitlement");
   if (!token) throw new EntitlementError(402, "Paid simulation access required.");
   const ent = verifyEntitlementToken(token);
   if (!ent) throw new EntitlementError(403, "Invalid or expired entitlement.");
+  // 결속 강제(레드팀 #3 심화) — 토큰이 특정 구매자 계정(boundAccount)에 결속됐고 '로그인 세션이 있으면', 그 계정과 일치해야 사용 가능.
+  //   → 로그인한 타인이 유출된 결속 토큰을 도용하는 시나리오 차단. (세션이 없을 땐 bearer 사용 유지 — 결속 토큰의 '익명' 사용 거부는 별도 제품결정 + DB 결속 필요.)
+  if (ent.boundAccount && opts?.sessionAccountId && ent.boundAccount !== opts.sessionAccountId) {
+    throw new EntitlementError(403, "This entitlement is bound to another account.");
+  }
   return ent;
 }
 

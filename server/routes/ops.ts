@@ -4,6 +4,7 @@
  *   POST /api/ops/revoke : 유료권한 토큰 실효(환불/분쟁 시 무력화) — jti 기반(레드팀 H4 revoke 배선).
  */
 import { json, readBody } from "../respond";
+import { isObject } from "../../src/lansmark/api/parcelRequest";
 import { adminOk } from "../middleware";
 import { VALIDATED_THRESHOLD } from "../../src/lansmark/core/calibration"; // 검증 판정 SSOT(임계) — ops도 동일 기준
 import type { RouteFn } from "../context";
@@ -13,7 +14,7 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
   if (url.pathname === "/api/ops/revoke" && req.method === "POST") {
     if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
     let b: any = {};
-    try { b = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; } // 원시 JSON도 {}로 정규화(500 방지)
     const jti = typeof b.jti === "string" ? b.jti.trim() : "";
     if (!jti) { json(res, 400, { error: "jti가 필요합니다.", code: "JTI_REQUIRED" }); return true; }
     ctx.entitlement.revoke(jti);
@@ -26,7 +27,7 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
   if (url.pathname === "/api/ops/paid-gate" && req.method === "POST") {
     if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
     let b: any = {};
-    try { b = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; } // 원시 JSON도 {}로 정규화(500 방지)
     if (typeof b.requireEntitlement !== "boolean") { json(res, 400, { error: "requireEntitlement(boolean)이 필요합니다.", code: "BAD_VALUE" }); return true; }
     // 운영에서 유료 게이트 끄기(무료 개방)는 명시 env 동의 필요 — bootSafety와 동일 가드로 런타임 우회·실수 차단.
     if (b.requireEntitlement === false && ctx.config.isProd && process.env.LANSMARK_ALLOW_OPEN_PAID !== "1") {

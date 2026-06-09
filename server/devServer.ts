@@ -32,6 +32,11 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// 소켓/요청 타임아웃 하드닝 — 느린 클라이언트가 연결을 오래 점유하는 slow-loris류 완화(Node 기본보다 짧게).
+server.requestTimeout = 20_000;   // 요청 전체(헤더+바디) 수신 마감
+server.headersTimeout = 10_000;   // 헤더 수신 마감(헤더 드립 차단)
+server.keepAliveTimeout = 5_000;  // keep-alive 유휴 연결 회수
+
 server.listen(config.port, () =>
   console.log(`LENSMARK v${APP_VERSION} dev: http://localhost:${config.port}  (mode=${config.dataMode}, vworldKey=${!!config.vworldKey})`),
 );

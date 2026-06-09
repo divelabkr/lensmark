@@ -3,6 +3,15 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.45.0 — 2026-06-09 · 출시 전 종합 테스트 — 보안 감사 확정결함 수정
+> 4분류 테스트 체계(단위·통합·시스템·인수 × 기능·성능·보안·사용성 × 화이트/블랙 × 회귀·스모크) 실행. 3-에이전트 병렬 화이트박스 감사 + 블랙박스/부하/기기. 확정결함(P1 1 + P2 4) 수정. tsc·vitest **422**(+4)·arch 0.
+- **[P1] 유료권한 계정 결속 미강제 수정** — `boundAccount` 토큰이 유료 기능 엔드포인트에서 순수 bearer로 동작(유출 시 누구나 사용)하던 갭. `server/paidAccess.ts`(세션-인지 게이트)로 `simulate·feedback·guide·foreign·budget·journal`을 통일 적용: 결속 토큰 + 로그인 세션 불일치 → **403**(타인 도용 차단), 세션 없으면 bearer 유지(익명 결제 흐름). `assertPaidEntitlement(headers, {sessionAccountId})` + 4 회귀 테스트
+- **[P2] 원시 JSON 바디 → 500 차단** — `account/auth/{start,verify}`·`ops/{revoke,paid-gate}`에서 `null`/숫자/배열 바디가 `b.field` 역참조로 500을 내던 것을 `isObject` 정규화로 **400** 처리
+- **[P2] 프론트 esc() 일관성** — 서버 enum 필드(`sim.confidence`·`sim.dataLabel`·`terr.source`) `esc()` 적용(라이브 provider 대비 XSS 방어심도)
+- **[P2] 서비스워커 캐시 가드** — `ok && (basic|cors)` 응답만 캐시(opaque/에러 응답 캐시 오염·stale 영속 방지)
+- **[P2] 서버 타임아웃 하드닝**(`devServer.ts`) — `requestTimeout 20s`·`headersTimeout 10s`·`keepAliveTimeout 5s`(slow-loris 완화)
+- **감사 결과**: P0 0 · P1 1(수정완료) · 다수 카테고리 CLEAN(입력검증·IDOR·스토어 상한·결제 무결성·ReDoS·오버플로·레이트리밋·CSP/헤더·가드레일 준수). 잔여 P2(멀티인스턴스 DB 어댑터·세션 토큰 바디 노출·ops 토큰 httpOnly·익명 결속토큰)는 ROADMAP에 기록(유료 정식 전 처리)
+
 ## 0.44.0 — 2026-06-09 · 출시 전 하드닝 — 세션 httpOnly 쿠키(S5) + 핀 분석 병렬화(U2)
 > XSS 세션탈취 방어 + 핀 분석 지연 단축. tsc·vitest **418**(+7 cookies)·arch 0 · end-to-end curl + qwen/레드팀 검증.
 - **S5 세션 httpOnly 쿠키**(`server/cookies.ts`) — 로그인 시 `Set-Cookie: lm_session; HttpOnly; SameSite=Strict; Path=/`(Secure는 운영만). **XSS가 세션 토큰을 읽지 못함**. CSRF는 SameSite=Strict + CORS 잠금으로 차단. **듀얼모드**: 쿠키 우선 → `x-lansmark-session` 헤더 폴백(비브라우저 API·테스트 하위호환)

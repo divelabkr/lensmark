@@ -5,7 +5,7 @@
  */
 import { json } from "../respond";
 import { fetchForeignCrop } from "../../src/lansmark/foreign/foreignCrop";
-import { assertPaidEntitlement } from "../../src/lansmark/policy/entitlement";
+import { assertPaidAccess } from "../paidAccess";
 import type { RouteFn } from "../context";
 
 const NAME_RE = /^[가-힣a-zA-Z0-9 .\-]{1,80}$/; // 한글/라틴/숫자/공백/점/하이픈만(비신뢰 입력 차단)
@@ -21,7 +21,7 @@ export const foreignRoutes: RouteFn = async (ctx, req, res, url) => {
   // 유료 전용 — 직접 작물 추가(외래종 포함)는 유료 기능. (네트워크 호출 前 차단)
   if (ctx.config.requireEntitlement) {
     let ent;
-    try { ent = await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null }); }
+    try { ent = await assertPaidAccess(ctx, req); }
     catch { json(res, 402, { error: "직접 작물 추가(외래종 포함)는 유료 기능입니다.", code: "FOREIGN_PAID" }); return true; }
     if (ctx.entitlement.isRevoked(ent.jti)) { json(res, 402, { error: "이 권한은 실효되었습니다. 다시 결제해 주세요.", code: "ENTITLEMENT_REVOKED" }); return true; } // consume 미호출 경로도 실효 강제(레드팀 P1)
   }

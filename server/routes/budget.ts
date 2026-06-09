@@ -8,7 +8,7 @@
 import { json, readBody } from "../respond";
 import { isObject } from "../../src/lansmark/api/parcelRequest";
 import { clampNonNeg } from "../../src/lansmark/api/security";
-import { assertPaidEntitlement } from "../../src/lansmark/policy/entitlement";
+import { assertPaidAccess } from "../paidAccess";
 import { runCashflowPlan, buildCashflowTeaser, buildFacilityCapex } from "../../src/lansmark/budget/cashflowPlan";
 import { getFacilityCost, type FacilityTier } from "../../src/lansmark/data/facilityCost.seed";
 import type { CashflowInput, CapexItem, LoanTerms, IncomeMode } from "../../src/lansmark/budget/types";
@@ -109,7 +109,7 @@ export const budgetRoutes: RouteFn = async (ctx, req, res, url) => {
     paid = true; // 게이트 비활성(개발) → 정밀
   } else {
     try {
-      const ent = await assertPaidEntitlement({ get: (n) => (req.headers[n.toLowerCase()] as string) ?? null });
+      const ent = await assertPaidAccess(ctx, req);
       if (ctx.entitlement.consume(ent.jti, ctx.config.entitlementQuota)) paid = true; // 유료 경로만 quota 소진
     } catch { /* 토큰 없음/무효 → teaser */ }
   }

@@ -96,7 +96,7 @@ export const FEATURES: Feature[] = [
     id: "paywall-entitlement", name: "결제·유료권한", stage: "pay",
     flow: "결제(Toss/데모) → HMAC 엔티틀먼트(jti·quota·exp) → 정밀분석 잠금해제",
     endpoints: ["/api/pay/mock", "/api/pay/confirm", "/api/pg/webhook"],
-    files: ["src/lansmark/policy/entitlement.ts", "src/lansmark/payment/confirm.ts", "src/lansmark/payment/pgWebhook.ts", "server/routes/payment.ts"],
+    files: ["src/lansmark/policy/entitlement.ts", "src/lansmark/payment/confirm.ts", "src/lansmark/payment/pgWebhook.ts", "server/paidAccess.ts", "server/routes/payment.ts"],
     tests: ["src/lansmark/tests/entitlement.spec.ts", "src/lansmark/tests/pgPayment.spec.ts", "src/lansmark/tests/redteamFixes.spec.ts"],
     guardrails: ["서버권위 검증(fail-closed)", "금액 서버검증", "토큰 quota·실효"], status: "live", notes: "결제창 목업(mockPayModal) 활성 · 실 Toss v2 SDK redirect seam(키 연결 시 자동 전환) · confirm/webhook 키 필요",
   },
