@@ -21,7 +21,8 @@
   html,body{height:100%;background:var(--bg);color:var(--ink);font-family:"Manrope","IBM Plex Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
   .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
   .wrap{display:flex;flex-direction:column;height:100vh}
-  .bar{background:var(--card);border-bottom:1px solid var(--line2);padding:9px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;z-index:1000;box-shadow:var(--shadow-sm)}
+  .bar{background:var(--card);border-bottom:1px solid var(--line2);padding:9px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;z-index:1000;box-shadow:var(--shadow-sm);position:relative}
+  #morebtn{display:none}.actmenu{display:flex;gap:9px;align-items:center}  /* 데스크탑: 더보기 숨김·액션 인라인 */
   .logo{display:flex;align-items:center;gap:8px;margin-right:4px}.logo .m{width:29px;height:29px;border-radius:9px;background:linear-gradient(135deg,var(--green),#2BD97A);display:grid;place-items:center;font-size:15px}.logo .n{font-weight:800;font-size:16px;letter-spacing:-.4px;color:var(--green-d)}
   .seg{display:inline-flex;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:3px;gap:2px}
   .seg button{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--ink2);padding:6px 11px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.15s}
@@ -180,6 +181,10 @@
     .sheet-handle{display:block;height:22px;flex:none;position:relative;cursor:grab}
     .sheet-handle::before{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:40px;height:4px;border-radius:2px;background:var(--line2)}
     .plist{max-height:none}.livefeed{display:none}
+    /* 헤더 정리: 보조 액션을 '⋯ 더보기' 드롭다운으로(줄바꿈 클러터 제거) */
+    #morebtn{display:inline-flex}
+    .actmenu{position:absolute;top:100%;right:8px;flex-direction:column;align-items:stretch;background:var(--card);border:1px solid var(--line2);border-radius:11px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:7px;z-index:1100;display:none;min-width:152px}
+    .actmenu.open{display:flex}
   }
   @media print{.bar .seg,.bar .btn,.bar .tier,.bar .cnt,.bar .spacer,.hint,.livefeed{display:none!important}.mapcol{display:none!important}.panel{width:100%!important;flex:1 1 auto!important;border:none!important;max-height:none!important}.plist{overflow:visible!important;display:block!important}.card{break-inside:avoid;page-break-inside:avoid}html,body,.wrap,.body{height:auto!important;display:block!important}.bar{box-shadow:none;border:none}}
   /* ===== 동반 패널 탭 그룹(레이아웃 정리 — 출하·병충해·환경·지원·일지를 한 칸에) ===== */
@@ -208,12 +213,15 @@
     <div class="spacer"></div>
     <span class="cnt" id="cnt">선택 <b>0</b></span>
     <div class="seg view" id="view"><button data-v="sep" class="on">따로</button><button data-v="comb">합쳐서</button></div>
-    <button class="btn" id="save">💾 저장</button>
-    <button class="btn" id="load">📂 불러오기</button>
-    <button class="btn" id="pdf">🖨 PDF</button>
-    <button class="btn" id="share">🔗 공유</button>
-    <input type="file" id="loadfile" accept="application/json" style="display:none">
-    <button class="btn danger" id="reset">초기화</button>
+    <button class="btn" id="morebtn" title="더보기" aria-label="더보기">⋯</button>
+    <div class="actmenu" id="actmenu">
+      <button class="btn" id="save">💾 저장</button>
+      <button class="btn" id="load">📂 불러오기</button>
+      <button class="btn" id="pdf">🖨 PDF</button>
+      <button class="btn" id="share">🔗 공유</button>
+      <input type="file" id="loadfile" accept="application/json" style="display:none">
+      <button class="btn danger" id="reset">초기화</button>
+    </div>
     <button class="btn" id="acctbtn" title="로그인 · 내 계정" style="font-weight:700">로그인</button>
   </div>
   <div class="body">
@@ -1336,6 +1344,11 @@ document.getElementById("acctbtn").addEventListener("click",openAcctModal); refr
   var onM=function(){return window.matchMedia("(max-width:600px)").matches;};
   H.addEventListener("click",function(){P.classList.toggle("exp");});
   var m=document.getElementById("map");if(m)m.addEventListener("click",function(){if(onM())P.classList.add("exp");});})();
+/* 헤더 '⋯ 더보기' 메뉴(모바일) — 토글 + 항목선택/외부클릭 닫힘 */
+(function(){var mb=document.getElementById("morebtn"),am=document.getElementById("actmenu");if(!mb||!am)return;
+  mb.addEventListener("click",function(e){e.stopPropagation();am.classList.toggle("open");});
+  am.addEventListener("click",function(){am.classList.remove("open");});
+  document.addEventListener("click",function(e){if(e.target!==mb&&!am.contains(e.target))am.classList.remove("open");});})();
 document.getElementById("mode").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;MODE=b.dataset.m;[...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b));
   document.getElementById("hint").textContent=MODE==="pin"?"📍 핀 — 한 곳 탭 → 추천 → 작물 누르면 소득 시뮬":"▦ 토지선택 — 구역 다중 탭 → 비교(따로/합쳐서)";
   if(MODE==="pin"){SELLAYER.clearLayers();SEL.clear();GRID.clearLayers();FOCUS=null;document.getElementById("cnt").innerHTML=`핀 <b>0</b>`;document.getElementById("plist").innerHTML=`<div class="empty"><span class="ic">📍</span>지도를 탭해 지점을 분석하세요</div>`;}
