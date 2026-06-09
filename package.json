@@ -7,11 +7,15 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "start": "tsx server/devServer.ts",
     "demo": "tsx scripts/mockRun.ts",
     "dev": "tsx server/devServer.ts",
     "capture": "tsx scripts/captureLiveSamples.ts",
     "arch": "tsx scripts/archCheck.ts",
     "arch:render": "tsx scripts/archRender.ts"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",

@@ -1,76 +1,116 @@
-# DEPLOY.md — LANSMARK 운영 배포 (도메인: lensmark.kr)
+# DEPLOY.md — LENSMARK 배포 런북 (도메인: lensmark.kr)
 
-> 데이터 통합 키는 `RUN_GOLIVE.md`, 본 문서는 **도메인·호스팅·운영 env·보안 배포**.
-> ⚠ **HUMAN GATE(사장님 직접)**: 서버 호스팅·DNS·TLS 인증서·비밀값 생성. 코드/AI는 설정 템플릿·가이드만 제공.
-> ⚠ 철자: 도메인 `lensmark.kr`(lens-) ↔ 브랜드/코드 `LANSMARK`(lans-). 의도면 그대로, 오타면 지금 정정.
+> **택1 아키텍처: [A] Firebase Hosting + Cloud Run (선택·권장)** · [B] VPS+nginx(대안).
+> 데이터 통합 키는 `RUN_GOLIVE.md`. ⚠ **HUMAN GATE(사장님 직접)**: 인증·콘솔·DNS·TLS·비밀값 생성·과금. 코드/AI는 설정·런북만.
+> ⚠ 철자: 도메인 `lensmark.kr`(lens-) ↔ 코드 식별자 `LANSMARK`(lans-) — 의도된 구분.
 
-## 0) 구성 개요
-```
-사용자 → https://lensmark.kr → [nginx :443 TLS] → [Node 앱 127.0.0.1:8787]
-                                  └ Let's Encrypt 인증서      └ npx tsx server/devServer.ts (pm2/systemd)
-```
-앱은 무의존성 Node http 서버 + 자체 보안헤더(CSP·HSTS·nosniff). TLS는 nginx(또는 Cloudflare)가 종단.
+## 0) 역할 분리
+| 준비됨(레포) | 사람이 실행(인증·과금·콘솔) |
+|---|---|
+| `Dockerfile`·`.dockerignore`·`firebase.json`·`.firebaserc`·`npm run start`·`.env.example` | `firebase login`·`gcloud auth`·시크릿 생성/주입·`gcloud run deploy`·`firebase deploy`·도메인 연결 |
 
-## 1) 서버 준비 (Ubuntu 예시)
-- Node 20 설치(프로젝트는 Node 20·tsx 사용). `node -v` → v20.x
-- 코드 배치 → `npm ci` (devDeps의 tsx/typescript 포함 — 운영 실행에 tsx 필요)
-- 데이터 디렉터리: `sudo mkdir -p /var/lib/lansmark/data && sudo chown $USER /var/lib/lansmark/data && chmod 700 /var/lib/lansmark/data`
+---
 
-## 2) 운영 env (.env)
-```
-cp .env.production.example .env
-# 비밀값 2개 생성(각각):
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-# → LANSMARK_ENTITLEMENT_SECRET / LANSMARK_ADMIN_TOKEN 에 각각 채움
-```
-필수 확인: `NODE_ENV=production` · `LANSMARK_CORS_ORIGIN=https://lensmark.kr,https://www.lensmark.kr` · 비밀 2개 채움 · `LANSMARK_TRUST_PROXY_HOPS=1`(nginx 1단).
-> 안전장치: 위가 비면 **앱이 부팅을 거부**(fail-closed)한다 — 잘못된 설정으로 운영 노출 방지.
+# [A] Firebase Hosting + Cloud Run (권장)
 
-## 3) 프로세스 실행 (pm2 예시)
 ```
-npm i -g pm2
-pm2 start "npx tsx server/devServer.ts" --name lansmark --cwd /path/to/lansmark_simulator_skeleton
-pm2 save && pm2 startup    # 재부팅 자동기동
+사용자 → https://lensmark.kr → [Firebase Hosting: TLS·CDN·도메인] → (rewrite **) → [Cloud Run: lensmark-api]
+                                                                                       └ 현재 Node 서버를 컨테이너로 그대로 실행
 ```
-(systemd 선호 시: ExecStart=`/usr/bin/npx tsx server/devServer.ts`, EnvironmentFile=`.env`, WorkingDirectory=프로젝트경로.)
 
-## 4) 리버스 프록시 + TLS (nginx)
+## A-1. 사전 준비(1회)
+```bash
+# gcloud 설치: https://cloud.google.com/sdk/docs/install
+gcloud auth login && gcloud config set project lensmark-dev
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com
+firebase login
+```
+> Firebase 콘솔에서 **Blaze(종량) 요금제** 활성화 필요(Cloud Run/Build 전제). 무료 등급 내 사용 가능.
+
+## A-2. 운영 시크릿 (HUMAN GATE — 레포에 두지 않음)
+`NODE_ENV=production`이면 서버가 **fail-closed 부팅 점검**: `LANSMARK_ENTITLEMENT_SECRET` 필수 · `CORS_ORIGIN=*` 거부 · 관리자 토큰 없으면 콘솔 오픈 거부.
+```bash
+printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create lansmark-entitlement-secret --data-file=-
+printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create lansmark-admin-token       --data-file=-
+printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create lansmark-data-key           --data-file=-   # at-rest 키(분실=복구불가·백업!)
+PROJ_NUM=$(gcloud projects describe lensmark-dev --format='value(projectNumber)')
+for S in lansmark-entitlement-secret lansmark-admin-token lansmark-data-key; do
+  gcloud secrets add-iam-policy-binding $S \
+    --member="serviceAccount:${PROJ_NUM}-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+done
+```
+> 외부 API 키(VWORLD/KMA/KAMIS/Toss 등)는 확보된 것만 같은 방식으로 추가 → 아래 `--set-secrets`에 매핑(없으면 mock 폴백).
+
+## A-3. Cloud Run 배포(API)
+```bash
+gcloud run deploy lensmark-api \
+  --source . \
+  --region asia-northeast3 \
+  --allow-unauthenticated \
+  --min-instances 1 --max-instances 1 \
+  --memory 512Mi --cpu 1 --concurrency 80 \
+  --set-env-vars NODE_ENV=production,LANSMARK_STORE=file,LANSMARK_DATA_DIR=/tmp/lansmark-data,LANSMARK_REQUIRE_ENTITLEMENT=false,LANSMARK_ALLOW_OPEN_PAID=1,LANSMARK_CORS_ORIGIN=https://lensmark.kr,LANSMARK_APP_ORIGIN=https://lensmark.kr,LANSMARK_TRUST_PROXY_HOPS=1 \
+  --set-secrets LANSMARK_ENTITLEMENT_SECRET=lansmark-entitlement-secret:latest,LANSMARK_ADMIN_TOKEN=lansmark-admin-token:latest,LANSMARK_DATA_KEY=lansmark-data-key:latest
+```
+- `--source .` → Cloud Build가 `Dockerfile`로 빌드. **서비스명·리전은 `firebase.json` rewrite와 일치**(`lensmark-api`/`asia-northeast3`).
+- `REQUIRE_ENTITLEMENT=false` = 무료 베타(유료 OFF). ⚠ **운영에선 무료 베타가 fail-closed로 부팅 차단**되므로 의도적 우회 표시 `LANSMARK_ALLOW_OPEN_PAID=1`을 반드시 함께 준다(없으면 부팅 거부). 유료 정식 시 둘 다 제거. `TRUST_PROXY_HOPS=1` = Hosting 1홉(레이트리밋 IP 정확).
+- min=max=1 단일 인스턴스 = 파일 스토어가 인스턴스 수명 동안 유지 + 콜드스타트 없음(dev 적합).
+
+## A-4. Hosting 배포(TLS·CDN·도메인 → rewrite)
+```bash
+firebase deploy --only hosting --project lensmark-dev
+# → https://lensmark-dev.web.app (모든 경로가 Cloud Run lensmark-api로 rewrite)
+```
+
+## A-5. 커스텀 도메인(lensmark.kr)
+Firebase 콘솔 → Hosting → 커스텀 도메인 → `lensmark.kr` → 표시 A/TXT를 DNS 등록 → 자동 SSL. 발급 후 `APP_ORIGIN`/`CORS_ORIGIN`이 도메인과 일치하는지 확인(불일치 시 매직링크·CORS 깨짐).
+
+## A-6. 검증(스모크)
+```bash
+BASE=https://lensmark-dev.web.app   # 또는 https://lensmark.kr
+curl -s $BASE/api/version           # {"version":"0.45.0",...}
+curl -s -o /dev/null -w "%{http_code}\n" $BASE/app    # 200
+curl -s -o /dev/null -w "%{http_code}\n" $BASE/api/account/me   # 401(미로그인 정상)
+```
+모바일: 도메인을 휴대폰 Chrome → 웰컴/지도 + ⋮ "홈 화면에 추가"(PWA 설치).
+
+## A-7. ⚠ 한계
+- **상태 휘발**: Cloud Run 파일시스템 휘발 → 재배포/회수 시 `.data`(계정·세션·일지·멱등) 초기화. **dev/베타엔 OK, 유료 정식 전 Firestore 어댑터(ROADMAP §3-1) 필수**.
+- 무료 베타로 시작 → 유료 전환은 ops 토글 + 결제 키 + §3-1.
+- 발송 키 전까지 로그인/알림은 dev 표시·fail-closed. 롤백: `gcloud run services update-traffic lensmark-api --to-revisions PREV=100`.
+
+---
+
+# [B] VPS + nginx (대안 — 영속 디스크가 필요/Firebase 미사용 시)
+
+> 현재 파일 스토어가 **영구 디스크에 보존**됨(Cloud Run의 휘발 한계 없음). 단일 서버 운영.
+
+```
+사용자 → https://lensmark.kr → [nginx :443 TLS] → [Node 앱 127.0.0.1:8787 · pm2/systemd]
+```
+- Node 20 + `npm ci`(tsx 포함) · 데이터 디렉터리 `sudo mkdir -p /var/lib/lansmark/data && chown $USER … && chmod 700 …`
+- env: `cp .env.example .env` → `NODE_ENV=production` · 비밀 3종 생성(`openssl rand -hex 32`) · `LANSMARK_CORS_ORIGIN=https://lensmark.kr` · `LANSMARK_TRUST_PROXY_HOPS=1` · `LANSMARK_DATA_DIR=/var/lib/lansmark/data`. (미충족 시 부팅 거부=fail-closed)
+- 실행(pm2): `pm2 start "npx tsx server/devServer.ts" --name lansmark --cwd <프로젝트> && pm2 save && pm2 startup`
+- nginx:
 ```nginx
 server {
-  listen 443 ssl http2;
-  server_name lensmark.kr www.lensmark.kr;
-  ssl_certificate     /etc/letsencrypt/live/lensmark.kr/fullchain.pem;   # certbot 발급
+  listen 443 ssl http2;  server_name lensmark.kr www.lensmark.kr;
+  ssl_certificate /etc/letsencrypt/live/lensmark.kr/fullchain.pem;
   ssl_certificate_key /etc/letsencrypt/live/lensmark.kr/privkey.pem;
-  location / {
-    proxy_pass http://127.0.0.1:8787;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;   # 앱 RL이 신뢰(TRUST_PROXY_HOPS=1)
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
+  location / { proxy_pass http://127.0.0.1:8787; proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme; }
 }
-server { listen 80; server_name lensmark.kr www.lensmark.kr; return 301 https://$host$request_uri; }  # HTTP→HTTPS
+server { listen 80; server_name lensmark.kr www.lensmark.kr; return 301 https://$host$request_uri; }
 ```
-인증서: `sudo certbot --nginx -d lensmark.kr -d www.lensmark.kr`
+- 인증서: `sudo certbot --nginx -d lensmark.kr -d www.lensmark.kr` · DNS: A(lensmark.kr→서버IP)·CNAME(www). (Cloudflare 프록시 ON이면 `TRUST_PROXY_HOPS=2`)
 
-## 5) DNS (도메인 등록처)
-- `A` 레코드: `lensmark.kr` → 서버 공인 IP
-- `CNAME`(또는 A) : `www.lensmark.kr` → `lensmark.kr`(또는 동일 IP)
-- (Cloudflare 사용 시 프록시 ON이면 `LANSMARK_TRUST_PROXY_HOPS=2`)
+---
 
-## 6) 배포 후 점검
-```
-curl -s https://lensmark.kr/api/health        # ok·storeMode·integrations 상태
-curl -s https://lensmark.kr/api/version        # 0.23.0
-# 페이지: https://lensmark.kr/(앱) · /ops(콘솔·admin토큰) · /terms · /privacy
-```
-- CORS: 타 출처에서의 요청이 차단되는지(허용 도메인만).
-- 부팅 로그에 `[SECURITY]` 경고가 없어야 함(있으면 env 보완).
-
-## 7) 운영 전 체크리스트
-- [ ] `NODE_ENV=production` + 비밀 2개 생성·주입
-- [ ] CORS = lensmark.kr 도메인 (전체허용 * 아님)
-- [ ] TLS(HTTPS) 정상 · HTTP→HTTPS 리다이렉트
-- [ ] `/var/lib/lansmark/data` 쓰기권한(재시작 보존)
+## 공통 출시 전 체크리스트
+- [ ] `NODE_ENV=production` + 비밀 3종(ENTITLEMENT_SECRET·ADMIN_TOKEN·DATA_KEY) 생성·주입
+- [ ] CORS = lensmark.kr (전체허용 `*` 아님) · TLS/HTTPS 정상
+- [ ] `APP_ORIGIN` = 실제 도메인(매직링크) · 부팅 로그에 `[SECURITY]` 경고 없음
 - [ ] `/terms`·`/privacy` 초안 → **법무 검토 후 확정**(공개·PII 수집 전제)
-- [ ] (무료 베타) 결제 비활성 상태로 오픈 → 실측 플라이휠 수집
-- [ ] (유료 전 — Phase 2) 실 RDA 소득자료 · Toss 라이브 키 · 약관 확정
+- [ ] (무료 베타) `REQUIRE_ENTITLEMENT=false` + **`LANSMARK_ALLOW_OPEN_PAID=1`**(운영 부팅 차단 우회 — 무료 베타 의도 표시). 둘 없으면 운영 부팅 거부
+- [ ] (유료 정식 — Phase 2) Firestore 어댑터(§3-1) · 실 RDA 소득 · Toss 라이브 키 · 약관 확정

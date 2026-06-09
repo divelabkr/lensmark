@@ -1,0 +1,11 @@
+# 빌드 컨텍스트 제외 — 시크릿·PII·재생성 가능 자산은 이미지에 넣지 않는다.
+node_modules
+.git
+.gitignore
+.env
+.env.*
+.data
+samples
+dist
+*.log
+.DS_Store

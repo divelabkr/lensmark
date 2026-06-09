@@ -1,0 +1,2 @@
+# Firebase Hosting public 디렉터리(필수 존재). 현재 모든 경로는 firebase.json rewrite로 Cloud Run 경유.
+# 정적 자산(아이콘·manifest 등)을 CDN 엣지에서 직접 서빙하려면 여기에 두면 rewrite보다 우선 서빙된다.
