@@ -4,6 +4,8 @@
  *   라우트 시그니처(RouteFn)도 여기서 정의한다(라우트=순수 함수, 상태는 ctx 경유).
  */
 import type * as http from "node:http";
+import { appendFileSync } from "node:fs";
+import { join } from "node:path";
 import { getProviders } from "../src/lansmark/data/providers";
 import type { IdempotencyStore } from "../src/lansmark/payment/pgWebhook";
 import { createStores, type FeedbackStoreEx, type EntitlementStore } from "../src/lansmark/db/stores";
@@ -86,8 +88,14 @@ export function createContext(config: Config): Ctx {
     metrics: { simRuns: 0, entitlementsMinted: 0, mockPaysIssued: 0, reqCount: 0, errCount: 0 },
     opsLog,
     logOps(type, detail) {
-      opsLog.unshift({ at: new Date().toISOString(), type, detail });
-      if (opsLog.length > 40) opsLog.pop(); // 링버퍼: 최신 40건만 유지
+      const entry = { at: new Date().toISOString(), type, detail };
+      opsLog.unshift(entry);
+      if (opsLog.length > 40) opsLog.pop(); // 콘솔 표시용 링버퍼(최신 40건)
+      // 영속 감사 로그(append-only·재시작 보존·0600) — 보안 이벤트(로그인·실효·결제·게이트 토글·삭제) durable 기록.
+      //   file 모드만. 디스크 오류는 무시(운영 연속성 우선). 로테이션·외부전송은 운영 강화(P1).
+      if (config.storeMode === "file") {
+        try { appendFileSync(join(config.dataDir, "audit.jsonl"), JSON.stringify(entry) + "\n", { mode: 0o600 }); } catch { /* 쓰기 실패 무시 */ }
+      }
     },
     limiters: {
       global: new RateLimiter(config.rateGlobal, config.rateWindowMs),

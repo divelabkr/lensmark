@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.38.0 — 2026-06-09 · 운영 보안 — 감사 로그 영속화 + SECURITY 런북 + 실기기 검증
+> 보안 포스처 감사 후속. 코드 보호는 견고 — 갭은 운영 HUMAN GATE(TLS·키). tsc·vitest **393**·arch 0.
+- **감사 로그 영속화(#4)** — `ctx.logOps`가 보안 이벤트(로그인·실효·결제·게이트 토글·일지 삭제)를 `audit.jsonl`에 **append-only(0600·재시작 보존)** 기록. 기존 메모리 링버퍼(40)는 콘솔 표시용 유지. 사고대응·PIPA 추적 durable화. file 모드만(memory는 휘발)
+- **SECURITY.md** 운영 보안 런북 — ① 배포 직전 HUMAN GATE(TLS·`ENTITLEMENT/ACCOUNT/DATA_KEY/ADMIN`·`PG_WEBHOOK`·`TOSS` 키·CORS) ② 코드 내장 보호 목록 ③ 키 관리(DATA_KEY 백업·회전) ④ 사고 대응(revoke·세션파기) ⑤ 강화 로드맵
+- **실기기 모바일 검증** — Galaxy Note 20(SM-N981N·CSS 384px)에서 adb reverse 터널로 바텀시트 확인: 접힘=지도 풀스크린+시트 peek / 펼침=86vh 분석결과 / 버전 팝업 렌더 OK
+- 회귀 +2(감사로그 file/memory) · #5 세션 httpOnly 쿠키·PWA 쉘은 후속 슬라이스
+
 ## 0.37.0 — 2026-06-09 · 결제-구매자 바인딩 — bearer 토큰 선점 차단 (레드팀 #3 해소)
 > ②(추천 순서 2번). 결제 시 엔티틀먼트를 구매자 계정에 결속 → 토큰을 훔쳐도 타 계정 연결 불가. tsc·vitest **391**·arch 0.
 - **구매자 결속**(`boundAccount`) — `/api/pay/confirm`이 로그인 세션→계정을 엔티틀먼트에 결속. `link-entitlement`는 `boundAccount`가 본인 계정과 다르면 **403 ENTITLEMENT_BOUND_OTHER** → 유효 토큰 선점(bearer) 차단. 배선: `SimulationEntitlement.boundAccount` + `confirm.ts` 전달 + payment 라우트 세션 해석 + account 라우트 검증

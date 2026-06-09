@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.38.0",
+    date: "2026-06-09",
+    title: "운영 보안 — 감사 로그 영속화 + SECURITY 런북 + 실기기 모바일 검증",
+    items: [
+      "감사 로그 영속화(#4) — logOps가 보안 이벤트(로그인·실효·결제·게이트 토글·일지 삭제)를 audit.jsonl에 append-only(0600·재시작 보존)로 기록. 기존 메모리 링버퍼(40)는 콘솔 표시용 유지. 사고대응·PIPA 추적 durable화",
+      "SECURITY.md 운영 보안 런북 — 배포 직전 HUMAN GATE(TLS·키 6종·CORS·시크릿)·코드 내장 보호 목록·키 관리(DATA_KEY 백업·회전)·사고 대응·강화 로드맵",
+      "보안 포스처 감사: 코드 레벨 견고(헤더·CSP·레이트리밋·결제무결성·계정/세션·암호화 seam·감사로그) — 실질 갭은 운영 HUMAN GATE(TLS·키 주입)",
+      "실기기 모바일 검증(Galaxy Note 20·384px CSS) — 바텀시트 정상(접힘=지도 풀스크린+시트 peek / 펼침=86vh)·버전 팝업 렌더 OK. adb reverse 터널",
+      "회귀 +2(감사로그 file/memory) · tsc·vitest 393·arch 0",
+    ],
+  },
+  {
     version: "0.37.0",
     date: "2026-06-09",
     title: "결제-구매자 바인딩 — bearer 토큰 선점 차단 (레드팀 #3 해소)",
