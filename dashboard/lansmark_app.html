@@ -474,7 +474,9 @@ function drawGrid(){GRID.clearLayers();if(MODE!=="select")return;const tier=tier
 function tierBadge(){const t=TIER_META[tierOf(MAP.getZoom())];document.getElementById("tier").innerHTML=`<span class="lv">${t.lv}</span> ${t.label}`;}
 function drawParcel(pc,lc){PARCEL.clearLayers();if(!pc||!pc.polygon||!pc.polygon.length)return;const c=lc?lcStyle(lc).c:"#10B95C";const latlngs=pc.polygon.map(p=>[p.lat,p.lng]);L.polygon(latlngs,{color:c,weight:2,fillColor:c,fillOpacity:.10,dashArray:"4 3"}).addTo(PARCEL);}
 async function init(){
-  MAP=L.map("map",{zoomControl:true}).setView([35.84,127.40],7);
+  // 지도 범위를 한반도로 고정 — maxBounds(제주~만주·서해~독도 여백, 살짝 북한·중국·일본 포함)로 밖으로 못 나가게, viscosity=1로 벽처럼, minZoom 6으로 세계지도까지 줌아웃 방지.
+  const KOREA_BOUNDS=[[32.5,124.0],[43.5,132.5]];
+  MAP=L.map("map",{zoomControl:true,minZoom:6,maxBounds:KOREA_BOUNDS,maxBoundsViscosity:1.0}).setView([35.84,127.40],7);
   let cfg=null;
   try{cfg=await jget("/api/config");if(cfg&&cfg.payment){PAY=cfg.payment;FREEBETA=(PAY.required===false);}}catch(_){}
   updateProBadge();const _pro=document.getElementById("pro");if(_pro)_pro.addEventListener("click",()=>{if(confirm("구매(Pro) 권한을 해제할까요? (테스트용)")){clearEnt();if(MODE==="pin"){if(pinState)renderDetailPin();}else renderSelect();}});
