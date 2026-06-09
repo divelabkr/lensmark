@@ -301,9 +301,38 @@ async function checkVersion(){
   const vb=document.getElementById("ver");if(vb){vb.textContent="v"+v.version;vb.onclick=()=>RELEASES_CACHE.length&&showWhatsNew(CUR_VER,RELEASES_CACHE);}
   let seen=null;try{seen=localStorage.getItem(SEEN_VER_KEY);}catch(_){}
   if(seen===v.version)return;
-  const rels=seen?RELEASES_CACHE.filter(r=>cmpVer(r.version,seen)>0):RELEASES_CACHE.slice(0,1); // 첫 방문이면 최신 1개만
+  if(!seen){setSeenVer(v.version);showWelcome();return;} // 첫 방문 → 웰컴 온보딩(기술 릴리스노트 대신 '무엇을·어떻게')
+  const rels=RELEASES_CACHE.filter(r=>cmpVer(r.version,seen)>0); // 재방문 + 신버전 → 변경점 팝업
   if(!rels.length){setSeenVer(v.version);return;}
   showWhatsNew(v.version,rels);
+}
+/* 첫 방문 웰컴 온보딩(1회) — 빈 지도 이탈 방지: 3단계 흐름 + 능동 CTA(내 위치/자가진단). vmodal 패턴·CSP-safe·esc. */
+function showWelcome(){
+  if(document.getElementById("vmodal"))return;
+  const step=(n,t,d)=>`<div style="display:flex;gap:11px;align-items:flex-start"><span style="flex:none;width:26px;height:26px;border-radius:50%;background:#E3F1DC;color:var(--green-mid);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px">${n}</span><div><div style="font-weight:800;font-size:13.5px">${t}</div><div class="src" style="margin-top:1px">${d}</div></div></div>`;
+  const m=document.createElement("div");m.className="vmodal";m.id="vmodal";
+  m.innerHTML=`<div class="vbox" style="max-width:420px">
+    <div class="vtop">🌿 LENSMARK에 오신 걸 환영합니다</div>
+    <div style="padding:16px 18px">
+      <div style="font-size:13px;color:var(--ink2);font-weight:700;text-align:center;margin-bottom:15px">내 땅을 고르면 → <b style="color:var(--green-mid)">무료 작물 추천</b> → <b style="color:var(--green-mid)">정밀 소득 분석</b></div>
+      <div style="display:flex;flex-direction:column;gap:11px">
+        ${step("1","지도에서 내 땅을 탭","주소·지번 검색 또는 '📍 내 위치'로 이동")}
+        ${step("2","추천 작물 확인 (무료)","기후·지형에 맞는 작물을 자동 추천")}
+        ${step("3","작물을 눌러 예상 소득","P10·P50·P90 범위 + 근거 (보장 아님·면책)")}
+      </div>
+      <button class="vbtn" id="wc-geo" style="background:var(--green);color:#fff;border-color:var(--green);width:100%;margin-top:16px">📍 내 위치에서 시작</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn" id="wc-assess" style="flex:1">🧭 귀농 자가진단(30초)</button>
+        <button class="btn" id="wc-close" style="flex:1">지도 둘러보기</button>
+      </div>
+      <div class="src" style="text-align:center;margin-top:11px;font-size:11px">현재 <b>무료 베타</b> · 의사결정 보조용(수익·재배성공 보장 아님)</div>
+    </div></div>`;
+  document.body.appendChild(m);
+  const close=()=>{const e=document.getElementById("vmodal");if(e)e.remove();};
+  m.addEventListener("click",e=>{if(e.target===m)close();});
+  document.getElementById("wc-close").addEventListener("click",close);
+  document.getElementById("wc-geo").addEventListener("click",()=>{close();const g=document.getElementById("srch-geo");if(g)g.click();}); // 내 위치 버튼 재사용
+  document.getElementById("wc-assess").addEventListener("click",()=>{close();if(typeof openAssess==="function")openAssess();});
 }
 function showWhatsNew(version,rels){
   if(document.getElementById("vmodal"))return;

@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.40.0 — 2026-06-09 · 첫 방문 웰컴 온보딩 — 빈 지도 이탈 방지
+> "처음에 지도만 덩그러니 보이면 이탈" 우려 해소. 첫 사용자 활성화↑. 에뮬 검증 · tsc·vitest 393·arch 0.
+- **첫 방문 웰컴 코치**(`dashboard/lansmark_app.html`·1회) — 환영 + **3단계 흐름**(① 지도에서 땅 탭 ② 무료 작물 추천 ③ 작물 눌러 예상 소득 P10/50/90 + 근거) + **능동 CTA**(📍 내 위치에서 시작 · 🧭 귀농 자가진단 30초 · 지도 둘러보기) + 무료베타·면책 고지
+- 기존엔 **첫 방문자에게 기술 릴리스노트 팝업**이 떠 농부 온보딩에 부적합 → `checkVersion`에서 첫 방문(seen=null)은 `showWelcome()`로 분기, **재방문+신버전은 변경점 팝업 유지**(역할 분리)
+- 내 위치 CTA=기존 검색 geo 버튼 재사용 · 자가진단=`openAssess` 재사용(중복 0) · vmodal 패턴·CSP-safe·esc
+- 기존 수동 안내(지도 힌트 pill ①②③·빈상태 자가진단)는 보조로 유지 · 프론트 전용
+
 ## 0.39.0 — 2026-06-09 · PWA 쉘 — 설치형 모바일 앱 (manifest·서비스워커·아이콘)
 > 모바일 로드맵 키스톤(웹푸시의 토대). 에뮬레이터(API35) 검증 후 실기기. tsc·vitest **393**·arch 0.
 - **PWA 쉘** — `manifest.webmanifest`(standalone·테마 #2e7d32·`/icon.svg`) + `sw.js`(앱 쉘 **네트워크-우선 캐시**·오프라인 폴백·`/api` 캐시 제외) + `icon.svg`(placeholder). `dashboard/lansmark_app.html` head에 manifest/theme/apple-touch-icon + SW 등록 스크립트. 모바일 전환 SMS→웹푸시의 토대
