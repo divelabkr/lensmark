@@ -3,6 +3,14 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.44.0 — 2026-06-09 · 출시 전 하드닝 — 세션 httpOnly 쿠키(S5) + 핀 분석 병렬화(U2)
+> XSS 세션탈취 방어 + 핀 분석 지연 단축. tsc·vitest **418**(+7 cookies)·arch 0 · end-to-end curl + qwen/레드팀 검증.
+- **S5 세션 httpOnly 쿠키**(`server/cookies.ts`) — 로그인 시 `Set-Cookie: lm_session; HttpOnly; SameSite=Strict; Path=/`(Secure는 운영만). **XSS가 세션 토큰을 읽지 못함**. CSRF는 SameSite=Strict + CORS 잠금으로 차단. **듀얼모드**: 쿠키 우선 → `x-lansmark-session` 헤더 폴백(비브라우저 API·테스트 하위호환)
+- 모든 세션 읽기(`account`·`payment`·`push`·`journal`)를 `sessionTokenFrom(req)` 헬퍼로 통일. 로그아웃은 쿠키 파기(Max-Age=0) + 세션 서버측 삭제
+- **프론트**(`dashboard/lansmark_app.html`) — 토큰을 localStorage에 보관하지 않음. 로그인 상태는 `/api/account/me`(`ACCT`)로 판정·`syncAcct()`. fetch는 `credentials:"same-origin"`로 쿠키 자동전송
+- **U2 핀 분석 병렬화** — 필지 분석에서 `recommend`·`terrain`·`parcel`을 **`Promise.allSettled` 병렬**(독립 호출, 지연 합→최댓값). parcel 실패는 분석 지속, 세대(경쟁조건) 가드 유지. SEL 분기도 `recommend`·`terrain` 병렬(`Promise.all`)
+- **검증**: end-to-end curl(httpOnly 발급·쿠키 전용 인증·무쿠키 401·로그아웃 파기 후 401) · `cookies.spec.ts`(7) · qwen 1차 + Claude 레드팀(CSRF/세션고정/매직링크 무영향)
+
 ## 0.43.0 — 2026-06-09 · 이메일 매직링크 로그인(M2) — 휴대폰 OTP와 병행
 > 휴대폰 OTP에 이메일 매직링크 로그인을 병행 추가(사용자 선택). 새 엔드포인트 0(auth/start·verify 재사용). 실발송=HUMAN GATE. tsc·vitest **411**(+11)·arch 0 · end-to-end curl 검증.
 - **로그인 수단 추가**(`dashboard/lansmark_app.html` 계정 모달) — **'📱 휴대폰 / ✉️ 이메일' 탭**. 이메일 입력 → 1회용 로그인 링크 → 링크 클릭 시 자동 로그인(`/app?lm_login=challengeId~token` 착지 → `consumeMagicLink` → verify → 세션 + 익명 일지 이관). 휴대폰 OTP는 그대로 병행

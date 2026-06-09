@@ -17,6 +17,7 @@ import { isObject, sanitizeTerrain } from "../../src/lansmark/api/parcelRequest"
 import { clampNonNeg } from "../../src/lansmark/api/security";
 import { assertPaidEntitlement, anonSubmitterId, type SimulationEntitlement } from "../../src/lansmark/policy/entitlement";
 import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
+import { sessionTokenFrom } from "../cookies";
 import { toOutcomeRecord } from "../../src/lansmark/core/feedbackStore";
 import { buildJournalReport } from "../../src/lansmark/journal/report";
 import type { JournalEntry, JournalEvent, JournalEventKind, HarvestRecord, JournalPredicted } from "../../src/lansmark/journal/types";
@@ -81,7 +82,7 @@ function sanitizeHarvest(raw: unknown): HarvestRecord | null {
 async function requireEnt(ctx: Ctx, req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse): Promise<SimulationEntitlement | null> {
   if (!ctx.config.requireEntitlement) {
     // 무료 베타: 로그인 세션이 있으면 계정 신원 우선(익명 → 가입 → 계정 흐름), 없으면 브라우저 익명ID로 격리.
-    const acctUid = sessionAccountUserId(ctx.sessions, req.headers["x-lansmark-session"]);
+    const acctUid = sessionAccountUserId(ctx.sessions, sessionTokenFrom(req));
     return { userId: acctUid ?? anonSubmitterId(req.headers["x-lansmark-anon"]), source: "order" };
   }
   try {

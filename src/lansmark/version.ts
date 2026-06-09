@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.44.0",
+    date: "2026-06-09",
+    title: "출시 전 하드닝 — 세션 httpOnly 쿠키(S5) + 핀 분석 병렬화(U2)",
+    items: [
+      "보안 S5 — 세션을 httpOnly·SameSite=Strict 쿠키로 전환(XSS가 세션 토큰을 읽지 못함). Secure는 운영(HTTPS)만. 듀얼모드(쿠키 우선·x-lansmark-session 헤더 폴백)로 비브라우저 API·테스트 하위호환. CSRF는 SameSite=Strict + CORS 잠금으로 차단",
+      "프론트는 토큰을 localStorage에 보관하지 않음 — 로그인 상태는 /api/account/me로 판정(ACCT). 모든 세션 읽기(account·payment·push·journal)는 sessionTokenFrom 헬퍼 경유",
+      "성능 U2 — 핀(필지) 분석에서 recommend·terrain·parcel을 병렬 실행(Promise.allSettled, 독립 호출). 지연=합→최댓값. parcel 실패는 분석 지속, 세대 가드(경쟁조건) 유지. SEL 분기도 recommend·terrain 병렬",
+      "검증: tsc·vitest 418(+7 cookies)·arch 0 · end-to-end curl(Set-Cookie httpOnly 발급·쿠키 인증·로그아웃 파기) · qwen 1차 + Claude 레드팀(CSRF/세션고정/매직링크 무영향 확인)",
+    ],
+  },
+  {
     version: "0.43.0",
     date: "2026-06-09",
     title: "이메일 매직링크 로그인(M2) — 휴대폰 OTP와 병행",

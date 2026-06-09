@@ -13,6 +13,7 @@ import * as crypto from "node:crypto";
 import { json, readBody } from "../respond";
 import { anonSubmitterId, assertPaidEntitlement } from "../../src/lansmark/policy/entitlement";
 import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
+import { sessionTokenFrom, sessionCookie, clearSessionCookie } from "../cookies";
 import type { RouteFn } from "../context";
 
 const SESSION_TTL_MS = 30 * 24 * 3_600_000; // 30일
@@ -69,6 +70,8 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     const token = crypto.randomBytes(24).toString("hex");
     const now = Date.now();
     ctx.sessions.create({ token, accountId: acct.id, createdAt: new Date(now).toISOString(), expiresAt: new Date(now + SESSION_TTL_MS).toISOString() });
+    // S5: 세션을 httpOnly 쿠키로 발급(XSS가 토큰을 읽지 못함). 응답 body의 session은 비브라우저 API/테스트 하위호환용으로 유지.
+    res.setHeader("Set-Cookie", sessionCookie(token, SESSION_TTL_MS / 1000, ctx.config.isProd)); // writeHead(json)와 병합 보존(다른 헤더명)
     ctx.logOps("계정", `로그인 ${isNew ? "신규" : "기존"} ${acct.id.slice(0, 12)}…`);
     json(res, 200, { ok: true, session: token, accountId: acct.id, isNew });
     return true;
@@ -76,7 +79,7 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
 
   // ── 내 계정(세션 필요) ──
   if (p === "/api/account/me" && req.method === "GET") {
-    const uid = sessionAccountUserId(ctx.sessions, req.headers["x-lansmark-session"]);
+    const uid = sessionAccountUserId(ctx.sessions, sessionTokenFrom(req));
     const acct = uid ? ctx.accounts.get(uid.slice("acct:".length)) : undefined;
     if (!acct) { json(res, 401, { error: "로그인이 필요합니다.", code: "AUTH_REQUIRED" }); return true; }
     const entitlements = acct.entitlements ?? [];
@@ -88,7 +91,7 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
 
   // ── 유료권한 → 계정 연결: 로그인 세션 + 유효 엔티틀먼트 jti를 계정에 귀속(결제가 계정을 따라감) ──
   if (p === "/api/account/link-entitlement" && req.method === "POST") {
-    const uid = sessionAccountUserId(ctx.sessions, req.headers["x-lansmark-session"]);
+    const uid = sessionAccountUserId(ctx.sessions, sessionTokenFrom(req));
     const acct = uid ? ctx.accounts.get(uid.slice("acct:".length)) : undefined;
     if (!acct) { json(res, 401, { error: "로그인이 필요합니다.", code: "AUTH_REQUIRED" }); return true; }
     let ent;
@@ -110,15 +113,16 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
 
   // ── 로그아웃(세션 파기) ──
   if (p === "/api/account/logout" && req.method === "POST") {
-    const tok = req.headers["x-lansmark-session"];
-    if (typeof tok === "string" && tok) ctx.sessions.delete(tok);
+    const tok = sessionTokenFrom(req);
+    if (tok) ctx.sessions.delete(tok);
+    res.setHeader("Set-Cookie", clearSessionCookie(ctx.config.isProd)); // S5: httpOnly 세션 쿠키 파기
     json(res, 200, { ok: true });
     return true;
   }
 
   // ── 익명 → 계정 이관: 로그인 세션 + 브라우저 anonId → 익명 일지를 계정으로 재귀속 ──
   if (p === "/api/account/link-anon" && req.method === "POST") {
-    const uid = sessionAccountUserId(ctx.sessions, req.headers["x-lansmark-session"]);
+    const uid = sessionAccountUserId(ctx.sessions, sessionTokenFrom(req));
     if (!uid) { json(res, 401, { error: "로그인이 필요합니다.", code: "AUTH_REQUIRED" }); return true; }
     const anonId = anonSubmitterId(req.headers["x-lansmark-anon"]); // 헤더 없으면 요청별 임시신원 → 이관 0(안전)
     const entries = ctx.journal.listByUser(anonId);

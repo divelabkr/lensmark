@@ -251,7 +251,8 @@ let ENT=null;try{ENT=localStorage.getItem("lansmark_ent")||null;}catch(_){}
 /* 무료 베타 익명ID(브라우저당 1회·localStorage): 재배일지를 사용자별 격리(IDOR 차단) + 실측 제출자 식별(per-user 캡). 'anon-' 접두사라 서버 '✓검증' 카운트에선 제외(위조 차단). 비밀이 아님(무작위·PII 아님). */
 let ANON="anon-0";try{ANON=localStorage.getItem("lansmark_anon")||"";if(!/^anon-[a-f0-9]{8,64}$/.test(ANON)){ANON="anon-"+((self.crypto&&crypto.randomUUID)?crypto.randomUUID().replace(/-/g,""):(Date.now().toString(16)+Math.floor(Math.random()*1e12).toString(16)));localStorage.setItem("lansmark_anon",ANON);}}catch(_){ANON="anon-"+Date.now().toString(16);}
 /* 로그인 세션 토큰 — 있으면 계정 신원(acct:Z)으로 일지가 기기 간 따라온다(없으면 익명ID). 무작위 불투명값(서버 발급). */
-let SESS="";try{SESS=localStorage.getItem("lansmark_session")||"";}catch(_){SESS="";}
+// S5: 세션은 서버가 httpOnly 쿠키로 발급/전송 — JS는 토큰을 보관하지 않는다(XSS 토큰탈취 방어). 로그인 상태는 ACCT(/api/account/me)로 판정.
+let ACCT=null;
 let PAY={mode:"mock",priceKrw:4900,tossClientKey:null,required:true};
 let FREEBETA=false; // 무료 베타: /api/config의 payment.required===false(=서버 requireEntitlement off)면 true → 정밀분석 무료(유료 추후 오픈).
 function isPro(){return !!ENT;}
@@ -352,8 +353,8 @@ function showWhatsNew(version,rels){
   m.addEventListener("click",e=>{if(e.target===m)close();});
   document.getElementById("vok").addEventListener("click",close);
 }
-async function jget(p){const h={};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;if(SESS)h["x-lansmark-session"]=SESS;const r=await fetch(API.base+p,{headers:h});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();} // 엔티틀먼트·익명·세션 헤더 동봉(세션 있으면 계정 신원 우선)
-async function jpost(p,b){const h={"Content-Type":"application/json"};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;if(SESS)h["x-lansmark-session"]=SESS;const r=await fetch(API.base+p,{method:"POST",headers:h,body:JSON.stringify(b)});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();}
+async function jget(p){const h={};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;const r=await fetch(API.base+p,{headers:h,credentials:"same-origin"});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();} // 엔티틀먼트·익명 헤더 + 세션은 httpOnly 쿠키 자동전송(credentials)
+async function jpost(p,b){const h={"Content-Type":"application/json"};if(ENT)h["x-lansmark-entitlement"]=ENT;if(ANON)h["x-lansmark-anon"]=ANON;const r=await fetch(API.base+p,{method:"POST",headers:h,body:JSON.stringify(b),credentials:"same-origin"});if(!r.ok){let m;try{m=(await r.json()).error;}catch(_){}throw new Error(m||(p+" "+r.status));}return r.json();}
 
 /* ===== 줌 → 단계(전국/시군/필지) ===== */
 function tierOf(z){ if(z<=8)return"sido"; if(z<=12)return"sigungu"; return"parcel"; }
@@ -503,7 +504,14 @@ async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
     try{
       const lc=await apiLandClass(lat,lng);if(g!==pinGen)return;st.lc=lc;PIN.setIcon(pinIcon(lcStyle(lc).c)); // 새 탭 발생 시 stale 결과 폐기
       if(lc.action==="block"){/* 수면 — 어느 줌단계든 차단, 추천 생략 */}
-      else if(tier==="parcel"){const rc=await recommend(lat,lng,tier);if(g!==pinGen)return;st.rec=rc;const tr=await apiTerrain(lat,lng);if(g!==pinGen)return;st.terr=tr;try{const pc=await apiParcel(lat,lng);if(g!==pinGen)return;st.parcel=pc;drawParcel(pc,lc);const _a=polygonAreaM2(pc.polygon);if(_a)st.opts.area=_a;}catch(_){}}
+      else if(tier==="parcel"){
+        // U2 병렬화 — recommend·terrain·parcel은 서로 독립(모두 lat,lng만 입력) → 동시 실행(지연=합→최댓값). parcel 실패는 분석 지속(기존 try/catch), rec/terr 실패는 throw(기존 동작).
+        const [rcR,trR,pcR]=await Promise.allSettled([recommend(lat,lng,tier),apiTerrain(lat,lng),apiParcel(lat,lng)]);
+        if(g!==pinGen)return; // 새 탭 발생 시 stale 결과 폐기(경쟁조건 M10)
+        if(rcR.status==="rejected")throw rcR.reason; st.rec=rcR.value;
+        if(trR.status==="rejected")throw trR.reason; st.terr=trR.value;
+        if(pcR.status==="fulfilled"){const pc=pcR.value;st.parcel=pc;drawParcel(pc,lc);const _a=polygonAreaM2(pc.polygon);if(_a)st.opts.area=_a;}
+      }
       else{const rc=await recommend(lat,lng,tier);if(g!==pinGen)return;st.rec=rc;}
     }catch(err){if(g!==pinGen)return;st.error=err.message;}
     if(g!==pinGen)return;st.busy=false;renderDetailPin();return;}
@@ -514,7 +522,7 @@ async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
   SEL.set(cell.key,it);FOCUS=cell.key;renderSelect();
   try{
     if(tier==="parcel"){const lc=await apiLandClass(cell.center[0],cell.center[1]);it.lc=lc;it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});
-      if(lc.action!=="block"){it.rec=await recommend(cell.center[0],cell.center[1],tier);it.terr=await apiTerrain(cell.center[0],cell.center[1]);}}
+      if(lc.action!=="block"){const [rc,tr]=await Promise.all([recommend(cell.center[0],cell.center[1],tier),apiTerrain(cell.center[0],cell.center[1])]);it.rec=rc;it.terr=tr;}} // U2 병렬화(recommend·terrain 독립)
     else{it.rec=await recommend(cell.center[0],cell.center[1],tier);}
   }catch(err){it.error=err.message;}
   it.busy=false;renderSelect();}
@@ -834,7 +842,9 @@ function urlB64ToU8(b){const pad="=".repeat((4-b.length%4)%4);const s=(b+pad).re
 
 /* ===== 로그인·내 계정 모달 — 휴대폰 OTP(2단계: 번호→인증번호) → 세션 저장 → 익명 일지 이관(link-anon).
    PII: 로그인=휴대폰 수집 동의. dev는 미발송이라 인증번호를 화면에 표시(devHint). CSP-safe(addEventListener)·esc. */
-function refreshAcctBtn(){const b=document.getElementById("acctbtn");if(b)b.textContent=SESS?"👤 계정":"로그인";}
+function refreshAcctBtn(){const b=document.getElementById("acctbtn");if(b)b.textContent=ACCT?"👤 계정":"로그인";}
+// S5: 로그인 상태 동기화 — httpOnly 쿠키라 JS가 토큰을 못 읽으므로 /api/account/me로 판정(200=로그인, 401=비로그인).
+async function syncAcct(){try{const d=await jget("/api/account/me");ACCT=(d&&d.ok)?d:null;}catch(_){ACCT=null;}refreshAcctBtn();}
 /* 간단 토스트(3초 자동 소멸) — 매직링크 결과 등 비차단 안내. esc로 안전 표시. */
 function toast(text){const t=document.createElement("div");t.textContent=text;t.style.cssText="position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:#222b22;color:#fff;font-weight:800;font-size:13px;padding:11px 16px;border-radius:12px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.28);max-width:90vw;text-align:center";document.body.appendChild(t);setTimeout(()=>{t.style.transition="opacity .4s";t.style.opacity="0";setTimeout(()=>t.remove(),420);},3000);}
 /* 매직링크 착지 — URL의 ?lm_login=challengeId~token 감지 → 자동 verify → 세션 + 익명 일지 이관.
@@ -846,10 +856,9 @@ async function consumeMagicLink(){
   const t=v.indexOf("~");if(t<0){toast("로그인 링크 형식이 올바르지 않습니다.");return;}
   const challengeId=v.slice(0,t),code=v.slice(t+1);
   try{
-    const r=await jpost("/api/account/auth/verify",{challengeId,code});
-    SESS=r.session||"";try{localStorage.setItem("lansmark_session",SESS);}catch(_){}
+    await jpost("/api/account/auth/verify",{challengeId,code}); // 서버가 httpOnly 세션 쿠키 발급(Set-Cookie)
     let linked=0;try{linked=(await jpost("/api/account/link-anon",{})).linked||0;}catch(_){} // 익명 일지 이관(있으면)
-    refreshAcctBtn();
+    await syncAcct();
     toast("✓ 로그인 완료"+(linked?(" — 기존 일지 "+linked+"건 연결"):""));
   }catch(e){toast("로그인 링크가 만료되었거나 유효하지 않습니다.");}
 }
@@ -857,7 +866,7 @@ function openAcctModal(){
   if(document.getElementById("acct-modal"))return;
   const m=document.createElement("div");m.className="vmodal";m.id="acct-modal";
   const close=()=>{const e=document.getElementById("acct-modal");if(e)e.remove();};
-  if(SESS){ // 로그인 상태 → 내 계정 + 로그아웃
+  if(ACCT){ // 로그인 상태 → 내 계정 + 로그아웃
     m.innerHTML=`<div class="vbox" style="max-width:380px"><div class="vtop">👤 내 계정</div><div style="padding:16px 18px">
       <div id="acct-info" class="src" style="line-height:1.7">불러오는 중…</div>
       <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="acct-close" style="flex:1">닫기</button><button class="btn danger" id="acct-logout" style="flex:1">로그아웃</button></div></div></div>`;
@@ -866,7 +875,7 @@ function openAcctModal(){
     document.getElementById("acct-close").addEventListener("click",close);
     jget("/api/account/me").then(d=>{const el=document.getElementById("acct-info");if(el)el.innerHTML=`계정 <b>${esc((d.accountId||"").slice(0,18))}…</b><br>로그인 수단: ${esc((d.methods||[]).join(", ")||"-")}<br>가입일: ${esc((d.createdAt||"").slice(0,10))}`;})
       .catch(()=>{const el=document.getElementById("acct-info");if(el)el.textContent="세션이 만료되었습니다. 다시 로그인해 주세요.";});
-    document.getElementById("acct-logout").addEventListener("click",async()=>{try{await jpost("/api/account/logout",{});}catch(_){}SESS="";try{localStorage.removeItem("lansmark_session");}catch(_){}refreshAcctBtn();close();});
+    document.getElementById("acct-logout").addEventListener("click",async()=>{try{await jpost("/api/account/logout",{});}catch(_){}ACCT=null;refreshAcctBtn();close();}); // 서버가 쿠키 파기(Set-Cookie Max-Age=0)
     return;
   }
   // 로그아웃 상태 → 로그인/가입 (휴대폰 OTP + 이메일 매직링크 병행 — 탭 전환)
@@ -933,9 +942,9 @@ function openAcctModal(){
     if(!/^\d{6}$/.test(code)){msg.textContent="인증번호 6자리를 입력해 주세요.";return;}
     go.disabled=true;go.textContent="확인 중…";
     try{
-      const r=await jpost("/api/account/auth/verify",{challengeId,code});
-      SESS=r.session||"";try{localStorage.setItem("lansmark_session",SESS);}catch(_){}
+      await jpost("/api/account/auth/verify",{challengeId,code}); // 서버가 httpOnly 세션 쿠키 발급
       let linked=0;try{linked=(await jpost("/api/account/link-anon",{})).linked||0;}catch(_){} // 익명 일지 이관(있으면)
+      await syncAcct();
       msg.style.color="var(--green-mid)";msg.innerHTML="✓ 로그인 완료"+(linked?(" — 기존 일지 <b>"+linked+"</b>건이 계정에 연결되었습니다"):"");
       go.style.display="none";document.getElementById("acct-cancel").textContent="확인";
       refreshAcctBtn();
@@ -1413,7 +1422,7 @@ async function openAt(lat,lng){
 
 /* ===== 컨트롤 ===== */
 document.getElementById("feedpp").addEventListener("click",function(){evtPaused=!evtPaused;this.textContent=evtPaused?"▶":"⏸";this.title=evtPaused?"재생":"일시정지";});
-document.getElementById("acctbtn").addEventListener("click",openAcctModal); refreshAcctBtn(); // 로그인 · 내 계정(휴대폰 OTP/이메일 매직링크 → 세션 → 익명 일지 이관)
+document.getElementById("acctbtn").addEventListener("click",openAcctModal); syncAcct(); // 로그인 · 내 계정(httpOnly 쿠키 세션 → /me로 상태 동기화 → 익명 일지 이관)
 consumeMagicLink(); // 이메일 매직링크로 들어온 경우 자동 로그인 처리
 /* 모바일 바텀시트: 핸들 탭으로 펼침/접힘 + 지도 탭 시 자동 펼침(결과 노출) */
 (function(){var P=document.querySelector(".panel"),H=document.getElementById("sheetHandle");if(!P||!H)return;

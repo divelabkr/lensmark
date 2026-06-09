@@ -10,6 +10,7 @@ import { json, readBody } from "../respond";
 import { isObject } from "../../src/lansmark/api/parcelRequest";
 import { anonSubmitterId } from "../../src/lansmark/policy/entitlement";
 import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
+import { sessionTokenFrom } from "../cookies";
 import type { RouteFn } from "../context";
 
 export const pushRoutes: RouteFn = async (ctx, req, res, url) => {
@@ -34,7 +35,7 @@ export const pushRoutes: RouteFn = async (ctx, req, res, url) => {
     let epUrl: URL;
     try { epUrl = new URL(sub.endpoint); } catch { json(res, 400, { error: "구독 endpoint 형식 오류", code: "BAD_SUB" }); return true; }
     if (epUrl.protocol !== "https:" || sub.endpoint.length > 2048) { json(res, 400, { error: "구독 endpoint는 https URL만 허용합니다.", code: "BAD_SUB" }); return true; }
-    const subscriberId = sessionAccountUserId(ctx.sessions, req.headers["x-lansmark-session"]) ?? anonSubmitterId(req.headers["x-lansmark-anon"]);
+    const subscriberId = sessionAccountUserId(ctx.sessions, sessionTokenFrom(req)) ?? anonSubmitterId(req.headers["x-lansmark-anon"]);
     const cropId = typeof b.cropId === "string" && b.cropId.length <= 64 ? b.cropId : undefined; // 길이 상한(메모리 그리핑 차단)
     ctx.pushSubs.upsert(
       { endpoint: sub.endpoint, keys: { p256dh: String((sub.keys as any).p256dh || "").slice(0, 256), auth: String((sub.keys as any).auth || "").slice(0, 256) } },
