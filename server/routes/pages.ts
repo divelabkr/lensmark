@@ -10,11 +10,12 @@ import { join } from "node:path";
 import { json, sendHtml } from "../respond";
 import type { RouteFn } from "../context";
 
-export const pageRoutes: RouteFn = (ctx, _req, res, url) => {
+export const pageRoutes: RouteFn = (ctx, req, res, url) => {
   const p = url.pathname;
+  const ae = req.headers["accept-encoding"] as string | undefined; // gzip 협상 → sendHtml에 전달
 
   if (p === "/ops" || p === "/admin") {
-    try { sendHtml(res, readFileSync(join(ctx.config.dashboardDir, "lansmark_ops.html"), "utf-8")); }
+    try { sendHtml(res, readFileSync(join(ctx.config.dashboardDir, "lansmark_ops.html"), "utf-8"), ae); }
     catch { json(res, 200, { msg: "운영 콘솔(dashboard/lansmark_ops.html) 없음" }); }
     return true;
   }
@@ -22,13 +23,13 @@ export const pageRoutes: RouteFn = (ctx, _req, res, url) => {
   // 법무 페이지(초안) — 무료 베타 공개·PII 수집의 게이트. 파일 없으면 폴백.
   if (p === "/terms" || p === "/privacy") {
     const file = p === "/terms" ? "lansmark_terms.html" : "lansmark_privacy.html";
-    try { sendHtml(res, readFileSync(join(ctx.config.dashboardDir, file), "utf-8")); }
+    try { sendHtml(res, readFileSync(join(ctx.config.dashboardDir, file), "utf-8"), ae); }
     catch { json(res, 200, { msg: `${file} 없음(초안 준비 중)` }); }
     return true;
   }
 
   if (p === "/" || p === "/app") {
-    try { sendHtml(res, readFileSync(join(ctx.config.dashboardDir, "lansmark_app.html"), "utf-8")); }
+    try { sendHtml(res, readFileSync(join(ctx.config.dashboardDir, "lansmark_app.html"), "utf-8"), ae); }
     catch {
       json(res, 200, {
         msg: "LENSMARK dev server",

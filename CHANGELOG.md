@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.35.0 — 2026-06-09 · 성능 최적화 — 응답 gzip + /api/version 다이어트 (실측 기반)
+> "서버 딜레이·최적화" 질문 → 실측 후 조치. **서버 연산은 <1.1ms(병목 아님)**, 비용은 페이로드 전송. tsc·vitest **390**·arch 0 · curl 실증.
+- **실측**: `/api/health` 0.99ms·`/api/config` 0.64ms·`/api/version` 0.56ms·`/api/simulate` 0.60ms·`/app` 1.09ms(로컬). 진짜 비용 = 크기: 앱 HTML **159KB**(비압축)·`/api/version` **27KB**(전체 릴리스)
+- **gzip 응답 압축**(`respond.sendHtml`) — `Accept-Encoding: gzip` 협상 시 압축. 앱 HTML **159KB→50KB(~69%↓)**(curl 검증·`Content-Encoding: gzip`). `Vary: Accept-Encoding`. nonce 주입 후 압축(요청별 동적이라 캐시는 불가하나 대역폭 이득 큼). 모바일 4G 첫로드 체감 대폭↓
+- **/api/version 다이어트** — 전체 릴리스 → `RELEASES.slice(0,8)`(27KB→**10KB**). 변경점 팝업 델타엔 최신 8개로 충분
+- **후속 최적화 후보(문서화·미실행)**: 핀 분석 워터폴(`landClass→recommend→terrain→parcel` 순차 await → 독립 3개 `Promise.all` 병렬) · 외부 API(geocode/KAMIS) 단기 캐시(KMA처럼) · 비핵심 스토어 flush throttle · 배포층 nginx 리버스프록시(gzip+TLS+정적캐시)/CDN
+
 ## 0.34.0 — 2026-06-09 · 보안 하드닝(멀티모델 패널 P2) — 계정 해시 시크릿 분리·토큰 길이 cap
 > `panel-review`(Gemini·Codex·qwen **병렬** 적대리뷰 도구·신규)가 짚은 P2 2건을 Claude 트리아지 후 수정. 패널 자체도 이번에 `--diff`·병렬·dedup으로 개선(도구는 qwen 워크스페이스). tsc·vitest **390**·arch 0.
 - **subjectHash 전용 시크릿 분리** — 계정 식별자 해시에 `LANSMARK_ACCOUNT_SECRET`(있으면) 사용 → 엔티틀먼트 시크릿을 회전해도 계정 조회(해시)가 안 깨짐. 미설정 시 엔티틀먼트 시크릿로 폴백(새 HUMAN GATE 불필요). 빈 키는 bootSafety(운영 강제)+dev ephemeral로 도달 불가

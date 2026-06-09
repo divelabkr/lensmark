@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.35.0",
+    date: "2026-06-09",
+    title: "성능 최적화 — 응답 gzip + /api/version 다이어트 (실측 기반)",
+    items: [
+      "실측 진단: 서버 연산은 <1.1ms로 병목이 아님(health 0.99·config 0.64·simulate 0.60ms). 진짜 비용은 페이로드 전송 — 앱 HTML 159KB(비압축)·/api/version 27KB → 모바일 네트워크에서 체감 지연",
+      "gzip 응답 압축(sendHtml) — 앱 HTML 159KB→**50KB(~69%↓)**. Accept-Encoding 협상 + Vary 헤더. nonce 주입 후 압축(요청별 동적). 모바일 첫로드 대역폭 대폭↓",
+      "/api/version 다이어트 — 전체 릴리스 → 최신 8개만(27KB→10KB). 변경점 팝업 델타엔 충분",
+      "후속 최적화 후보(문서화): 핀 분석 워터폴(landClass→recommend→terrain→parcel 순차→병렬) · 외부 API(geocode/KAMIS) 단기 캐시 · 비핵심 스토어 flush throttle · 배포층 nginx(gzip+TLS+정적캐시)",
+      "tsc·vitest 390·arch 0 · 런타임 실증(curl 크기 검증)",
+    ],
+  },
+  {
     version: "0.34.0",
     date: "2026-06-09",
     title: "보안 하드닝(멀티모델 패널 P2) — 계정 해시 시크릿 분리·토큰 길이 cap",

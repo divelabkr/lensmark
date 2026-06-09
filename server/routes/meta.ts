@@ -20,7 +20,7 @@ export const metaRoutes: RouteFn = (ctx, _req, res, url) => {
   }
 
   if (p === "/api/version") {
-    json(res, 200, { version: APP_VERSION, releases: RELEASES });
+    json(res, 200, { version: APP_VERSION, releases: RELEASES.slice(0, 8) }); // 최신 8개만(전체=27KB 다이어트) — 변경점 팝업 델타엔 충분
     return true;
   }
 
