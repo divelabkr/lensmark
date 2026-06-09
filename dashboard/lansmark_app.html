@@ -21,14 +21,14 @@
   html,body{height:100%;background:var(--bg);color:var(--ink);font-family:"Manrope","IBM Plex Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
   .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
   .wrap{display:flex;flex-direction:column;height:100vh}
-  .bar{background:var(--card);border-bottom:1px solid var(--line2);padding:9px 14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;z-index:1000;box-shadow:var(--shadow-sm);position:relative}
+  .bar{background:var(--card);border-bottom:1px solid var(--line2);padding:9px 14px;display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;z-index:1000;box-shadow:var(--shadow-sm);position:relative}
   #morebtn{display:none}.actmenu{display:flex;gap:9px;align-items:center}  /* 데스크탑: 더보기 숨김·액션 인라인 */
   .logo{display:flex;align-items:center;gap:8px;margin-right:4px}.logo .m{width:29px;height:29px;border-radius:9px;background:linear-gradient(135deg,var(--green),#2BD97A);display:grid;place-items:center;font-size:15px}.logo .n{font-weight:800;font-size:16px;letter-spacing:-.4px;color:var(--green-d)}
   .seg{display:inline-flex;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:3px;gap:2px}
   .seg button{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--ink2);padding:6px 11px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:.15s}
   .seg button.on{background:var(--green);color:#fff;box-shadow:0 2px 6px rgba(16,185,92,.3)}.seg.view button.on{background:var(--sky)}
   .tier{display:inline-flex;align-items:center;gap:6px;background:var(--green-soft);border:1px solid var(--green-line);border-radius:9px;padding:5px 10px;font-size:12px;font-weight:800;color:var(--green-mid)}.tier .lv{font-size:9.5px;background:var(--green);color:#fff;border-radius:5px;padding:2px 6px}
-  .spacer{flex:1}.cnt{font-size:11.5px;font-weight:800;color:var(--ink2)}.cnt b{color:var(--green-mid)}
+  .spacer{display:none}.cnt{font-size:11.5px;font-weight:800;color:var(--ink2)}.cnt b{color:var(--green-mid)}
   .btn{border:1px solid var(--line2);background:var(--card);font-family:inherit;font-size:12px;font-weight:700;color:var(--ink2);padding:6px 11px;border-radius:9px;cursor:pointer}.btn:hover{background:var(--bg2)}.btn.danger{color:var(--warn);border-color:#eecabf}
   .body{flex:1;display:flex;min-height:0}
   .mapcol{flex:1;position:relative;min-width:0}#map{position:absolute;inset:0;background:#dfe7da}
@@ -185,6 +185,10 @@
     #morebtn{display:inline-flex}
     .actmenu{position:absolute;top:100%;right:8px;flex-direction:column;align-items:stretch;background:var(--card);border:1px solid var(--line2);border-radius:11px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:7px;z-index:1100;display:none;min-width:152px}
     .actmenu.open{display:flex}
+    /* 헤더 정렬: 중앙정렬은 전역(.bar) · 모바일은 검색칸을 전체폭으로(입력칸이 남은폭 채움) + 행간 살짝 */
+    .bar{row-gap:8px}
+    .srch{flex:1 1 100%}
+    .srch input{flex:1;width:auto}
   }
   @media print{.bar .seg,.bar .btn,.bar .tier,.bar .cnt,.bar .spacer,.hint,.livefeed{display:none!important}.mapcol{display:none!important}.panel{width:100%!important;flex:1 1 auto!important;border:none!important;max-height:none!important}.plist{overflow:visible!important;display:block!important}.card{break-inside:avoid;page-break-inside:avoid}html,body,.wrap,.body{height:auto!important;display:block!important}.bar{box-shadow:none;border:none}}
   /* ===== 동반 패널 탭 그룹(레이아웃 정리 — 출하·병충해·환경·지원·일지를 한 칸에) ===== */
