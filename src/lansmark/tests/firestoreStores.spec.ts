@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { FirestoreLite } from "../db/firestoreLite";
-import { FsDoc, FirestoreEntitlementStore, FirestoreIdempotency, FirestoreSessionStore, createFirestoreStores } from "../db/firestoreStores";
+import { FsDoc, FirestoreEntitlementStore, FirestoreIdempotency, FirestoreSessionStore, FirestoreAnalyticsStore, createFirestoreStores } from "../db/firestoreStores";
 
 /** 가짜 GCP — 메타데이터 토큰 + lm_state 문서 저장소를 메모리로 흉내. */
 function fakeGcp(initialDocs: Record<string, string> = {}, opts?: { failGet?: boolean }) {
@@ -127,6 +127,78 @@ describe("FirestoreSessionStore — 로그인 세션 재배포 생존", () => {
     const b = new FirestoreSessionStore(new FsDoc(lite(g), "sessions"));
     await b.warm();
     expect(b.get("t1")?.accountId).toBe("acct1"); // 재배포 후 로그인 유지
+  });
+});
+
+/* ───────── Analytics — 저트래픽 재배포 유실 수정(디바운스 write-through) ─────────
+   배경: 라이브(firestore)에서 GET /api/recommend 3회 후 재배포 시 lm_state/analytics 미생성.
+   진단: <25건 저트래픽은 throttle을 못 채워 평시 원격 쓰기 0 → 유일 통로가 종료 flush(SIGTERM)뿐이라
+        SIGTERM 미수신/race 1800ms 부족 시 통째로 유실. (인프로세스 flushAll 경로 자체는 정상 — 아래 backstop 실증.)
+   수정: '25건 즉시' + '마지막 flush 후 첫 변경에서 debounceMs 뒤' 중 빠른 쪽으로 영속 → 유실 폭 ≤ debounceMs. */
+describe("FirestoreAnalyticsStore — 저트래픽 유실 수정(디바운스)", () => {
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  it("디바운스 대기 중엔 미반영(이벤트마다 동기 쓰기 아님)", async () => {
+    const g = fakeGcp();
+    const a = new FirestoreAnalyticsStore(new FsDoc(lite(g), "analytics"), 60); // 60ms 디바운스
+    await a.warm();
+    a.funnel("recommend"); a.funnel("recommend"); a.funnel("recommend");
+    await tick(); // 20ms < 60ms → 아직 타이머 대기
+    expect(g.log.sets.filter((s) => s.key === "lm_state/analytics").length).toBe(0);
+  });
+
+  it("핵심 수정: <25건 저트래픽도 debounceMs 뒤 자동 영속 — SIGTERM 없이 재배포 생존", async () => {
+    const g = fakeGcp();
+    const a = new FirestoreAnalyticsStore(new FsDoc(lite(g), "analytics"), 40);
+    await a.warm();
+    a.funnel("recommend"); a.funnel("recommend"); a.funnel("recommend"); // 3건(<25)
+    await wait(80); await tick(); // > debounceMs → 타이머 발화 + drain 완료
+    // '재배포' 모사: 같은 원격 상태로 새 인스턴스 워밍 → 집계 생존(종료 flush 의존 없이)
+    const b = new FirestoreAnalyticsStore(new FsDoc(lite(g), "analytics"), 40);
+    await b.warm();
+    expect(b.snapshot().funnel.recommend).toBe(3);
+  });
+
+  it("버스트: 25건 도달 시 디바운스 대기 없이 즉시 영속(throttle 유지)", async () => {
+    const g = fakeGcp();
+    const a = new FirestoreAnalyticsStore(new FsDoc(lite(g), "analytics"), 999_999); // 디바운스 사실상 무한
+    await a.warm();
+    for (let i = 0; i < 25; i++) a.demand("rice", "경기");
+    await tick(); // 디바운스 대기 없이 25건째 flush
+    expect(JSON.parse(g.docs.get("lm_state/analytics")!).demand[0]).toEqual(["rice|경기", 25]);
+  });
+
+  it("debounceMs=0: 디바운스 비활성(버스트 throttle만) + 종료 flush backstop은 동작", async () => {
+    const g = fakeGcp();
+    const a = new FirestoreAnalyticsStore(new FsDoc(lite(g), "analytics"), 0);
+    await a.warm();
+    a.funnel("recommend");
+    await wait(40); await tick();
+    expect(g.log.sets.filter((s) => s.key === "lm_state/analytics").length).toBe(0); // 0=비활성 → 자동영속 없음
+    a.flush(); await tick();                                                          // backstop(즉시 flush)은 동작
+    expect(JSON.parse(g.docs.get("lm_state/analytics")!).funnel.recommend).toBe(1);
+  });
+
+  it("backstop: 종료 flushAll이 analytics in-flight save를 끝까지 완료(H3·인프로세스 경로 정상)", async () => {
+    const g = fakeGcp();
+    const st = createFirestoreStores({ fs: lite(g), analyticsDebounceMs: 0 }); // 디바운스 off → 종료 flush만으로 검증
+    await st.ready;
+    st.analytics.funnel("recommend"); st.analytics.funnel("recommend"); st.analytics.funnel("recommend");
+    await st.flushAll!(); // SIGTERM 경로: analytics.flush()→FsDoc.save()→drain까지 await
+    expect(JSON.parse(g.docs.get("lm_state/analytics")!).funnel.recommend).toBe(3);
+  });
+
+  it("디바운스 타이머 대기 중 종료(flushAll): 타이머 해제 + 정확히 1회 영속(늦은 중복 쓰기 없음)", async () => {
+    const g = fakeGcp();
+    const st = createFirestoreStores({ fs: lite(g), analyticsDebounceMs: 10_000 }); // 큰 디바운스(대기 상태 유지)
+    await st.ready;
+    st.analytics.funnel("recommend"); st.analytics.funnel("simulate"); // 디바운스 타이머 가동(아직 미반영)
+    expect(g.log.sets.filter((s) => s.key === "lm_state/analytics").length).toBe(0);
+    await st.flushAll!(); await tick(); // 종료: flush()가 대기 타이머 해제 + 즉시 영속
+    const sets = g.log.sets.filter((s) => s.key === "lm_state/analytics");
+    expect(sets.length).toBe(1); // 타이머 해제 → 종료 후 늦은 중복 쓰기 없음
+    const saved = JSON.parse(sets[0].json);
+    expect(saved.funnel.recommend).toBe(1); expect(saved.funnel.simulate).toBe(1);
   });
 });
 

@@ -152,18 +152,41 @@ export class FirestoreSessionStore extends InMemorySessionStore {
   protected persist(): void { this.doc.save(JSON.stringify([...this.map.values()])); }
 }
 
-/* ───────── Analytics(집계 카운트 · throttle) ───────── */
+/* ───────── Analytics(집계 카운트 · throttle + 디바운스 write-through) ─────────
+   유실 수정(§3-1): 저트래픽 베타에선 FLUSH_EVERY(25건) throttle을 평시 못 채워 원격 쓰기가 0이라,
+   유일 영속 통로가 종료 flush(SIGTERM)뿐 → SIGTERM 미수신/race 1800ms 부족 시 재배포에 통째로 유실됐다.
+   (인프로세스 flushAll→save→drain 경로 자체는 정상임을 테스트로 실증 — 유실은 '평시 미영속'이 원인.)
+   → '25건마다 즉시 flush(버스트 흡수)'와 '마지막 flush 이후 첫 변경에서 debounceMs 뒤 flush(저트래픽 안착)'
+     중 빠른 쪽으로 영속. 재배포 유실 폭을 최대 debounceMs(기본 5s)로 한정하고 SIGTERM 의존을 제거한다.
+   타이머는 unref — analytics 단독으로 프로세스 종료를 막지 않는다(서버 핸들이 이벤트루프를 유지하므로
+     평시엔 정상 발화, 종료 시엔 flushAll이 즉시 flush로 마무리). 익명 집계(PII 0)라 짧은 디바운스가 적정. */
 export class FirestoreAnalyticsStore extends InMemoryAnalyticsStore {
   private dirty = 0;
+  private timer: ReturnType<typeof setTimeout> | null = null;
   private static readonly FLUSH_EVERY = 25; // 파일 어댑터와 동일 throttle(빈번 이벤트 — 매번 원격 쓰기 회피)
-  constructor(private readonly doc: FsDoc) { super(); }
+  /** debounceMs: 마지막 flush 이후 첫 변경에서 이만큼 뒤 자동 영속(최대 지연 한정). 0이면 비활성(버스트 throttle만). */
+  constructor(private readonly doc: FsDoc, private readonly debounceMs = 5_000) { super(); }
   async warm(): Promise<void> {
     const j = await this.doc.load();
     if (j) { const d = JSON.parse(j) as { funnel: Record<string, number>; demand: [string, number][]; gaps: [string, number][]; since: string };
       this.funnelC = d.funnel ?? {}; this.demandC = new Map(d.demand ?? []); this.gapC = new Map(d.gaps ?? []); this.since = d.since ?? this.since; }
   }
-  protected persist(): void { if (++this.dirty < FirestoreAnalyticsStore.FLUSH_EVERY) return; this.flush(); }
-  flush(): void { this.dirty = 0; this.doc.save(JSON.stringify({ funnel: this.funnelC, demand: [...this.demandC], gaps: [...this.gapC], since: this.since })); }
+  protected persist(): void {
+    if (++this.dirty >= FirestoreAnalyticsStore.FLUSH_EVERY) { this.flush(); return; } // 25건 도달 → 즉시(버스트 흡수)
+    this.arm(); // 그 외 → 디바운스 타이머로 마지막 flush 이후 첫 변경에서 debounceMs 뒤 영속
+  }
+  /** 디바운스 타이머 가동(미가동·debounceMs>0일 때만) — unref로 종료를 막지 않음. */
+  private arm(): void {
+    if (this.timer || this.debounceMs <= 0) return;
+    this.timer = setTimeout(() => { this.timer = null; this.flush(); }, this.debounceMs);
+    this.timer.unref();
+  }
+  /** 즉시 영속(throttle·디바운스 무시) — 종료 훅(flushAll)·25건 도달 시 호출. 대기 타이머는 해제. */
+  flush(): void {
+    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+    this.dirty = 0;
+    this.doc.save(JSON.stringify({ funnel: this.funnelC, demand: [...this.demandC], gaps: [...this.gapC], since: this.since }));
+  }
 }
 
 /* ───────── 팩토리 ───────── */
@@ -172,7 +195,7 @@ export class FirestoreAnalyticsStore extends InMemoryAnalyticsStore {
  *   warm 실패 시: 해당 doc은 sealed(쓰기 봉인)·메모리 빈 상태로 서비스 지속(읽기 가능) + ready는 reject →
  *   devServer가 정책 결정(유료 게이트 ON이면 부팅 중단=fail-closed, 무료 베타면 경고 후 지속).
  */
-export function createFirestoreStores(opts?: { fs?: FirestoreLite; feedbackMax?: number }): Stores & { ready: Promise<void> } {
+export function createFirestoreStores(opts?: { fs?: FirestoreLite; feedbackMax?: number; analyticsDebounceMs?: number }): Stores & { ready: Promise<void> } {
   const fs = opts?.fs ?? new FirestoreLite();
   const docs: FsDoc[] = [];
   const d = (id: string) => { const x = new FsDoc(fs, id); docs.push(x); return x; };
@@ -181,7 +204,7 @@ export function createFirestoreStores(opts?: { fs?: FirestoreLite; feedbackMax?:
   const entitlement = new FirestoreEntitlementStore(d("entitlement_use"), d("entitlement_revoked")); // M2: use/revoked 분리
   const journal = new FirestoreJournalStore(d("journal"));
   const subscriptions = new FirestoreSubscriptionStore(d("subscriptions"));
-  const analytics = new FirestoreAnalyticsStore(d("analytics"));
+  const analytics = new FirestoreAnalyticsStore(d("analytics"), opts?.analyticsDebounceMs); // undefined면 기본 5s 디바운스
   const accounts = new FirestoreAccountStore(d("accounts"));
   const sessions = new FirestoreSessionStore(d("sessions"));
   // M1: allSettled로 '모든' 워밍이 끝난 뒤에만 listen(늦은 warm이 초기 요청 쓰기를 덮어쓰는 레이스 차단).
