@@ -9,6 +9,7 @@
 - **진단(인프로세스 경로는 정상)** — `flushAll→analytics.flush→FsDoc.save→drain→whenDrained`가 in-flight save를 끝까지 `await`함을 테스트로 실증(**가설 ③ 레이스 반증**). 원인은 '평시 미영속'. `1800ms` race는 backstop으로 충분(워밍 토큰 기준 단일 PATCH<500ms)하고 디바운스가 의존도 자체를 제거 → **devServer 종료 경로 무변경**(blast radius 최소)
 - **타이머 수명** — 디바운스 타이머 `unref`(analytics 단독으로 종료를 막지 않음·서버 핸들이 이벤트루프 유지) · 종료(flushAll) 시 대기 타이머 해제 후 즉시 flush(늦은 중복 쓰기 없음) · `debounceMs` 생성자/팩토리 주입(테스트·튜닝 seam, 기본 5s·`0`=비활성) · 익명 집계(PII 0)라 **저장 데이터 형태 무변경**(언제 쓰는지만)
 - **검증**: 회귀 +6(디바운스 자동영속=SIGTERM 없이 재배포 생존·버스트 25건 즉시·비활성·종료 backstop·대기 타이머 해제 1회 영속) · `npm run arch` 0(파일/엔드포인트 무추가)
+- **라이브 운영 의존성(추가 실증)** — 디바운스 `setTimeout`은 Cloud Run 기본(요청당 CPU)에선 idle 중 발화하지 못한다: `--no-cpu-throttling` 미설정 시 6건 중 3건 유실 실증 → 설정(CPU always while alive · scale-to-zero 유지 → idle 과금 ~0) 후 idle 8s에도 6/6 영속 실증. **코드(디바운스)+인프라(CPU always) 조합 필요** — DEPLOY A-7 명령에 반영
 
 ## 0.47.0 — 2026-06-10 · 운영 콘솔: 스토어 저하 경고 + 엔티틀먼트 실효(revoke) 컨트롤
 > 0.46.0 감사로 백엔드엔 생겼으나 콘솔이 못 따라간 공백을 메움 — 운영자가 환불·오용에 즉시 대응(revoke)하고, 스토어 저하 위험을 한눈에 인지. 단일 HTML·외부 리소스 0·시크릿 0 유지.
