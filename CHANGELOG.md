@@ -8,7 +8,8 @@
 - **소매가 조회**(`GET /api/retail-price?cropId` · 무료·무인증) — `kamis.fetchRetailWeekly`(cls=01·최근 7일·전국평균 일별) → `{min, avg, max, samples}`(원/kg). `kamisDailyUrl`에 도·소매 `cls` 파라미터(기본 02). 주간 통계는 percentile 아닌 **실최저~최고**(소비자 체감 직관)
 - **provider seam** — `types.RetailWeekly` · `live`(fetchRetailWeekly) · `mock`(도매×1.6 마진·라벨 구분) · `auto`(okRetail 폴백). 미검증 작물은 live가 null → mock 폴백
 - **한계 정직** — 현재 KAMIS 코드는 **apple만 verified** → apple은 live 소매가, 미검증 16작물은 mock. KAMIS 품목코드 채우면 작물 확장. 소매 `rankCode`는 라이브 실증으로 확정 예정
-- 검증: 소매 URL(01)·retailStats(min/avg/max)·라우트(지원/미지원/400) 테스트 +5
+- **프론트(고객앱)** — 정밀 시뮬 결과에 '시세 비교' 카드: 농가 도매가(받는 값) vs 마트 소비자가(주간 평균·최저~최고) + 도매 대비 배율. 출처 라벨(KAMIS 실데이터 / 추정 데모) 정직 구분. 시뮬 후 `/api/retail-price` 부가 호출(실패해도 시뮬 표시·CSP-safe·esc)
+- **라이브 실증**: apple 마트 소매가 **27,214원**(min 27,140~max 27,358) vs 도매 **9,086원** = 약 **3배**(소비자가≫농가가) · 미검증 작물(onion)은 mock-retail 폴백 · 검증: 소매 URL·retailStats·라우트 테스트 +5
 
 ## 0.49.0 — 2026-06-10 · 운영 콘솔 시각화 리디자인 — 라이트 위젯 + SVG 게이지/도넛/바
 > ops 콘솔을 OpsNow360 풍 밝은 위젯 대시보드로 전면 리디자인 — 무의존 inline SVG(게이지·도넛·가로바)로 한눈 파악. 기능·데이터 계약·보안 제약 전부 보존. arch 0.
