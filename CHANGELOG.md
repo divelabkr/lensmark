@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.49.0 — 2026-06-10 · 운영 콘솔 시각화 리디자인 — 라이트 위젯 + SVG 게이지/도넛/바
+> ops 콘솔을 OpsNow360 풍 밝은 위젯 대시보드로 전면 리디자인 — 무의존 inline SVG(게이지·도넛·가로바)로 한눈 파악. 기능·데이터 계약·보안 제약 전부 보존. arch 0.
+- **시각화 위젯**(`dashboard/lansmark_ops.html`) — 다크→라이트. 상단 3열: 통합 준비도(도넛 LIVE N/총)·플라이휠/해자(실측 포함률 게이지)·시스템 건전성(연동 가동률 게이지). 반응형(좁으면 1열)
+- **무의존 SVG** — 반원 게이지·도넛 링·가로 막대(작물·퍼널 6단계·수요 히트맵)를 외부 차트 라이브러리 없이 직접. CSP-safe(addEventListener)·`esc()` XSS·외부 리소스 0·클라이언트 시크릿 0
+- **기능 보존** — 관리자 로그인·게이트 토글·revoke·degraded(배너+게이지 적색+게이트 차단)·10초 자동갱신. `/api/health`·`/api/ops/stats` 무변경
+- 검증: 브라우저 스모크(위젯 렌더·3열 반응형·degraded 적색 전환·콘솔 에러 0)
+
 ## 0.48.0 — 2026-06-10 · Firestore 익명 계측 재배포 유실 수정 — 디바운스 write-through
 > 저트래픽 베타에서 익명 수요·퍼널 계측이 재배포마다 통째 유실되던 문제 종결. 인프로세스 종료(flushAll) 경로는 정상임을 실증하고, 근본 원인인 '평시 미영속'을 디바운스 write-through로 해소(SIGTERM 의존 제거). tsc·vitest **447**(+6)·arch 0 · qwen 1차(치명 0).
 - **저트래픽 유실 종결**(`db/firestoreStores.ts`·`FirestoreAnalyticsStore`) — 계측이 throttle(25건)을 평시 못 채우는 저트래픽에선 firestore 평시 쓰기가 0 → 유일 영속 통로가 종료 flush(SIGTERM)뿐이라, SIGTERM 미수신(idle scale-down)/`race 1800ms` 부족 시 재배포에 통째 유실(`lm_state/analytics` 미생성 실증). **디바운스 write-through** 추가: '마지막 flush 후 첫 변경에서 **5s** 뒤' 또는 '**25건**' 중 빠른 쪽으로 영속 → 유실 폭 **≤5s**·종료 flush 의존 제거

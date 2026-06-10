@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.49.0",
+    date: "2026-06-10",
+    title: "운영 콘솔 시각화 리디자인 — 라이트 위젯 + SVG 게이지/도넛/바",
+    items: [
+      "ops 콘솔(dashboard/lansmark_ops.html) 전면 리디자인 — OpsNow360 풍 라이트 테마 위젯 대시보드. 다크→라이트, '통합 준비도·플라이휠/해자·시스템 건전성'을 3열 시각화 위젯으로(반응형: 좁으면 1열). 직관적 한눈 파악",
+      "무의존 SVG 시각화(외부 차트 라이브러리 0) — 반원 게이지(실측 포함률·LIVE 연동 가동률), 도넛 링(LIVE 연동 N/총), 가로 막대(작물별 보정·퍼널 6단계·수요 히트맵). 모두 inline SVG로 직접 그림",
+      "기능·데이터 계약 전부 보존 — 관리자 로그인·게이트 토글·revoke·degraded(배너+게이지 적색+게이트 차단)·10초 자동갱신. /api/health·/api/ops/stats 무변경. CSP-safe(addEventListener)·모든 동적 텍스트 esc()(XSS)·외부 리소스 0·클라이언트 시크릿 0",
+      "검증: 브라우저 스모크(위젯 렌더·3열 반응형·degraded UI 적색 전환·콘솔 에러 0)·arch 0",
+    ],
+  },
+  {
     version: "0.48.0",
     date: "2026-06-10",
     title: "Firestore 익명 계측 재배포 유실 수정 — 디바운스 write-through",

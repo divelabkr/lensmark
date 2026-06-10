@@ -5,57 +5,84 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>LENSMARK 운영 콘솔</title>
 <style>
-  :root{--green:#10B95C;--green-d:#0C2A1B;--green-mid:#1C7A44;--green-soft:#E6F7EC;--green-line:#CDEBD8;
-   --bg:#0f1713;--card:#16211b;--card2:#1c2a22;--line:#26352c;--ink:#eaf3ec;--ink2:#9fb4a6;--ink3:#6f857a;
-   --amber:#F2B33D;--amber-d:#D98E1B;--sky:#3E92C4;--warn:#DA5237;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25)}
+  /* ===== 라이트 테마 토큰(OpsNow360 풍 · 위젯 대시보드) ===== */
+  :root{
+    --bg:#eef1f6; --card:#ffffff; --line:#e9edf2; --line2:#f1f4f8;
+    --ink:#1b2a33; --ink2:#5e6c75; --ink3:#9aa7ae;
+    --green:#10b95c; --green-s:#e7f7ee; --blue:#2f6fed; --blue-s:#eaf1fe;
+    --amber:#e6a019; --amber-s:#fbf2dd; --red:#e2563f; --red-s:#fcebe8;
+    --shadow:0 1px 2px rgba(20,40,60,.04),0 8px 22px rgba(20,40,60,.06);
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--bg);color:var(--ink);font-family:"Manrope","IBM Plex Sans KR",-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  html,body{background:var(--bg);color:var(--ink);font-family:"Manrope","IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased}
   .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-  .bar{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--card);flex-wrap:wrap}
-  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;letter-spacing:-.4px}
+  /* 헤더 */
+  .bar{display:flex;align-items:center;gap:12px;padding:13px 24px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap;position:sticky;top:0;z-index:5}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;letter-spacing:-.4px;color:var(--ink)}
   .logo .m{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--green),#2BD97A);display:grid;place-items:center;font-size:16px}
   .logo small{font-size:11px;font-weight:700;color:var(--ink3);margin-left:2px}
   .spacer{flex:1}
-  .mode{font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:9px;background:var(--card2);border:1px solid var(--line);color:var(--ink2)}
-  .mode b{color:var(--green)}
-  .btn{font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink);background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:7px 12px;cursor:pointer;text-decoration:none}
-  .btn:hover{border-color:var(--green-mid)}
+  .mode{font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:9px;background:var(--blue-s);color:var(--blue)}
   .upd{font-size:11px;color:var(--ink3);font-weight:600}
-  main{padding:22px;max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
-  h2{font-size:13px;font-weight:800;color:var(--ink2);letter-spacing:.04em;text-transform:uppercase;margin-bottom:11px;display:flex;align-items:center;gap:8px}
-  h2 .c{font-size:11px;color:var(--ink3);font-weight:700;background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:2px 7px}
-  .grid{display:grid;gap:12px}
-  .g4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-  .g-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:var(--shadow)}
-  .intg{display:flex;align-items:flex-start;gap:11px}
-  .dot{width:11px;height:11px;border-radius:50%;margin-top:3px;flex:0 0 auto;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
-  .dot.live{background:var(--green);box-shadow:0 0 0 3px rgba(16,185,92,.2)}
-  .dot.fallback{background:var(--amber)}
-  .dot.off{background:var(--ink3)}
-  .intg .nm{font-size:13.5px;font-weight:800}
-  .intg .st{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
-  .st.live{color:var(--green)}.st.fallback{color:var(--amber)}.st.off{color:var(--ink3)}
-  .intg .nt{font-size:11px;color:var(--ink2);font-weight:600;line-height:1.45;margin-top:4px}
-  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-  .kpi .v{font-size:26px;font-weight:800}.kpi .v small{font-size:13px;color:var(--ink3);font-weight:700}
-  .kpi .l{font-size:11px;color:var(--ink2);font-weight:700;margin-top:2px}
-  .kpi.good .v{color:var(--green)}.kpi.warn .v{color:var(--amber)}
+  .btn{font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink2);background:#fff;border:1px solid var(--line);border-radius:9px;padding:7px 13px;cursor:pointer;text-decoration:none}
+  .btn:hover{border-color:var(--blue);color:var(--blue)}
+  .btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}.btn.pri:hover{background:#255fd6;color:#fff}
+  /* 레이아웃 */
+  main{padding:22px 24px 40px;max-width:1280px;margin:0 auto}
+  .wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px}
+  .wgrid2{display:grid;grid-template-columns:1.7fr 1fr;gap:16px;margin-top:16px}
+  @media(max-width:760px){.wgrid2{grid-template-columns:1fr}}
+  /* 위젯 카드 */
+  .w{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+  .w-h{display:flex;align-items:center;gap:9px;font-weight:800;font-size:14px;color:var(--ink);margin-bottom:15px}
+  .w-h .ico{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:14px;flex:0 0 auto}
+  .w-h .meta{margin-left:auto;font-size:11px;font-weight:700;color:var(--ink3);background:var(--line2);border-radius:7px;padding:3px 9px}
+  .w-foot{margin-top:auto;padding-top:13px;border-top:1px solid var(--line2);font-size:11.5px;font-weight:700;color:var(--ink3);display:flex;align-items:center;justify-content:flex-end;gap:4px}
+  /* KPI / stat */
+  .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+  .kpi{background:var(--line2);border-radius:12px;padding:13px 14px}
+  .kpi .v{font-size:23px;font-weight:800;color:var(--ink)}
+  .kpi .v small{font-size:12px;color:var(--ink3);font-weight:700}
+  .kpi .l{font-size:11px;color:var(--ink2);font-weight:700;margin-top:3px}
+  .kpi.good .v{color:var(--green)}.kpi.warn .v{color:var(--amber)}.kpi.bad .v{color:var(--red)}
+  .stat .sv{font-size:19px;font-weight:800;line-height:1.1}
+  .stat .sl{font-size:10.5px;color:var(--ink2);font-weight:700;margin-top:2px}
+  .stat-row{display:flex;gap:16px;flex-wrap:wrap}
+  /* pill */
   .pill{display:inline-block;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:7px}
-  .pill.on{background:rgba(16,185,92,.15);color:var(--green)}.pill.off{background:rgba(217,82,55,.15);color:#ff8c72}
-  .pill.mock{background:rgba(242,179,61,.15);color:var(--amber)}
-  .fwrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:12.5px;font-weight:600}
-  .fwrow:first-child{border-top:none}
-  .fwrow .nm{width:120px;color:var(--ink2)}
-  .fwbar{flex:1;height:8px;background:var(--card2);border-radius:5px;overflow:hidden}
-  .fwbar i{display:block;height:100%;background:linear-gradient(90deg,#1C7A44,var(--green))}
-  .fwrow .n{width:46px;text-align:right;color:var(--ink);font-weight:800}
-  .empty{color:var(--ink3);font-size:12px;font-weight:600;padding:8px 0}
-  .foot{font-size:11px;color:var(--ink3);font-weight:600;line-height:1.6;border-top:1px solid var(--line);padding-top:14px}
+  .pill.on{background:var(--green-s);color:#0e9a4d}.pill.off{background:var(--red-s);color:var(--red)}
+  .pill.mock{background:var(--amber-s);color:#b97c0c}
+  /* 통합 미니 리스트 */
+  .ig{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11.5px;font-weight:700}
+  .idot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .idot.live{background:var(--green)}.idot.fallback{background:var(--amber)}.idot.off{background:var(--ink3)}
+  .ig .inm{color:var(--ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ig .ist{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+  .ist.live{color:#0e9a4d}.ist.fallback{color:var(--amber)}.ist.off{color:var(--ink3)}
+  /* 가로 막대 행 */
+  .sub{font-size:11.5px;font-weight:800;color:var(--ink2);margin-bottom:8px}.sub span{color:var(--ink3);font-weight:600;font-size:10.5px}
+  .row{display:flex;align-items:center;gap:9px;padding:5.5px 0;font-size:12px;font-weight:600}
+  .row .rn{color:var(--ink2);white-space:nowrap}
+  .rbar{flex:1;height:7px;background:#eef1f6;border-radius:4px;overflow:hidden;min-width:24px}
+  .rbar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#7aa8f7,var(--blue))}
+  .rbar.g i{background:linear-gradient(90deg,#52d08a,var(--green))}
+  .row .rv{font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rec{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:12px;border-top:1px solid var(--line2)}
+  .rec:first-child{border-top:none}
+  .rec .rt{font-size:10px;font-weight:800;text-transform:uppercase;color:var(--blue);background:var(--blue-s);border-radius:6px;padding:2px 7px;flex:0 0 auto}
+  .rec .rd{flex:1;color:var(--ink);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rec .rti{color:var(--ink3);font-size:10.5px;font-weight:600}
+  /* 입력 */
+  .inp{padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:#f7f9fc;color:var(--ink);font-size:12.5px;font-family:inherit}
+  .inp:focus{outline:none;border-color:var(--blue);background:#fff}
+  /* 경고 배너 */
+  .awarn{background:var(--amber-s);border:1px solid #f0d79a;color:#9a6a06;font-size:12px;font-weight:700;padding:10px 14px;border-radius:11px;margin-bottom:14px}
+  .awarn.crit{background:var(--red-s);border-color:#f3c0b6;color:#b5321c}
+  .awarn code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px}
+  .empty{color:var(--ink3);font-size:11.5px;font-weight:600;padding:10px 0}
+  .err{color:var(--red);font-weight:700}
+  .foot{font-size:11px;color:var(--ink3);font-weight:600;line-height:1.6;margin-top:22px}
   .foot b{color:var(--amber)}
-  .err{color:#ff8c72;font-weight:700}
-  .awarn{background:rgba(242,179,61,.12);border:1px solid var(--amber-d);color:var(--amber);font-size:12px;font-weight:700;padding:9px 13px;border-radius:10px;margin-bottom:6px}
-  .awarn code{background:rgba(0,0,0,.25);padding:1px 5px;border-radius:4px}
 </style>
 </head>
 <body>
@@ -65,53 +92,102 @@
     <span class="mode" id="mode">mode —</span>
     <span class="upd" id="upd">—</span>
     <button class="btn" id="refresh">↻ 새로고침</button>
-    <a class="btn" href="/" target="_blank">제품 보기 →</a>
+    <a class="btn pri" href="/" target="_blank">제품 보기 →</a>
   </div>
   <main>
     <div id="authwarn"></div>
     <div id="degradewarn"></div>
-    <section>
-      <h2>🔌 통합 준비도 <span class="c" id="int-c">—</span></h2>
-      <div class="grid g4" id="integrations"><div class="empty">불러오는 중…</div></div>
-    </section>
-    <section>
-      <h2>💳 결제 · 유료권한</h2>
-      <div class="grid g-kpi" id="payment"></div>
-      <div id="paidgate-ctrl" style="margin-top:11px"></div>
+    <!-- ===== 상단: 시각화 위젯 3종 ===== -->
+    <div class="wgrid">
+      <section class="w">
+        <div class="w-h"><span class="ico" style="background:var(--blue-s)">🔌</span>통합 준비도<span class="meta" id="int-c">—</span></div>
+        <div style="display:flex;gap:18px;align-items:center">
+          <div id="intg-gauge" style="flex:0 0 auto"></div>
+          <div id="intg-list" style="flex:1;min-width:0"></div>
+        </div>
+        <div class="w-foot" id="intg-foot"></div>
+      </section>
+      <section class="w">
+        <div class="w-h"><span class="ico" style="background:var(--green-s)">🔁</span>플라이휠 · 해자</div>
+        <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px">
+          <div id="moat-gauge" style="flex:0 0 auto"></div>
+          <div id="moat-kpi" style="flex:1"></div>
+        </div>
+        <div class="sub">작물별 실측 기록 <span>상위</span></div>
+        <div id="bycrop"><div class="empty">아직 기록 없음</div></div>
+        <div class="w-foot">실측 보정이 쌓일수록 정밀도↑</div>
+      </section>
+      <section class="w">
+        <div class="w-h"><span class="ico" style="background:var(--amber-s)">⚙️</span>시스템 · 건전성</div>
+        <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px">
+          <div id="sys-gauge" style="flex:0 0 auto"></div>
+          <div id="sys-kpi" style="flex:1"></div>
+        </div>
+        <div id="sys-stat" class="stat-row"></div>
+        <div class="w-foot" id="sys-foot"></div>
+      </section>
+    </div>
+    <!-- ===== 결제 · 유료권한(운영 액션) ===== -->
+    <section class="w" style="margin-top:16px">
+      <div class="w-h"><span class="ico" style="background:var(--green-s)">💳</span>결제 · 유료권한</div>
+      <div class="kgrid" id="payment"></div>
+      <div id="paidgate-ctrl" style="margin-top:13px"></div>
       <div id="revoke-ctrl" style="margin-top:11px"></div>
     </section>
-    <section>
-      <h2>🔁 플라이휠(실측 보정) · 사용량</h2>
-      <div class="grid g-kpi" id="usage" style="margin-bottom:12px"></div>
-      <div class="card"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">작물별 실측 기록</div><div id="bycrop"><div class="empty">아직 기록 없음</div></div></div>
-      <div class="card" style="margin-top:12px"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">지형버킷별 보정 현황 <span style="color:var(--ink3);font-weight:600">(실측 5건↑ = validated)</span></div><div id="buckets"><div class="empty">아직 버킷 없음</div></div></div>
-    </section>
-    <section>
-      <h2>📈 익명 수요·퍼널 <span class="c" id="an-c">—</span> <span style="font-size:11px;color:var(--ink3);font-weight:600">(무료 베타 · 집계 · PII 0 · 익명 신호=위조 가능·참고용)</span></h2>
-      <div class="card" style="margin-bottom:12px"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">퍼널 <span style="color:var(--ink3);font-weight:600">(단계별 이벤트 — 어디서 빠지나)</span></div><div id="funnel"><div class="empty">아직 데이터 없음</div></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="card"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">수요 히트맵 <span style="color:var(--ink3);font-weight:600">(시뮬한 작물×지역 = 진짜 수요)</span></div><div id="demand"><div class="empty">아직 시뮬 없음</div></div></div>
-        <div class="card"><div style="font-size:12px;font-weight:800;color:var(--ink2);margin-bottom:8px">데이터 갭 <span style="color:var(--ink3);font-weight:600">(원했지만 없던 작물)</span></div><div id="datagaps"><div class="empty">없음</div></div></div>
-      </div>
-    </section>
-    <section>
-      <h2>⚙ 시스템</h2>
-      <div class="grid g-kpi" id="system"></div>
-    </section>
-    <section>
-      <h2>🧾 최근 활동(결제·웹훅)</h2>
-      <div class="card"><div id="recent"><div class="empty">활동 없음</div></div></div>
-    </section>
-    <div class="foot">읽기 전용 모니터링 · 시크릿(키)은 노출되지 않습니다. <b>운영 배포 시 이 콘솔은 관리자 인증(/admin) 뒤에 두세요.</b> 데이터: <code>/api/health</code> · <code>/api/ops/stats</code> · 10초 자동 갱신.</div>
+    <!-- ===== 하단: 수요·퍼널 + 최근활동 ===== -->
+    <div class="wgrid2">
+      <section class="w">
+        <div class="w-h"><span class="ico" style="background:var(--blue-s)">📈</span>익명 수요 · 퍼널<span class="meta" id="an-c">—</span></div>
+        <div style="font-size:11px;color:var(--ink3);font-weight:600;margin:-9px 0 13px">무료 베타 · 집계 · PII 0 · 익명 신호=위조 가능·참고용</div>
+        <div class="sub">퍼널 <span>단계별 이벤트 — 어디서 빠지나</span></div>
+        <div id="funnel" style="margin-bottom:15px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div><div class="sub">수요 히트맵 <span>작물×지역</span></div><div id="demand"><div class="empty">아직 시뮬 없음</div></div></div>
+          <div><div class="sub">데이터 갭 <span>없던 작물</span></div><div id="datagaps"><div class="empty">없음</div></div></div>
+        </div>
+        <div style="margin-top:15px"><div class="sub">지형버킷 검증 <span>실측 5건↑ = validated</span></div><div id="buckets"><div class="empty">아직 버킷 없음</div></div></div>
+      </section>
+      <section class="w">
+        <div class="w-h"><span class="ico" style="background:var(--line2)">🧾</span>최근 활동</div>
+        <div id="recent"><div class="empty">활동 없음</div></div>
+        <div class="w-foot">결제 · 웹훅 · 게이트 · 실효</div>
+      </section>
+    </div>
+    <div class="foot">읽기 전용 모니터링 + 관리자 액션(게이트·실효) · 시크릿(키)은 노출되지 않습니다. <b>운영 배포 시 관리자 인증(LANSMARK_ADMIN_TOKEN) 뒤에 두세요.</b> 데이터: <code>/api/health</code> · <code>/api/ops/stats</code> · 10초 자동 갱신.</div>
   </main>
 <script>
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const $=id=>document.getElementById(id);
-function statusOf(it){ if(it.live)return["live","LIVE"]; if(it.keyed)return["fallback","키있음·mock 폴백"]; return["off","키 필요"]; }
-const LABEL={vworldTiles:"VWorld 타일",vworldGeocode:"주소→좌표(geocode)",vworldParcel:"필지경계(parcel)",vworldDem:"지형 DEM",kmaClimate:"기후(KMA)",kamisPrice:"도매가(KAMIS)",tossPayment:"결제(Toss)",pgWebhook:"PG 웹훅",rdaIncome:"소득 base(RDA)"};
+const won=n=>"₩"+Number(n||0).toLocaleString("ko-KR");
+function statusOf(it){ if(it.live)return["live","LIVE"]; if(it.keyed)return["fallback","폴백"]; return["off","키 필요"]; }
+const LABEL={vworldTiles:"VWorld 타일",vworldGeocode:"주소→좌표",vworldParcel:"필지경계",vworldDem:"지형 DEM",kmaClimate:"기후(KMA)",kamisPrice:"도매가(KAMIS)",tossPayment:"결제(Toss)",pgWebhook:"PG 웹훅",rdaIncome:"소득 base(RDA)"};
+
+/* ===== SVG 시각화 헬퍼(무의존 — 외부 차트 라이브러리 0) ===== */
+// 반원 게이지: 0→max를 좌→우 반원 호로. 중앙에 값.
+function gauge(val,max,color,unit){
+  const p=max>0?Math.max(0,Math.min(1,val/max)):0, R=46,cx=60,cy=58,sw=11;
+  const ang=Math.PI*(1-p), ex=cx+R*Math.cos(ang), ey=cy-R*Math.sin(ang), large=p>0.5?1:0;
+  const arc=p>0.001?`<path d="M${cx-R} ${cy} A${R} ${R} 0 ${large} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round"/>`:"";
+  return `<svg viewBox="0 0 120 70" width="128" aria-hidden="true">
+    <path d="M${cx-R} ${cy} A${R} ${R} 0 0 1 ${cx+R} ${cy}" fill="none" stroke="var(--line)" stroke-width="${sw}" stroke-linecap="round"/>${arc}
+    <text x="${cx}" y="${cy-3}" text-anchor="middle" font-size="22" font-weight="800" fill="var(--ink)" style="font-variant-numeric:tabular-nums">${esc(val)}</text>
+    <text x="${cx}" y="${cy+13}" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink3)">${esc(unit||"")}</text></svg>`;
+}
+// 도넛: 값/최댓값 비율 링. 중앙 값 + 부제.
+function donut(val,max,color,center,sub){
+  const p=max>0?Math.max(0,Math.min(1,val/max)):0, R=42, C=2*Math.PI*R, off=C*(1-p);
+  return `<svg viewBox="0 0 104 104" width="106" aria-hidden="true">
+    <circle cx="52" cy="52" r="${R}" fill="none" stroke="var(--line)" stroke-width="11"/>
+    <circle cx="52" cy="52" r="${R}" fill="none" stroke="${color}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 52 52)"/>
+    <text x="52" y="50" text-anchor="middle" font-size="22" font-weight="800" fill="var(--ink)" style="font-variant-numeric:tabular-nums">${esc(center)}</text>
+    <text x="52" y="66" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--ink3)">${esc(sub||"")}</text></svg>`;
+}
 function kpi(v,l,cls){return `<div class="kpi ${cls||''}"><div class="v num">${v}</div><div class="l">${esc(l)}</div></div>`;}
+function stat(v,l,color){return `<div class="stat"><div class="sv num" style="color:${color||'var(--ink)'}">${esc(v)}</div><div class="sl">${esc(l)}</div></div>`;}
+// 가로 막대 행(이름·바·값)
+function hrow(name,val,pct,green,extra){return `<div class="row"><span class="rn"${extra?'':' style="width:84px"'}>${esc(name)}</span>${extra||''}<span class="rbar${green?' g':''}"><i style="width:${Math.max(2,Math.round(pct))}%"></i></span><span class="rv">${esc(val)}</span></div>`;}
 function adminHdr(){const t=sessionStorage.getItem("lansmark_admin");return t?{"x-lansmark-admin":t}:{};}
-function renderLogin(){document.querySelector("main").innerHTML=`<section><h2>🔒 관리자 인증</h2><div class="card" style="max-width:440px"><div style="font-size:12.5px;color:var(--ink2);font-weight:600;margin-bottom:10px">운영 콘솔은 관리자 토큰이 필요합니다.</div><input id="tok" type="password" placeholder="LANSMARK_ADMIN_TOKEN" style="width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:13px"><button class="btn" id="tokgo" style="margin-top:10px">로그인</button></div></section>`;document.getElementById("tokgo").addEventListener("click",()=>{const v=document.getElementById("tok").value.trim();if(v){sessionStorage.setItem("lansmark_admin",v);location.reload();}});}
+function renderLogin(){document.querySelector("main").innerHTML=`<section class="w" style="max-width:440px;margin:30px auto"><div class="w-h"><span class="ico" style="background:var(--line2)">🔒</span>관리자 인증</div><div style="font-size:12.5px;color:var(--ink2);font-weight:600;margin-bottom:11px">운영 콘솔은 관리자 토큰이 필요합니다.</div><input id="tok" class="inp" type="password" placeholder="LANSMARK_ADMIN_TOKEN" style="width:100%"><button class="btn pri" id="tokgo" style="margin-top:11px">로그인</button></section>`;$("tokgo").addEventListener("click",()=>{const v=$("tok").value.trim();if(v){sessionStorage.setItem("lansmark_admin",v);location.reload();}});}
 
 async function load(){
   let h,s;
@@ -120,64 +196,76 @@ async function load(){
     const sr=await fetch("/api/ops/stats",{headers:adminHdr()});
     if(sr.status===401){renderLogin();return;}
     s=await sr.json();
-  }catch(e){$("integrations").innerHTML=`<div class="err">연결 실패 — dev 서버 실행 중인지 확인</div>`;return;}
+  }catch(e){$("intg-list").innerHTML=`<div class="err">연결 실패 — dev 서버 실행 중인지 확인</div>`;return;}
   $("authwarn").innerHTML=s.authConfigured?"":`<div class="awarn">⚠ 관리자 인증 미설정(개발 오픈) — 운영 배포 시 <code>LANSMARK_ADMIN_TOKEN</code> 설정 필요</div>`;
-  // 스토어 저하(sealed) 경고 — 원격 영속 실패. 유료 소진·실효가 저장되지 않는 위험 상태를 운영자에게 명시(H2).
-  $("degradewarn").innerHTML=s.storeDegraded?`<div class="awarn">⛔ 스토어 저하(sealed) — 원격 영속 실패. 유료 권한 소진·실효가 저장되지 않으며, 유료 게이트 켜기가 차단됩니다. 복구 후 재시도하세요.</div>`:"";
+  // 스토어 저하(sealed) 경고 — 원격 영속 실패. 유료 소진·실효 미저장 위험(H2).
+  $("degradewarn").innerHTML=s.storeDegraded?`<div class="awarn crit">⛔ 스토어 저하(sealed) — 원격 영속 실패. 유료 권한 소진·실효가 저장되지 않으며, 유료 게이트 켜기가 차단됩니다. 복구 후 재시도하세요.</div>`:"";
   $("mode").innerHTML=`mode <b>${esc(h.mode||"—")}</b>`;
   $("upd").textContent="갱신 "+new Date().toLocaleTimeString("ko-KR");
-  // 통합
-  const ints=h.integrations||{};const keys=Object.keys(ints);
-  const liveN=keys.filter(k=>ints[k].live).length;
+
+  // ── 통합 준비도(도넛 + 미니 리스트) ──
+  const ints=h.integrations||{}, keys=Object.keys(ints), liveN=keys.filter(k=>ints[k].live).length;
   $("int-c").textContent=`live ${liveN} / ${keys.length}`;
-  $("integrations").innerHTML=keys.map(k=>{const it=ints[k],[c,t]=statusOf(it);return `<div class="card intg"><span class="dot ${c}"></span><div><div class="nm">${esc(LABEL[k]||k)}</div><div class="st ${c}">${t}</div><div class="nt">${esc(it.note||"")}</div></div></div>`;}).join("");
-  // 결제
+  $("intg-gauge").innerHTML=donut(liveN,keys.length||1,liveN>=keys.length*0.5?"var(--green)":"var(--blue)",liveN,"/ "+keys.length+" LIVE");
+  $("intg-list").innerHTML=keys.map(k=>{const it=ints[k],[c,t]=statusOf(it);return `<div class="ig"><span class="idot ${c}"></span><span class="inm">${esc(LABEL[k]||k)}</span><span class="ist ${c}">${t}</span></div>`;}).join("");
+  $("intg-foot").textContent=`${liveN}종 실데이터 가동 · ${keys.length-liveN}종 mock/대기`;
+
+  // ── 플라이휠 · 해자(실측 포함률 게이지 + KPI + 작물바) ──
+  const fw=s.flywheel||{}, recs=fw.records||0, acts=fw.withActuals||0;
+  const actPct=recs>0?Math.round(acts/recs*100):0;
+  $("moat-gauge").innerHTML=gauge(actPct,100,"var(--green)","실측 포함률 %");
+  const bc=fw.byCrop||{}, ents=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
+  $("moat-kpi").innerHTML=`<div class="stat-row"><div>${stat(recs,"보정 기록")}</div><div>${stat(acts,"실측 포함","var(--green)")}</div><div>${stat(ents.length,"작물 수")}</div></div>`;
+  const bmax=ents.length?ents[0][1]:1;
+  $("bycrop").innerHTML=ents.length?ents.slice(0,5).map(([c,n])=>hrow(c,n,n/bmax*100,true)).join(""):`<div class="empty">제품에서 '실측 기록'을 입력하면 집계됩니다.</div>`;
+
+  // ── 시스템 · 건전성(LIVE 연동률 게이지 + KPI + usage) ──
+  const u=s.usage||{}, cfg=s.config||{}, livePct=keys.length?Math.round(liveN/keys.length*100):0;
+  $("sys-gauge").innerHTML=gauge(livePct,100,s.storeDegraded?"var(--red)":"var(--green)","연동 가동률 %");
+  $("sys-kpi").innerHTML=`<div class="stat-row"><div>${stat("v"+(h.version||"—"),"버전")}</div><div>${stat((cfg.store||"—")+(s.storeDegraded?" ⚠":""),"STORE",s.storeDegraded?"var(--red)":"var(--ink)")}</div><div>${stat(cfg.dataMode||"—","DATA")}</div></div>`;
+  $("sys-stat").innerHTML=stat((u.simRuns||0),"정밀 시뮬")+stat((u.requests||0),"API 요청")+stat((u.errors||0),"5xx 에러",(u.errors>0?"var(--red)":"var(--ink3)"));
+  $("sys-foot").textContent=s.storeDegraded?"⛔ 스토어 저하 — 영속 점검 필요":`정상 · PORT ${esc(cfg.port||"—")}`;
+
+  // ── 결제 · 유료권한(KPI + 게이트 토글 + revoke) ──
   const pay=s.payment||{};
   $("payment").innerHTML=
     `<div class="kpi"><div class="v">${pay.mode==="live"?'<span class="pill on">LIVE</span>':'<span class="pill mock">MOCK</span>'}</div><div class="l">결제 모드(Toss)</div></div>`+
     `<div class="kpi"><div class="v">${pay.requireEntitlement?'<span class="pill on">ON</span>':'<span class="pill off">OFF</span>'}</div><div class="l">유료 게이트</div></div>`+
-    kpi("₩"+(pay.priceKrw||0).toLocaleString("ko-KR"),"정밀분석 단가")+
-    kpi((s.usage&&s.usage.entitlementsMinted)||0,"발급 엔티틀먼트","good");
-  // 유료 게이트 런타임 토글(무료베타↔유료) — 관리자 액션. '시점 되면 반영'을 위해 재시작 없이 전환.
-  {const on=!!pay.requireEntitlement; const degraded=!!s.storeDegraded;
-    // 스토어 저하(sealed)면 서버가 게이트 ON을 409로 거부 → UI도 '켜기'를 미리 막아 켰다 실패하는 경험 제거(H2 정합).
-    const blockOn=degraded&&!on;
+    kpi(won(pay.priceKrw),"정밀분석 단가")+
+    kpi(u.entitlementsMinted||0,"발급 엔티틀먼트","good")+
+    kpi(u.mockPaysIssued||0,"데모 결제");
+  // 유료 게이트 런타임 토글 — degraded면 '켜기' 차단(서버 409와 UI 일치·H2).
+  {const on=!!pay.requireEntitlement, degraded=!!s.storeDegraded, blockOn=degraded&&!on;
     const storePill=degraded?'<span class="pill off">스토어 저하</span>':'<span class="pill on">스토어 정상</span>';
-    $("paidgate-ctrl").innerHTML=`<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div style="font-size:12.5px;font-weight:800">유료 게이트 ${on?'<span class="pill on">ON · 유료</span>':'<span class="pill off">OFF · 무료 베타</span>'} ${storePill}${pay.overridden?' <span style="font-size:10.5px;color:var(--ink3)">(런타임 오버라이드)</span>':''}</div><div style="font-size:11px;color:var(--ink3);margin-top:4px">${blockOn?'스토어 저하(sealed) — 복구 전엔 켤 수 없습니다(서버 409 STORE_DEGRADED).':'전환 즉시 반영·재시작에도 유지. 운영 무료개방은 <code>ALLOW_OPEN_PAID=1</code> 필요.'}</div></div><button class="btn" id="paidgate-btn"${blockOn?' disabled style="opacity:.45;cursor:not-allowed"':''}>${on?'무료 베타로 전환(끄기)':'유료로 전환(켜기)'}</button></div>`;
-    const pgb=document.getElementById("paidgate-btn");
+    $("paidgate-ctrl").innerHTML=`<div style="background:var(--line2);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><div style="font-size:12.5px;font-weight:800">유료 게이트 ${on?'<span class="pill on">ON · 유료</span>':'<span class="pill off">OFF · 무료 베타</span>'} ${storePill}${pay.overridden?' <span style="font-size:10px;color:var(--ink3)">(런타임 오버라이드)</span>':''}</div><div style="font-size:11px;color:var(--ink3);margin-top:5px">${blockOn?'스토어 저하(sealed) — 복구 전엔 켤 수 없습니다(서버 409 STORE_DEGRADED).':'전환 즉시 반영·재시작에도 유지. 운영 무료개방은 <code>ALLOW_OPEN_PAID=1</code> 필요.'}</div></div><button class="btn${blockOn?'':' pri'}" id="paidgate-btn"${blockOn?' disabled style="opacity:.45;cursor:not-allowed"':''}>${on?'무료 베타로 전환':'유료로 전환'}</button></div>`;
+    const pgb=$("paidgate-btn");
     if(pgb&&!blockOn)pgb.addEventListener("click",async()=>{const next=!on;if(!confirm(next?"유료 게이트를 켭니다 — 정밀분석·가이드 등이 유료(결제 필요)로 전환됩니다. 진행할까요?":"유료 게이트를 끕니다 — 무료 베타로 정밀분석·가이드·외래·일지가 무인증 개방됩니다. 진행할까요?"))return;pgb.disabled=true;try{const r=await fetch("/api/ops/paid-gate",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({requireEntitlement:next})});const j=await r.json().catch(()=>({}));if(!r.ok){alert("실패: "+(j.error||r.status));pgb.disabled=false;return;}load();}catch(e){alert("실패: "+(e&&e.message||e));pgb.disabled=false;}});
   }
-  // 엔티틀먼트 실효(revoke) — 환불·오용 대응 실운영 동작. jti로 토큰 무력화(파괴적 → confirm). durable=false면 원격 영속 실패 경고(H3).
-  {$("revoke-ctrl").innerHTML=`<div class="card"><div style="font-size:12.5px;font-weight:800;margin-bottom:7px">엔티틀먼트 실효(revoke) <span style="font-weight:600;color:var(--ink3)">— 환불·분쟁·오용 시 토큰 무력화</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="revjti" type="text" placeholder="jti (엔티틀먼트 토큰 ID)" autocomplete="off" style="flex:1;min-width:200px;padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:12.5px;font-family:inherit"><button class="btn" id="revbtn">실효</button></div><div id="revresult" style="margin-top:8px;font-size:11.5px;font-weight:600;line-height:1.5;min-height:1px"></div></div>`;
-    const rb=document.getElementById("revbtn"),ri=document.getElementById("revjti"),rr=document.getElementById("revresult");
-    async function doRevoke(){const jti=(ri.value||"").trim();if(!jti){rr.innerHTML=`<span class="err">jti를 입력하세요.</span>`;return;}if(!confirm("이 엔티틀먼트를 실효합니다 — 되돌릴 수 없습니다. 진행할까요?"))return;rb.disabled=true;rr.innerHTML=`<span style="color:var(--ink3)">실효 중…</span>`;try{const r=await fetch("/api/ops/revoke",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({jti})});const j=await r.json().catch(()=>({}));if(!r.ok){rr.innerHTML=`<span class="err">실패: ${esc(j.error||("오류 "+r.status))}</span>`;rb.disabled=false;return;}const warn=j.durable===false?`<span style="color:var(--amber);font-weight:800">⚠ 원격 영속 실패 — 재배포 시 부활 가능(재시도 권장)</span>`:`<span style="color:var(--green);font-weight:800">✓ 영속됨</span>`;rr.innerHTML=`실효 완료 <code style="background:rgba(0,0,0,.25);padding:1px 5px;border-radius:4px">${esc(String(j.revoked||jti).slice(0,16))}…</code> ${warn} <span style="color:var(--ink3)">· 누적 실효 ${esc(j.revokedTotal)}</span>`;ri.value="";rb.disabled=false;}catch(e){rr.innerHTML=`<span class="err">실패: ${esc(e&&e.message||e)}</span>`;rb.disabled=false;}}
+  // 엔티틀먼트 실효(revoke) — 환불·오용 대응. durable=false면 원격 영속 실패 경고(H3).
+  {$("revoke-ctrl").innerHTML=`<div style="background:var(--line2);border-radius:12px;padding:14px 16px"><div style="font-size:12.5px;font-weight:800;margin-bottom:9px">엔티틀먼트 실효(revoke) <span style="font-weight:600;color:var(--ink3)">— 환불·분쟁·오용 시 토큰 무력화</span></div><div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center"><input id="revjti" class="inp" type="text" placeholder="jti (엔티틀먼트 토큰 ID)" autocomplete="off" style="flex:1;min-width:200px"><button class="btn" id="revbtn">실효</button></div><div id="revresult" style="margin-top:9px;font-size:11.5px;font-weight:600;line-height:1.5;min-height:1px"></div></div>`;
+    const rb=$("revbtn"),ri=$("revjti"),rr=$("revresult");
+    async function doRevoke(){const jti=(ri.value||"").trim();if(!jti){rr.innerHTML=`<span class="err">jti를 입력하세요.</span>`;return;}if(!confirm("이 엔티틀먼트를 실효합니다 — 되돌릴 수 없습니다. 진행할까요?"))return;rb.disabled=true;rr.innerHTML=`<span style="color:var(--ink3)">실효 중…</span>`;try{const r=await fetch("/api/ops/revoke",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({jti})});const j=await r.json().catch(()=>({}));if(!r.ok){rr.innerHTML=`<span class="err">실패: ${esc(j.error||("오류 "+r.status))}</span>`;rb.disabled=false;return;}const warn=j.durable===false?`<span style="color:var(--amber);font-weight:800">⚠ 원격 영속 실패 — 재배포 시 부활 가능(재시도 권장)</span>`:`<span style="color:#0e9a4d;font-weight:800">✓ 영속됨</span>`;rr.innerHTML=`실효 완료 <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px">${esc(String(j.revoked||jti).slice(0,16))}…</code> ${warn} <span style="color:var(--ink3)">· 누적 실효 ${esc(j.revokedTotal)}</span>`;ri.value="";rb.disabled=false;}catch(e){rr.innerHTML=`<span class="err">실패: ${esc(e&&e.message||e)}</span>`;rb.disabled=false;}}
     if(rb)rb.addEventListener("click",doRevoke);
     if(ri)ri.addEventListener("keydown",ev=>{if(ev.key==="Enter")doRevoke();});
   }
-  // 사용량
-  const u=s.usage||{};
-  $("usage").innerHTML=kpi(u.simRuns||0,"정밀 시뮬 실행")+kpi(u.mockPaysIssued||0,"데모 결제")+kpi((s.flywheel&&s.flywheel.records)||0,"보정 기록(누적)")+kpi((s.flywheel&&s.flywheel.withActuals)||0,"실측 포함","good")+kpi(u.requests||0,"API 요청")+kpi(u.errors||0,"5xx 에러",(u.errors>0?"warn":""));
-  // 작물별
-  const bc=(s.flywheel&&s.flywheel.byCrop)||{};const ents=Object.entries(bc).sort((a,b)=>b[1]-a[1]);const max=ents.length?ents[0][1]:1;
-  $("bycrop").innerHTML=ents.length?ents.map(([c,n])=>`<div class="fwrow"><span class="nm">${esc(c)}</span><span class="fwbar"><i style="width:${Math.round(n/max*100)}%"></i></span><span class="n num">${n}</span></div>`).join(""):`<div class="empty">아직 실측 보정 기록이 없습니다 — 제품에서 ‘실측 기록’을 입력하면 집계됩니다.</div>`;
-  // 익명 수요·퍼널(집계·PII0)
+
+  // ── 익명 수요 · 퍼널 ──
   const an=s.analytics||{funnel:{},demand:[],dataGaps:[],demandKeys:0};
   const FSTAGE=[["recommend","추천 조회"],["simulate","정밀 시뮬"],["guide","가이드"],["foreign","외래 조회"],["journal","일지 시작"],["subscribe","알림 옵트인"]];
   const fmax=Math.max(1,...FSTAGE.map(([k])=>an.funnel[k]||0));
   $("an-c").textContent="작물×지역 "+(an.demandKeys||0);
-  $("funnel").innerHTML=FSTAGE.map(([k,l])=>{const n=an.funnel[k]||0;return `<div class="fwrow"><span class="nm" style="width:84px">${esc(l)}</span><span class="fwbar"><i style="width:${Math.round(n/fmax*100)}%"></i></span><span class="n num">${n}</span></div>`;}).join("");
-  const dm=an.demand||[];const dmax=dm.length?dm[0].sims:1;
-  $("demand").innerHTML=dm.length?dm.map(d=>`<div class="fwrow"><span class="nm">${esc(d.cropId)}</span><span style="flex:1;color:var(--ink3);font-size:11px">${esc(d.region)}</span><span class="fwbar" style="max-width:80px"><i style="width:${Math.round(d.sims/dmax*100)}%"></i></span><span class="n num">${d.sims}</span></div>`).join(""):`<div class="empty">아직 시뮬 없음 — 사용자가 정밀 시뮬을 돌리면 작물×지역 수요가 집계됩니다.</div>`;
+  $("funnel").innerHTML=FSTAGE.map(([k,l])=>{const n=an.funnel[k]||0;return hrow(l,n,n/fmax*100,false);}).join("");
+  const dm=an.demand||[], dmax=dm.length?dm[0].sims:1;
+  $("demand").innerHTML=dm.length?dm.slice(0,6).map(d=>hrow(d.cropId,d.sims,d.sims/dmax*100,true,`<span style="color:var(--ink3);font-size:10.5px;flex:0 0 auto">${esc(d.region)}</span>`)).join(""):`<div class="empty">사용자가 정밀 시뮬을 돌리면 집계됩니다.</div>`;
   const dg=an.dataGaps||[];
-  $("datagaps").innerHTML=dg.length?dg.map(g=>`<div class="fwrow"><span class="nm" style="flex:1">${esc(g.key)}</span><span class="n num">${g.hits}</span></div>`).join(""):`<div class="empty">없음</div>`;
-  // 시스템
-  $("system").innerHTML=kpi("v"+esc(h.version||"—"),"버전")+kpi(esc(s.config&&s.config.dataMode||"—"),"DATA_MODE")+kpi(esc((s.config&&s.config.store||"—")+(s.storeDegraded?" ⚠":"")),"STORE",(s.storeDegraded?"warn":""))+kpi(esc(s.config&&s.config.port||"—"),"PORT")+kpi(keys.length,"연동 지점")+kpi(liveN,"LIVE 연동","good");
-  // 보정 버킷
-  const vb=(s.flywheel&&s.flywheel.validatedBuckets)||[];
-  $("buckets").innerHTML=vb.length?vb.map(b=>`<div class="fwrow"><span class="nm">${esc(b.cropId)}</span><span style="flex:1;color:var(--ink3);font-size:11px">${esc(b.bucket)}</span><span class="pill ${b.validated?'on':'mock'}" style="margin-right:8px">${b.validated?'validated':esc(b.actuals)+'/5'}</span><span class="n num">${esc(b.n)}</span></div>`).join(""):`<div class="empty">아직 버킷 없음</div>`;
-  // 최근 활동
+  $("datagaps").innerHTML=dg.length?dg.slice(0,6).map(g=>`<div class="row"><span class="rn" style="flex:1;width:auto">${esc(g.key)}</span><span class="rv">${esc(g.hits)}</span></div>`).join(""):`<div class="empty">없음</div>`;
+  // 지형버킷 검증
+  const vb=fw.validatedBuckets||[];
+  $("buckets").innerHTML=vb.length?vb.slice(0,6).map(b=>`<div class="row"><span class="rn">${esc(b.cropId)}</span><span style="flex:1;color:var(--ink3);font-size:10.5px">${esc(b.bucket)}</span><span class="pill ${b.validated?'on':'mock'}">${b.validated?'validated':esc(b.actuals)+'/5'}</span><span class="rv">${esc(b.n)}</span></div>`).join(""):`<div class="empty">아직 버킷 없음</div>`;
+
+  // ── 최근 활동 ──
   const rec=s.recent||[];
-  $("recent").innerHTML=rec.length?rec.map(e=>`<div class="fwrow"><span class="nm" style="width:62px">${esc(e.type)}</span><span style="flex:1">${esc(e.detail)}</span><span style="color:var(--ink3);font-size:11px">${esc((e.at||"").slice(11,19))}</span></div>`).join(""):`<div class="empty">활동 없음</div>`;
+  $("recent").innerHTML=rec.length?rec.slice(0,12).map(e=>`<div class="rec"><span class="rt">${esc(e.type)}</span><span class="rd">${esc(e.detail)}</span><span class="rti">${esc((e.at||"").slice(11,19))}</span></div>`).join(""):`<div class="empty">활동 없음</div>`;
 }
 $("refresh").addEventListener("click",load);
 load(); setInterval(load,10000);
