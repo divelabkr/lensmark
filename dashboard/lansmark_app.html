@@ -73,6 +73,12 @@
   .frow{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
   .fax{font-size:9.5px;font-weight:800;color:#fff;border-radius:5px;padding:3px 6px;white-space:nowrap}.fax.t{background:#7a8b80}.fax.s{background:#5c8f6a}.fax.c{background:#6f93c4}.fax.v{background:#9b7bc4}
   .freason{font-size:11.5px;color:var(--ink);font-weight:500;line-height:1.3}.fpct{font-size:12px;font-weight:800;white-space:nowrap}.fpct.down{color:var(--warn)}.fpct.up{color:var(--green-mid)}.fpct.flat{color:var(--ink3)}
+  .qtick{position:absolute;top:-1px;bottom:-1px;width:1.5px;background:var(--ink3);opacity:.5;border-radius:2px}
+  .trow{display:flex;flex-direction:column;gap:6px;padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
+  .thead{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center}
+  .tbar{position:relative;height:9px;background:var(--bg);border-radius:5px;overflow:hidden}
+  .tmid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--ink3);opacity:.5}
+  .tfill{position:absolute;top:1px;bottom:1px;border-radius:4px}.tfill.up{background:var(--green)}.tfill.down{background:var(--warn)}.tfill.flat{background:var(--ink3)}
   /* terrain edit */
   .edit{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
   .fc label{display:block;font-size:9.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px}.fc label .rv{float:right;color:var(--green-mid);font-weight:800}
@@ -558,10 +564,20 @@ const SUITC={h:"#10B95C",m:"#D98E1B",l:"#DA5237"};
 function suitWord(m){if(m>=0.97)return["적합","h"];if(m>=0.9)return["양호","h"];if(m>=0.8)return["검토","m"];if(m>=0.65)return["조건부","m"];return["주의","l"];}
 function axClass(ax){return ax.indexOf("지형")===0?"t":ax.indexOf("토양")===0?"s":ax.indexOf("기후")===0?"c":"v";}
 function gauge(score,color){const f=Math.max(0,Math.min(1,score/100)),C=Math.PI*40,off=C*(1-f);return `<svg viewBox="0 0 90 54" width="88" height="52"><path d="M8 46 A40 40 0 0 1 82 46" fill="none" stroke="#EAF0E8" stroke-width="11" stroke-linecap="round" transform="scale(0.9) translate(5,2)"/><path d="M8 46 A40 40 0 0 1 82 46" fill="none" stroke="${color}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="scale(0.9) translate(5,2)" style="transition:.5s"/></svg>`;}
-function bar(r,opts){opts=opts||{};let dMin=0,dMax=Math.max(r.p90,1);if(opts.zero){dMin=Math.min(0,r.p10);dMax=Math.max(0,r.p90);}const sp=(dMax-dMin)||1,pc=v=>Math.max(0,Math.min(100,((v-dMin)/sp)*100));const L1=pc(r.p10),W=Math.max(1.5,pc(r.p90)-L1),M=pc(r.p50),col=opts.col||"g";
-  return `<div class="rb"><div class="track"><div class="band ${col}" style="left:${L1}%;width:${W}%"></div>${opts.zero?`<div class="zero" style="left:${pc(0)}%"></div>`:""}<div class="tick" style="left:${M}%"></div></div><div class="easy"><span>나쁠 때 <b class="num">${fmt(r.p10)}</b></span><span>보통 <b class="num">${fmt(r.p50)}</b></span><span>좋을 때 <b class="num">${fmt(r.p90)}</b></span></div></div>`;}
+/* 예상 소득 범위 — 확률 밴드: P10–P90 구간을 칠하되 P50에서 가장 진하게(가운데가 더 흔함을 '분위 그대로' 농도로 표현 — 가짜 정규곡선 X) + P10·P50·P90 눈금. opts.zero=손익분기(0원) 점선. col: g=정상/w=음수. */
+function bar(r,opts){opts=opts||{};let dMin=0,dMax=Math.max(r.p90,1);if(opts.zero){dMin=Math.min(0,r.p10);dMax=Math.max(0,r.p90);}const sp=(dMax-dMin)||1,pc=v=>Math.max(0,Math.min(100,((v-dMin)/sp)*100));
+  const L1=pc(r.p10),Rp=pc(r.p90),W=Math.max(1.5,Rp-L1),M=pc(r.p50),rel=Math.max(0,Math.min(100,((M-L1)/W)*100)),col=opts.col||"g"; // rel=밴드 내 P50 상대위치 → 농도 피크(분위 치우침이 그대로 보임)
+  const edge=col==="w"?"#f1cabd":"#cfead7",peak=col==="w"?"var(--warn)":"var(--green)"; // 가장자리 옅게 → P50 진하게
+  return `<div class="rb"><div class="track"><div class="band" style="left:${L1}%;width:${W}%;background:linear-gradient(90deg,${edge} 0%,${peak} ${rel.toFixed(1)}%,${edge} 100%)"></div>${opts.zero?`<div class="zero" style="left:${pc(0)}%"></div>`:""}<div class="qtick" style="left:${L1}%"></div><div class="qtick" style="left:${Rp}%"></div><div class="tick" style="left:${M}%"></div></div><div class="easy"><span>나쁠 때 <b class="num">${fmt(r.p10)}</b></span><span>보통 <b class="num">${fmt(r.p50)}</b></span><span>좋을 때 <b class="num">${fmt(r.p90)}</b></span></div></div>`;}
+/* 6축 근거 — 토네이도(발산 막대): 중앙 0 기준, '소득↑'(수율↑ 또는 비용↓)=오른쪽 초록 / '소득↓'=왼쪽 주황.
+   기여 크기순 정렬. 막대=소득 영향의 방향·크기 / 라벨=요인 자체 ±%(엔진 value 그대로·날조 X). axis·reason은 esc(서버유래 XSS 방어). */
 function factorList(facts){if(!facts.length)return `<div style="font-size:12px;color:var(--ink3);font-weight:600;padding:4px 0">표준과 동일 — 보정 없음.</div>`;
-  return facts.map(f=>{const p=Math.round((f.value-1)*100),cls=p<0?"down":p>0?"up":"flat",sign=p>0?"+":"",lab=f.target==="cost"?"비용":"수율";return `<div class="frow"><span class="fax ${axClass(f.axis)}">${esc(f.axis)}</span><span class="freason">${esc(f.reason)}</span><span class="fpct ${cls}">${sign}${p}%<span style="font-size:8.5px;color:var(--ink3)"> ${lab}</span></span></div>`;}).join("");}
+  const data=facts.map(f=>{const raw=Math.round((f.value-1)*100),up=f.target==="cost"?raw<0:raw>0;return {f,raw,up,flat:raw===0,mag:Math.abs(raw)};}); // up=소득에 +인가(비용은 감소가 +)
+  const max=Math.max(10,...data.map(d=>d.mag)); // 스케일 기준(최소 10%) — 한쪽 최대 48%
+  return data.slice().sort((a,b)=>b.mag-a.mag).map(({f,raw,up,flat,mag})=>{
+    const half=flat?0:Math.max(2,Math.min(48,Math.round(mag/max*48))),cls=flat?"flat":up?"up":"down",lab=f.target==="cost"?"비용":"수율",sign=raw>0?"+":"";
+    const fill=flat?`left:50%;width:2px`:up?`left:50%;width:${half}%`:`left:${50-half}%;width:${half}%`; // 소득↑=중앙→오른쪽, 소득↓=왼쪽→중앙
+    return `<div class="trow"><div class="thead"><span class="fax ${axClass(f.axis)}">${esc(f.axis)}</span><span class="freason">${esc(f.reason)}</span><span class="fpct ${cls}">${sign}${raw}%<span style="font-size:8.5px;color:var(--ink3)"> ${lab}</span></span></div><div class="tbar"><span class="tmid"></span><span class="tfill ${cls}" style="${fill}"></span></div></div>`;}).join("");}
 function cropChips(crops,chosenId){return crops.map(c=>{const hasScore=c.score!=null;const sc=hasScore?`<span class="sc num">${esc(c.score)}</span>`:"";const cls=!hasScore?"":(c.suit==="high"||c.suit==="medium_high")?"":(c.suit==="medium"||c.suit==="conditional")?"mid":"low";const sel=c.id&&c.id===chosenId?"sel":"";const cid=c.id||"";const tip=c.blockedBy&&c.blockedBy.length?` title="${esc(c.blockedBy.join(', '))}"`:"";return `<span class="crop ${cls} ${sel}" data-crop="${esc(cid)}" data-ko="${esc(c.ko)}"${tip}>${esc(c.ko)}${sc}</span>`;}).join("");}
 function bindChips(root,cb){root.querySelectorAll(".crop[data-crop]").forEach(el=>{const id=el.getAttribute("data-crop");if(!id)return;el.addEventListener("click",()=>cb(id));});}
 /* 전체 작물 보기 — 추천 top-N 밖 작물(벼·보리 등)도 직접 선택(무료 카탈로그 /api/crops). */

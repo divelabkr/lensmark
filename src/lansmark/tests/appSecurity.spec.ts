@@ -44,3 +44,17 @@ describe("frontend XSS hardening (lansmark_app.html)", () => {
     expect(html).toContain("${esc(calF.reason)}");    // calibration reason
   });
 });
+
+// 결과 카드 시각화 — 소득 확률 밴드 + 6축 토네이도(회귀가드: 업그레이드 배선 + '정직성' 매핑 고정)
+describe("result card visualization (probability band + factor tornado)", () => {
+  it("소득 확률 밴드: P50 농도 피크 그라디언트 + 분위 눈금", () => {
+    expect(html).toContain("linear-gradient(90deg,${edge} 0%,${peak}"); // P50에서 가장 진한 농도(밴드)
+    expect(html).toContain('class="qtick"');                            // P10·P90 분위 눈금
+  });
+  it("6축 토네이도: 발산 막대 배선 + 소득방향(수율↑·비용↓=+) 정직 매핑", () => {
+    expect(html).toContain('class="trow"');                  // 토네이도 행
+    expect(html).toContain('class="tbar"');                  // 중앙 0 기준 막대 트랙
+    expect(html).toContain('class="tfill ${cls}"');          // 방향·색 채움
+    expect(html).toContain('f.target==="cost"?raw<0:raw>0'); // 비용 증가=소득↓로 정직 매핑(가짜 income% 날조 X)
+  });
+});
