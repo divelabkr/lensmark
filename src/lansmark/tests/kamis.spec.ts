@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { percentile, priceRangeFromSamples, kamisDailyUrl, pricesFromKamisItems } from "../geo/kamis";
+import { percentile, priceRangeFromSamples, kamisDailyUrl, pricesFromKamisItems, retailStatsFromSamples } from "../geo/kamis";
 import { getKamisCode } from "../data/providers/kamisItemCodes";
 
 describe("geo/kamis (백분위·URL)", () => {
@@ -21,6 +21,16 @@ describe("geo/kamis (백분위·URL)", () => {
     expect(u).toContain("p_productclscode=02");
     expect(u).toContain("p_itemcategorycode=400");
     expect(u).toContain("p_convert_kg_yn=Y"); // ★ 원/kg 환산(미설정 시 원/박스 → 10배 단위오류)
+  });
+  it("소매 URL은 소매코드(01) — cls 파라미터(마트 소비자가)", () => {
+    const u = kamisDailyUrl({ certKey: "K", certId: "I", category: "400", item: "411", start: "2026-06-01", end: "2026-06-08", cls: "01" });
+    expect(u).toContain("p_productclscode=01");
+    expect(u).toContain("p_convert_kg_yn=Y");
+  });
+  it("retailStatsFromSamples → min·평균·max (0·음수 제거)", () => {
+    expect(retailStatsFromSamples([3000, 5000, 4000])).toEqual({ min: 3000, avg: 4000, max: 5000, samples: 3 });
+    expect(retailStatsFromSamples([0, -5, 2000])).toEqual({ min: 2000, avg: 2000, max: 2000, samples: 1 });
+    expect(retailStatsFromSamples([])).toBeNull();
   });
 
   it("pricesFromKamisItems: 전국'평균' 행 우선 + 콤마 가격 파싱(원/kg)", () => {

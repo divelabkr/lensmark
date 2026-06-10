@@ -1,4 +1,5 @@
 import type { SigmaRange } from "../types";
+import type { RetailWeekly } from "../data/providers/types";
 import { getKamisCode } from "../data/providers/kamisItemCodes";
 import { fetchJsonSafe } from "./fetchSafe";
 
@@ -15,7 +16,7 @@ export function priceRangeFromSamples(samples: number[]): SigmaRange | null {
   return { p10: Math.round(percentile(xs, 0.1)), p50: Math.round(percentile(xs, 0.5)), p90: Math.round(percentile(xs, 0.9)) };
 }
 /** KAMIS 일별 품목별 도·소매 URL (도매=02) */
-export function kamisDailyUrl(p: { certKey: string; certId: string; category: string; item: string; kind?: string; rank?: string; start: string; end: string }): string {
+export function kamisDailyUrl(p: { certKey: string; certId: string; category: string; item: string; kind?: string; rank?: string; start: string; end: string; cls?: "01" | "02" }): string {
   const u = new URL("https://www.kamis.or.kr/service/price/xml.do");
   u.searchParams.set("action", "periodProductList");
   u.searchParams.set("p_cert_key", p.certKey); u.searchParams.set("p_cert_id", p.certId);
@@ -24,7 +25,7 @@ export function kamisDailyUrl(p: { certKey: string; certId: string; category: st
   u.searchParams.set("p_itemcategorycode", p.category); u.searchParams.set("p_itemcode", p.item);
   if (p.kind) u.searchParams.set("p_kindcode", p.kind);
   if (p.rank) u.searchParams.set("p_productrankcode", p.rank);
-  u.searchParams.set("p_productclscode", "02"); // 02=도매
+  u.searchParams.set("p_productclscode", p.cls ?? "02"); // 02=도매(기본·농가 수취) · 01=소매(마트 소비자가)
   u.searchParams.set("p_convert_kg_yn", "Y");    // ★ 원/kg 환산(미설정=원/박스 → 단위오류). 실응답으로 확인: N=91,180 vs Y=9,118
   return u.toString();
 }
@@ -46,4 +47,25 @@ export async function fetchWholesale(cropId: string, certKey: string, certId: st
   if (!j || (j?.data?.error_code && j.data.error_code !== "000")) return null; // 실패/KAMIS 오류코드 → 폴백
   const range = priceRangeFromSamples(pricesFromKamisItems(j?.data?.item));
   return range ? { priceKrwPerKg: range, source: "KAMIS 일별 도매(원/kg)" } : null;
+}
+
+/** 가격 표본 → 주간 min·평균·max(원/kg). percentile이 아닌 '실최저~최고'(소비자 체감 시세는 직관적 폭이 적합). */
+export function retailStatsFromSamples(samples: number[]): { min: number; avg: number; max: number; samples: number } | null {
+  const xs = samples.filter((n) => Number.isFinite(n) && n > 0);
+  if (!xs.length) return null;
+  const sum = xs.reduce((a, b) => a + b, 0);
+  return { min: Math.round(Math.min(...xs)), avg: Math.round(sum / xs.length), max: Math.round(Math.max(...xs)), samples: xs.length };
+}
+
+/** cropId → 최근 7일 마트 소매가 주간 min~평균~max(원/kg). 소매(cls=01). 코드 미검증/오류면 null → 표시 안 함. */
+export async function fetchRetailWeekly(cropId: string, certKey: string, certId: string): Promise<RetailWeekly | null> {
+  const code = getKamisCode(cropId);
+  if (!code || !code.verified || !code.itemCode) return null;
+  const end = new Date(), start = new Date(end.getTime() - 7 * 86400000); // 최근 7일(주간)
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const url = kamisDailyUrl({ certKey, certId, category: code.categoryCode, item: code.itemCode, kind: code.kindCode, rank: code.rankCode, start: fmt(start), end: fmt(end), cls: "01" });
+  const j: any = await fetchJsonSafe(url); // 타임아웃·비JSON → null
+  if (!j || (j?.data?.error_code && j.data.error_code !== "000")) return null; // 실패/KAMIS 오류코드 → 표시 안 함
+  const stats = retailStatsFromSamples(pricesFromKamisItems(j?.data?.item));
+  return stats ? { ...stats, source: "KAMIS 소매 주간(원/kg)" } : null;
 }

@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.50.0",
+    date: "2026-06-10",
+    title: "마트 소매가(소비자 물가) 주간 min~평균~max — KAMIS 소매(01)",
+    items: [
+      "도매가(농가 수취)와 별개로 '마트 소비자가' 추가 — KAMIS periodProductList 소매(p_productclscode=01) 최근 7일 → 1kg당 min~평균~max(원/kg). GET /api/retail-price?cropId (무료·무인증). 도매가와 소비자가를 함께 보여 시세를 입체적으로",
+      "provider seam(무의존·mock↔live drop-in) — types RetailWeekly · kamis.fetchRetailWeekly(cls=01) · live/mock/auto(okRetail 폴백). kamisDailyUrl에 도·소매 cls 파라미터(기본 02). 주간 통계는 percentile 아닌 실최저~최고(소비자 체감 직관)",
+      "한계 정직: 현재 KAMIS 코드는 apple만 verified → apple은 live 소매가, 미검증 16작물은 mock(도매×1.6 마진·라벨 구분). KAMIS 품목코드 채우면 작물 확장. 소매 rankCode는 라이브 실증으로 확정",
+      "검증: tsc·vitest 452(+5: 소매 URL·retailStats·라우트 3)·arch 0",
+    ],
+  },
+  {
     version: "0.49.0",
     date: "2026-06-10",
     title: "운영 콘솔 시각화 리디자인 — 라이트 위젯 + SVG 게이지/도넛/바",

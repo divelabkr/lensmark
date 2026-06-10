@@ -20,6 +20,14 @@ export interface PriceResult {
   priceKrwPerKg: SigmaRange;
   source: string;
 }
+/** 마트 소매가(소비자 물가) 주간 통계 — 1kg당 최저·평균·최고(원). 도매가(농가 수취)와 구분되는 '소비자 체감 시세'. */
+export interface RetailWeekly {
+  min: number;
+  avg: number;
+  max: number;
+  samples: number;   // 집계 표본 일수(주간)
+  source: string;
+}
 
 /** 주소→좌표/PNU (VWorld), 좌표→기후 (KMA) */
 export interface LandContextProvider {
@@ -33,6 +41,8 @@ export interface LandContextProvider {
 /** 도매가 (KAMIS/aT) */
 export interface PriceProvider {
   recentWholesale(cropId: string): Promise<PriceResult | null>;
+  /** 마트 소매가(소비자 물가) 주간 min~평균~max(원/kg) — KAMIS 소매(p_productclscode=01). 미지원 작물/오류면 null. */
+  retailWeekly(cropId: string): Promise<RetailWeekly | null>;
 }
 
 export interface ProviderBundle {

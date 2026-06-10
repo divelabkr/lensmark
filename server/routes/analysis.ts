@@ -45,6 +45,16 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
     return true;
   }
 
+  // ── 마트 소매가(소비자 물가) 주간 min~평균~max — 무료 정보. 도매가(농가 수취)와 구분되는 '소비자 체감 시세'. ──
+  //   미지원 작물(KAMIS 코드 미검증)·오류는 retail:null로 응답(프론트가 표시 생략). 무인증.
+  if (p === "/api/retail-price") {
+    const cropId = (q.get("cropId") ?? "").trim();
+    if (!cropId) { json(res, 400, { error: "cropId가 필요합니다." }); return true; }
+    const retail = await ctx.providers.price.retailWeekly(cropId);
+    json(res, 200, { ok: true, cropId, retail });
+    return true;
+  }
+
   // ── 유료 정밀 분석 ──
   if (p === "/api/simulate" && req.method === "POST") {
     // 1) 서버 권위 엔티틀먼트 검증(fail-closed) — 권한은 클라이언트가 주장할 수 없다.

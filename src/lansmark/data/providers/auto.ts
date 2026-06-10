@@ -27,6 +27,8 @@ export const okClimate = (v: any): boolean => !!v && (fin(v.minWinterTempC) || (
 export const okTerrain = (v: any): boolean => !!v && fin(v.slopeDegree) && fin(v.altitudeM);
 /** 가격: P50 단가가 유한·양수여야 채택. */
 export const okPrice = (v: any): boolean => !!v && !!v.priceKrwPerKg && fin(v.priceKrwPerKg.p50) && v.priceKrwPerKg.p50 > 0;
+/** 소매 주간: 평균가가 유한·양수여야 채택(미검증 작물은 live가 null → mock 폴백). */
+export const okRetail = (v: any): boolean => !!v && fin(v.avg) && v.avg > 0;
 
 export const autoProviders: ProviderBundle = {
   land: {
@@ -38,6 +40,7 @@ export const autoProviders: ProviderBundle = {
   },
   price: {
     recentWholesale: (cropId) => pick(has("KAMIS_API_KEY", "KAMIS_API_ID"), () => liveProviders.price.recentWholesale(cropId), () => mockProviders.price.recentWholesale(cropId), okPrice),
+    retailWeekly: (cropId) => pick(has("KAMIS_API_KEY", "KAMIS_API_ID"), () => liveProviders.price.retailWeekly(cropId), () => mockProviders.price.retailWeekly(cropId), okRetail),
   },
 };
 

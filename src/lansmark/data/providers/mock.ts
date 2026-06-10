@@ -48,5 +48,12 @@ export const mockProviders: ProviderBundle = {
       const r = PRICE_FIXTURE[cropId];
       return r ? { priceKrwPerKg: r, source: "mock-kamis" } : null;
     },
+    async retailWeekly(cropId) {
+      const r = PRICE_FIXTURE[cropId];
+      if (!r) return null;
+      // mock 소매가: 도매 p50에 소매 마진(×1.6) 가정 + ±15% 주간 폭(결정적). 실제는 live KAMIS 소매(01).
+      const mid = Math.round(r.p50 * 1.6);
+      return { min: Math.round(mid * 0.85), avg: mid, max: Math.round(mid * 1.15), samples: 7, source: "mock-retail" };
+    },
   },
 };

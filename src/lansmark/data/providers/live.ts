@@ -4,7 +4,7 @@ import { fetchDem } from "../../geo/dem";
 import { terrainFromDem } from "../../geo/terrainFromDem";
 import { bboxAround } from "../../geo/crs";
 import { fetchClimate } from "../../geo/kma";
-import { fetchWholesale } from "../../geo/kamis";
+import { fetchWholesale, fetchRetailWeekly } from "../../geo/kamis";
 
 function reqEnv(name: string): string {
   const v = process.env[name];
@@ -40,6 +40,9 @@ export const liveProviders: ProviderBundle = {
       const key = reqEnv("KAMIS_API_KEY");
       const id = reqEnv("KAMIS_API_ID");
       return fetchWholesale(cropId, key, id);
+    },
+    async retailWeekly(cropId) {
+      return fetchRetailWeekly(cropId, reqEnv("KAMIS_API_KEY"), reqEnv("KAMIS_API_ID"));
     },
   },
 };

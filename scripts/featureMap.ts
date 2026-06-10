@@ -87,9 +87,9 @@ export const FEATURES: Feature[] = [
   {
     id: "recommend-free", name: "무료 작물추천", stage: "recommend",
     flow: "필지 → 적합도 상대점수 작물후보(무료·매입추천 아님) + 전체 작물 카탈로그(추천 밖 작물 직접 선택)",
-    endpoints: ["/api/recommend", "/api/crops"],
+    endpoints: ["/api/recommend", "/api/crops", "/api/retail-price"],
     files: ["src/lansmark/core/cropSuitability.ts", "src/lansmark/core/validate.ts", "src/lansmark/crops/catalog.ts", "server/routes/analysis.ts", "server/routes/crops.ts", "src/lansmark/data/crops.seed.ts"],
-    tests: ["src/lansmark/tests/validate.spec.ts", "src/lansmark/tests/soilPolicy.spec.ts", "src/lansmark/tests/cropsCatalog.spec.ts"],
+    tests: ["src/lansmark/tests/validate.spec.ts", "src/lansmark/tests/soilPolicy.spec.ts", "src/lansmark/tests/cropsCatalog.spec.ts", "src/lansmark/tests/retailRoutes.spec.ts"],
     guardrails: ["매입추천 금지", "적합도 상대점수만", "면책"], status: "live",
   },
   {
