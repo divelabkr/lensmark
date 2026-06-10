@@ -38,7 +38,7 @@ export interface Config {
   entitlementTtlMs: number;      // 유료권한 토큰 수명(기본 30일)
   entitlementQuota: number;      // 토큰당 정밀시뮬 허용 횟수(소진형 — 무한사용 차단)
   secretEphemeral: boolean;      // 시크릿 미설정으로 부팅마다 임시 랜덤 사용중(비운영)
-  storeMode: "memory" | "file";  // 상태 영속: memory(휘발) | file(재시작 내구·단일인스턴스)
+  storeMode: "memory" | "file" | "firestore"; // 상태 영속: memory(휘발) | file(재시작 내구·단일인스턴스) | firestore(재배포 내구·Cloud Run)
   dataDir: string;               // file 모드 데이터 디렉터리(절대경로)
   dashboardDir: string;          // 정적 HTML(앱/콘솔) 디렉터리(절대경로)
   appOrigin: string;             // 앱 외부 절대 URL(이메일 매직링크 등) — LANSMARK_APP_ORIGIN, dev는 http://localhost:port
@@ -75,7 +75,7 @@ export function loadConfig(): Config {
     entitlementQuota: Math.max(1, Math.floor(Number(process.env.LANSMARK_ENTITLEMENT_QUOTA || 50))),
     secretEphemeral,
     // 영속: 명시(LANSMARK_STORE) > 테스트(vitest)는 memory(결정성) > 그 외 기본 file(재시작 내구)
-    storeMode: (process.env.LANSMARK_STORE === "memory" || process.env.LANSMARK_STORE === "file")
+    storeMode: (process.env.LANSMARK_STORE === "memory" || process.env.LANSMARK_STORE === "file" || process.env.LANSMARK_STORE === "firestore")
       ? process.env.LANSMARK_STORE
       : (process.env.VITEST ? "memory" : "file"),
     dataDir: process.env.LANSMARK_DATA_DIR || join(__dirname, "..", ".data"), // 프로젝트 루트 .data (cwd 무관)

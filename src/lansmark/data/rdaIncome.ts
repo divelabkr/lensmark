@@ -1,5 +1,7 @@
 import type { SigmaRange, SalesChannel } from "../types";
 import { getCropProfile } from "./crops.seed";
+import { RDA_REAL } from "./rdaIncome.real";
+import { baseFromReal } from "./rdaRealLoader";
 
 export interface RdaBaseOptions {
   salesChannel?: SalesChannel;
@@ -23,11 +25,16 @@ const scale = (r: SigmaRange, f: number): SigmaRange => ({
 
 /**
  * 작물별 소득 base (10a = 1,000㎡).
- * 현재는 룰북(crops.seed)에서 파생한 "RDA 구조" 데모값 → verified=false.
- * ★ 실데이터 연결: 농진청 농축산물 소득자료(AMIS/공공데이터포털) 로더로 이 함수만 교체하면 끝.
+ * ① 실자료 우선: RDA_REAL에 행이 있으면 농진청 실 소득자료 사용(verified=true·baseYear·출처 표기).
+ *    적재 절차: 자료 CSV → `npm run rda:build <csv>` → 이 테이블 재생성(rdaIncome.real.ts).
+ *    ⚠ v1 실자료는 작물 단위 전국 평균 — 판로·연차 분화는 자료 범위 확보 후(그 전까지 옵션은 실값 기준 미분화).
+ * ② 폴백: 룰북(crops.seed) 파생 "RDA 구조" 데모값 → verified=false(정직 라벨).
  */
 export function getRdaBase(cropId: string, _region?: string, opts?: RdaBaseOptions): RdaIncomeBase {
   const c = getCropProfile(cropId);
+  const real = RDA_REAL[cropId];
+  if (real) return baseFromReal(real, c.cropNameKo); // 실자료 우선 — 시뮬 카드에 실연도·출처가 뜬다
+
   const yieldByYear = c.economics.yieldKgPerM2ByYear;
   const yieldM2 = yieldByYear[opts?.targetYear ?? "mature"] ?? yieldByYear.mature; // 연차별 수량(없으면 성숙기)
   const price = c.economics.priceKrwPerKg[opts?.salesChannel ?? "mixed"] ?? c.economics.priceKrwPerKg.mixed; // 판로별 단가(없으면 혼합)

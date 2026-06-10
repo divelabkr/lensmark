@@ -62,20 +62,26 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
       json(res, 402, { error: "이 권한의 사용 한도를 초과했거나 실효되었습니다. 다시 결제해 주세요.", code: "ENTITLEMENT_EXHAUSTED" }); return true;
     }
     // 3) 지형 컨텍스트 확보(버킷 산정용) → 플라이휠 보정 조회 → 엔진 주입(실측 누적 시 예측이 현실로 이동)
-    const simCtx = { ...(input.context ?? {}) };
-    const lat = input.land?.lat, lng = input.land?.lng;
-    if (lat != null && lng != null && !simCtx.terrain) {
-      try { const t = await ctx.providers.land.terrain({ lat, lng }); if (t) simCtx.terrain = t; } catch { /* 폴백: 보정 없이 */ }
+    //   소진 후 다운스트림(provider·엔진) 실패는 결과 미제공 → quota 환불(과금 공정성·감사 Low). 환불 후 최상위로 재throw(500).
+    try {
+      const simCtx = { ...(input.context ?? {}) };
+      const lat = input.land?.lat, lng = input.land?.lng;
+      if (lat != null && lng != null && !simCtx.terrain) {
+        try { const t = await ctx.providers.land.terrain({ lat, lng }); if (t) simCtx.terrain = t; } catch { /* 폴백: 보정 없이 */ }
+      }
+      const bucket = simCtx.terrain ? terrainBucketOf(simCtx.terrain) : undefined;
+      const calibration = await getCalibration(input.cropId, input.region, ctx.feedbackStore, bucket);
+      const result = await runParcelSimulationWithProviders({ ...input, context: simCtx, calibration }, ctx.providers);
+      // 4) 생육·출하 배선: 검증된 코어를 canonical 결과에 합쳐 노출(농지→작물→생육→출하 연결)
+      const growth = { calendar: buildGrowthCalendar(input.cropId), risk: buildGrowthRiskInfo(input) };
+      ctx.metrics.simRuns++;
+      ctx.analytics.funnel("simulate"); ctx.analytics.demand(input.cropId, input.region); // 퍼널 2단계 + '진지한 수요'(작물×지역) 히트맵
+      json(res, 200, { ...result, growth });
+      return true;
+    } catch (e) {
+      if (ent) ctx.entitlement.refund?.(ent.jti); // 서비스 미제공 → 소진 1회 복원
+      throw e;
     }
-    const bucket = simCtx.terrain ? terrainBucketOf(simCtx.terrain) : undefined;
-    const calibration = await getCalibration(input.cropId, input.region, ctx.feedbackStore, bucket);
-    const result = await runParcelSimulationWithProviders({ ...input, context: simCtx, calibration }, ctx.providers);
-    // 4) 생육·출하 배선: 검증된 코어를 canonical 결과에 합쳐 노출(농지→작물→생육→출하 연결)
-    const growth = { calendar: buildGrowthCalendar(input.cropId), risk: buildGrowthRiskInfo(input) };
-    ctx.metrics.simRuns++;
-    ctx.analytics.funnel("simulate"); ctx.analytics.demand(input.cropId, input.region); // 퍼널 2단계 + '진지한 수요'(작물×지역) 히트맵
-    json(res, 200, { ...result, growth });
-    return true;
   }
 
   // ── 실측 피드백(플라이휠/해자) ──

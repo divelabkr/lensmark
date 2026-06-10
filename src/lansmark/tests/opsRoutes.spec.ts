@@ -26,7 +26,7 @@ function mockReq(method = "GET", headers: Record<string, string> = {}, body?: un
 }
 const U = (p: string) => new URL("http://localhost" + p);
 const ADMIN = "admin-secret-xyz";
-const adminH = { "x-lansmark-admin": ADMIN };
+const adminH = { "x-lansmark-admin": ADMIN, "content-type": "application/json" }; // ops 변이는 JSON content-type 필수(CSRF 가드·M4)
 
 /** 매 테스트 새 ctx(토글이 ctx.config.requireEntitlement를 변형하므로 격리). */
 function freshCtx(over: Partial<Config> = {}): Ctx {
@@ -75,5 +75,28 @@ describe("ops 유료 게이트 토글(/api/ops/paid-gate)", () => {
     await route(ctx, mockReq("POST", adminH, { requireEntitlement: true }), res, U("/api/ops/paid-gate"));
     expect(res.captured.code).toBe(200);
     expect(ctx.config.requireEntitlement).toBe(true);
+  });
+
+  // ── 감사 M4: 변이는 Content-Type JSON 필수(CSRF 단순요청 차단) + 운영 open-console로 쓰기 안 열림 ──
+  it("content-type 없는 변이 POST는 415(CSRF 단순요청 차단)", async () => {
+    const res = mockRes();
+    await route(freshCtx(), mockReq("POST", { "x-lansmark-admin": ADMIN }, { requireEntitlement: false }), res, U("/api/ops/paid-gate"));
+    expect(res.captured.code).toBe(415);
+    const rv = mockRes();
+    await route(freshCtx(), mockReq("POST", { "x-lansmark-admin": ADMIN }, { jti: "x" }), rv, U("/api/ops/revoke"));
+    expect(rv.captured.code).toBe(415);
+  });
+  it("운영+관리자 토큰 미설정이면 변이는 403(콘솔 공개여도 쓰기는 안 열림)", async () => {
+    const ctx = createContext({ ...loadConfig(), adminToken: undefined, isProd: true, requireEntitlement: false });
+    const res = mockRes();
+    await route(ctx, mockReq("POST", { "content-type": "application/json" }, { jti: "x" }), res, U("/api/ops/revoke"));
+    expect(res.captured.code).toBe(403);
+    expect(JSON.parse(res.captured.body).code).toBe("ADMIN_TOKEN_REQUIRED");
+  });
+  it("revoke는 durable 플래그 반환(file/memory는 항상 durable:true)", async () => {
+    const res = mockRes();
+    await route(freshCtx(), mockReq("POST", adminH, { jti: "ent-x" }), res, U("/api/ops/revoke"));
+    expect(res.captured.code).toBe(200);
+    expect(JSON.parse(res.captured.body).durable).toBe(true);
   });
 });

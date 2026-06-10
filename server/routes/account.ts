@@ -95,10 +95,14 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     const uid = sessionAccountUserId(ctx.sessions, sessionTokenFrom(req));
     const acct = uid ? ctx.accounts.get(uid.slice("acct:".length)) : undefined;
     if (!acct) { json(res, 401, { error: "로그인이 필요합니다.", code: "AUTH_REQUIRED" }); return true; }
+    // 세션 계정을 함께 넘긴다(M8) — 결속 토큰은 '본인 계정으로 로그인'해야 검증 통과. 불일치는 403(타 계정 결속)으로 surface.
     let ent;
     try {
-      ent = await assertPaidEntitlement({ get: (n) => { const v = req.headers[n.toLowerCase()]; return Array.isArray(v) ? (v[0] ?? null) : (v ?? null); } });
-    } catch { json(res, 402, { error: "유료권한이 필요합니다.", code: "ENTITLEMENT_REQUIRED" }); return true; }
+      ent = await assertPaidEntitlement({ get: (n) => { const v = req.headers[n.toLowerCase()]; return Array.isArray(v) ? (v[0] ?? null) : (v ?? null); } }, { sessionAccountId: acct.id });
+    } catch (e: any) {
+      if (e?.status === 403) { json(res, 403, { error: "이 유료권한은 다른 계정에 결속되어 있습니다.", code: "ENTITLEMENT_BOUND_OTHER" }); return true; } // 타 계정 결속 토큰 선점 차단(레드팀 #3·M8)
+      json(res, 402, { error: "유료권한이 필요합니다.", code: "ENTITLEMENT_REQUIRED" }); return true;
+    }
     const jti = ent.jti;
     if (!jti) { json(res, 402, { error: "유료권한이 필요합니다.", code: "ENTITLEMENT_REQUIRED" }); return true; }
     if (ctx.entitlement.isRevoked(jti)) { json(res, 402, { error: "실효된 유료권한입니다.", code: "ENTITLEMENT_REVOKED" }); return true; } // 죽은 토큰 연결 차단(레드팀 ③)

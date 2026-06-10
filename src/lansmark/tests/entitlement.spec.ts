@@ -38,10 +38,9 @@ describe("entitlement", () => {
       const t = mintEntitlementToken({ userId: "order:o1", boundAccount: "acctZ" });
       await expect(assertPaidEntitlement(hdr(t), { sessionAccountId: "attacker" })).rejects.toMatchObject({ status: 403 });
     });
-    it("결속 토큰 + 세션 없음 → 허용(bearer 유지·익명 결제 흐름)", async () => {
+    it("결속 토큰 + 세션 없음 → 403(M8: 익명 도용 차단 — 로그아웃 우회 봉쇄)", async () => {
       const t = mintEntitlementToken({ userId: "order:o1", boundAccount: "acctZ" });
-      const ent = await assertPaidEntitlement(hdr(t)); // opts 없음
-      expect(ent.boundAccount).toBe("acctZ");
+      await expect(assertPaidEntitlement(hdr(t))).rejects.toMatchObject({ status: 403 }); // opts 없음 → 로그인 요구
     });
     it("비결속 토큰 + 임의 세션 → 허용(영향 없음)", async () => {
       const t = mintEntitlementToken({ userId: "order:o1" }); // boundAccount 없음

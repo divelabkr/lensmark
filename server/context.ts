@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { getProviders } from "../src/lansmark/data/providers";
 import type { IdempotencyStore } from "../src/lansmark/payment/pgWebhook";
 import { createStores, type FeedbackStoreEx, type EntitlementStore } from "../src/lansmark/db/stores";
+import { createFirestoreStores } from "../src/lansmark/db/firestoreStores";
 import type { JournalStore } from "../src/lansmark/journal/journalStore";
 import type { SubscriptionStore } from "../src/lansmark/notify/subscriptionStore";
 import type { AnalyticsStore } from "../src/lansmark/analytics/types";
@@ -38,9 +39,13 @@ export interface OpsEntry { at: string; type: string; detail: string; }
 export interface Ctx {
   config: Config;
   providers: ReturnType<typeof getProviders>;
-  feedbackStore: FeedbackStoreEx;            // 플라이휠 실측(memory|file)
-  idem: IdempotencyStore;                    // 웹훅 멱등성 저장소(memory|file)
-  storeMode: "memory" | "file";              // 영속 모드(health/ops 노출)
+  feedbackStore: FeedbackStoreEx;            // 플라이휠 실측(memory|file|firestore)
+  idem: IdempotencyStore;                    // 웹훅 멱등성 저장소(memory|file|firestore)
+  storeMode: "memory" | "file" | "firestore"; // 영속 모드(health/ops 노출)
+  /** firestore 모드: 부팅 워밍(원격 상태 로드) 완료 — devServer가 listen 前 대기. */
+  storesReady?: Promise<void>;
+  /** firestore 모드: 종료(SIGTERM) 시 진행 중 쓰기 완료 대기(유실 방지·H3). */
+  flushStores?: () => Promise<void>;
   metrics: Metrics;
   opsLog: OpsEntry[];                         // 최근 활동 링버퍼(최대 40)
   logOps(type: string, detail: string): void; // opsLog 앞에 추가(+ 상한 유지)
@@ -75,31 +80,47 @@ export type RouteFn = (
   url: URL,
 ) => Promise<boolean> | boolean;
 
+/** 런타임 플래그 오버라이드를 config에 적용(있으면 .env 기본값 덮어쓰기). file/memory는 createContext서, firestore는 워밍 후 devServer서 호출(H1). */
+export function applyRuntimeFlagOverride(config: Config, runtimeFlags: RuntimeFlagsStore): void {
+  const o = runtimeFlags.requireEntitlement();
+  if (o !== null) config.requireEntitlement = o;
+}
+
 /** config로부터 런타임 컨텍스트를 1회 생성한다(서버 부팅 시). */
 export function createContext(config: Config): Ctx {
   const opsLog: OpsEntry[] = [];
-  // 영속 스토어 3종(memory|file) — file 모드면 디스크 로드(재시작 보존). 쓰기 불가 시 메모리 자동 폴백.
-  const stores = createStores({ mode: config.storeMode, dir: config.dataDir });
+  // 영속 스토어(memory|file|firestore) — file은 디스크 로드(쓰기 불가 시 메모리 폴백),
+  // firestore는 Cloud Run 재배포에도 내구(부팅 warm은 devServer가 storesReady로 대기 · §3-1).
+  const stores = config.storeMode === "firestore"
+    ? createFirestoreStores()
+    : createStores({ mode: config.storeMode, dir: config.dataDir });
   // 런타임 오버라이드(영속)가 있으면 .env 기본값을 덮어쓴다 — 운영자가 ops에서 끈 유료 게이트가 재시작에도 유지.
-  //   적용 시점: createContext(부팅) → devServer는 이 뒤에 bootSafety를 돌려 '실효값'으로 운영 fail-closed 검증.
+  //   file/memory: 생성자서 동기 로드 → 지금 적용. firestore: 비동기 워밍이라 devServer가 storesReady 후 적용+bootSafety(H1).
   const runtimeFlags = new RuntimeFlagsStore(config.storeMode, config.dataDir);
-  const reqEntOverride = runtimeFlags.requireEntitlement();
-  if (reqEntOverride !== null) config.requireEntitlement = reqEntOverride;
+  if (config.storeMode !== "firestore") applyRuntimeFlagOverride(config, runtimeFlags);
+  // 부팅 워밍 신호 — firestore는 스토어 8종 + 런타임 플래그를 '모두' 로드(allSettled)한 뒤에만 listen(M1 레이스 차단).
+  const storesReady = config.storeMode === "firestore"
+    ? Promise.allSettled([stores.ready ?? Promise.resolve(), runtimeFlags.warm()])
+        .then((rs) => { if (rs.some((r) => r.status === "rejected")) throw new Error("firestore 워밍 실패(stores 또는 flags)"); })
+    : undefined;
   return {
     config,
     providers: getProviders(),                 // auto: 키 있는 통합만 live, 나머지 mock 폴백
     feedbackStore: stores.feedback,
     idem: stores.idem,
     storeMode: stores.mode,
+    storesReady,
+    flushStores: stores.flushAll,
     metrics: { simRuns: 0, entitlementsMinted: 0, mockPaysIssued: 0, reqCount: 0, errCount: 0 },
     opsLog,
     logOps(type, detail) {
       const entry = { at: new Date().toISOString(), type, detail };
       opsLog.unshift(entry);
       if (opsLog.length > 40) opsLog.pop(); // 콘솔 표시용 링버퍼(최신 40건)
-      // 영속 감사 로그(append-only·재시작 보존·0600) — 보안 이벤트(로그인·실효·결제·게이트 토글·삭제) durable 기록.
-      //   file 모드만. 디스크 오류는 무시(운영 연속성 우선). 로테이션·외부전송은 운영 강화(P1).
-      if (config.storeMode === "file") {
+      // 영속 감사 로그(append-only) — 보안 이벤트(로그인·실효·결제·게이트 토글·삭제) durable 기록.
+      //   firestore 모드=lm_audit 컬렉션(재배포 내구) · file 모드=audit.jsonl(0600). 쓰기 실패는 무시(운영 연속성 우선).
+      if (stores.auditSink) stores.auditSink(entry);
+      else if (config.storeMode === "file") {
         try { appendFileSync(join(config.dataDir, "audit.jsonl"), JSON.stringify(entry) + "\n", { mode: 0o600 }); } catch { /* 쓰기 실패 무시 */ }
       }
     },

@@ -25,6 +25,12 @@ export interface EntitlementStore {
   revoke(jti: string): void;
   revokedSize(): number;
   isRevoked(jti: string | undefined): boolean; // 토큰 검증과 별개로 실효 여부 조회 — consume 미호출 유료 surface의 킬스위치(레드팀 P1)
+  /** 소진 환불(다운스트림 실패 시 1회 복원) — 서비스 미제공인데 quota만 차감되는 불공정 방지(감사 Low). */
+  refund?(jti: string | undefined): void;
+  /** firestore: 실효의 내구 확인(원격 반영 후 응답·H3). 미구현 어댑터는 undefined. */
+  persistRevokedNow?(): Promise<void>;
+  /** firestore: 스토어 비정상(워밍 실패=sealed) — 유료 게이트 ON 거부 판정용(H2). */
+  isDegraded?(): boolean;
 }
 /** ops가 .all()을 쓰므로 확장 인터페이스로 노출. */
 export interface FeedbackStoreEx extends FeedbackStore { all(): OutcomeRecord[]; }
@@ -61,6 +67,12 @@ export class MemoryEntitlementStore implements EntitlementStore {
   }
   revokedSize(): number { return this.revoked.size; }
   isRevoked(jti: string | undefined): boolean { return jti != null && this.revoked.has(jti); } // consume 미호출 경로(guide/foreign/journal)도 실효 강제(레드팀 P1)
+  /** 소진 1회 환불 — 소진 후 다운스트림(provider·엔진) 실패로 결과 미제공 시 quota 복원(과금 공정성·감사 Low). */
+  refund(jti: string | undefined): void {
+    if (!jti) return;
+    const n = this.use.get(jti);
+    if (n && n > 0) { this.use.set(jti, n - 1); this.persist(); }
+  }
   protected persist(): void { /* 메모리: no-op */ }
 }
 
@@ -173,9 +185,19 @@ export class FileSessionStore extends InMemorySessionStore {
 }
 
 /* ───────────────── 팩토리 ───────────────── */
-export interface Stores { feedback: FeedbackStoreEx; idem: IdempotencyStore; entitlement: EntitlementStore; journal: JournalStore; subscriptions: SubscriptionStore; analytics: AnalyticsStore; accounts: AccountStore; sessions: SessionStore; mode: "memory" | "file"; }
+export interface Stores {
+  feedback: FeedbackStoreEx; idem: IdempotencyStore; entitlement: EntitlementStore; journal: JournalStore;
+  subscriptions: SubscriptionStore; analytics: AnalyticsStore; accounts: AccountStore; sessions: SessionStore;
+  mode: "memory" | "file" | "firestore";
+  /** firestore 모드: 부팅 워밍(원격 상태 로드) 완료 신호 — devServer가 listen 前 대기. */
+  ready?: Promise<void>;
+  /** firestore 모드: 감사로그 내구 저장 싱크(lm_audit) — file 모드의 audit.jsonl 대체. */
+  auditSink?: (entry: { at: string; type: string; detail: string }) => void;
+  /** firestore 모드: 종료(SIGTERM) 시 진행 중 쓰기 완료 대기(유실 방지·H3). */
+  flushAll?: () => Promise<void>;
+}
 
-/** 모드별 스토어 3종 생성. file 모드인데 디렉터리 쓰기 불가면 메모리로 자동 폴백(무중단). */
+/** 모드별 스토어 생성(memory|file). firestore는 순환 import 회피를 위해 db/firestoreStores.createFirestoreStores()를 context에서 직접 사용. file 모드인데 디렉터리 쓰기 불가면 메모리로 자동 폴백(무중단). */
 export function createStores(opts: { mode: "memory" | "file"; dir: string; feedbackMax?: number }): Stores {
   if (opts.mode === "file") {
     try {

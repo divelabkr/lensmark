@@ -1,0 +1,26 @@
+# LENSMARK CI — push/PR마다 그린 게이트(tsc·vitest·arch 지도대조)를 GitHub에서 강제.
+#   로컬 Stop 훅과 동일 기준. 시크릿 불필요(테스트는 dev ephemeral 시크릿·memory 스토어로 결정적).
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  green-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: 의존성(lockfile 결정적)
+        run: npm ci
+      - name: 타입체크 (tsc --noEmit)
+        run: npm run typecheck
+      - name: 단위·통합 테스트 (vitest)
+        run: npm test
+      - name: 아키텍처 지도 대조 (featureMap ↔ 코드 드리프트 차단)
+        run: npm run arch

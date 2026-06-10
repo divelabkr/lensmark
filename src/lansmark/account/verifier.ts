@@ -46,9 +46,12 @@ export class PhoneOtpVerifier implements AuthVerifier {
 
   async verify(challengeId: string, proof: string): Promise<VerifierResult | null> {
     const c = this.pending.get(challengeId);
-    if (!c || c.exp <= Date.now()) return null;
+    if (!c) return null;
+    if (c.exp <= Date.now()) { this.pending.delete(challengeId); return null; } // 만료 → 즉시 정리(쓰레기 누적·FIFO 축출 압박 완화·감사 Low)
     if (++c.attempts > MAX_ATTEMPTS) { this.pending.delete(challengeId); return null; } // 시도 초과 → 챌린지 폐기
-    if (proof !== c.code) return null;
+    // 타이밍-세이프 비교(바이트 길이 가드 → 멀티바이트 proof로 timingSafeEqual이 throw하지 않음·감사 Low).
+    const a = Buffer.from(proof), b = Buffer.from(c.code);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
     this.pending.delete(challengeId); // 성공 시 1회용 소비(재사용 차단)
     return { method: "phone", subject: c.subject };
   }
@@ -90,10 +93,12 @@ export class EmailMagicLinkVerifier implements AuthVerifier {
 
   async verify(challengeId: string, proof: string): Promise<VerifierResult | null> {
     const c = this.pending.get(challengeId);
-    if (!c || c.exp <= Date.now()) return null;
+    if (!c) return null;
+    if (c.exp <= Date.now()) { this.pending.delete(challengeId); return null; } // 만료 → 즉시 정리(감사 Low)
     if (++c.attempts > MAX_ATTEMPTS) { this.pending.delete(challengeId); return null; } // 시도 초과 → 폐기
-    // 길이 가드 후 타이밍-세이프 비교(랜덤 256bit라 타이밍공격 비현실적이나 위생).
-    if (proof.length !== c.token.length || !crypto.timingSafeEqual(Buffer.from(proof), Buffer.from(c.token))) return null;
+    // 바이트 길이 가드 후 타이밍-세이프 비교 — 멀티바이트 proof로 timingSafeEqual이 throw(→500)하지 않게 '바이트' 길이로 비교(감사 Low).
+    const a = Buffer.from(proof), b = Buffer.from(c.token);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
     this.pending.delete(challengeId); // 1회용 소비(재사용 차단)
     return { method: "email", subject: c.subject };
   }

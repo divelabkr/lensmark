@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.46.0",
+    date: "2026-06-10",
+    title: "재배포 데이터 보존(Firestore 영속) + CI + 3-에이전트 보안감사 수정(High 4·Med·Low)",
+    items: [
+      "Firestore 영속 어댑터(LANSMARK_STORE=firestore) — Cloud Run '재배포=데이터 소실' 종결: 계정·세션·재배일지·실측(해자)·유료권한 소진/실효·웹훅 멱등·구독·계측·감사로그·런타임 토글이 재배포 후 유지. 무의존성(메타데이터 토큰+REST)·write-through·부팅 워밍(listen 前)",
+      "GitHub Actions CI — push/PR마다 tsc·vitest·arch 강제 + RDA 실데이터 파이프라인 사전구축(npm run rda:build — 자료 수령일 CSV 한 장으로 데모→실값 전환·verified 표기)",
+      "보안 감사 수정(3-에이전트 화이트박스 → 확정 결함) — H1: firestore 모드 유료게이트 토글 비영속/타입에러(→ flags firestore 백엔드+워밍 후 적용). H2: 워밍실패(sealed)×게이트 ON에서 실효토큰 부활(→ 409 STORE_DEGRADED 거부+stats 노출). H3: revoke 내구확인(원격 반영 후 응답·durable 플래그)+SIGTERM drain 대기. M2: entitlement use/revoked 2문서 분리(revoked 한도 무관). M1: 워밍 allSettled(늦은 warm 덮어쓰기 차단)",
+      "추가 수정 — M3: 평문 스토어 손상도 sealed(빈 상태 덮어쓰기 금지). M4: ops 변이는 콘솔공개로 안 열림+JSON content-type 필수(CSRF). M5: RDA CSV 인용/컬럼불일치 거부(오염 차단). M8: 결속 토큰은 본인 로그인 필수(익명 도용 봉쇄). H4: 캡처 샘플 본문 키 마스킹. Low: quota 환불·만료 챌린지 정리·OTP 타이밍세이프·웹훅 mint-후-mark·firestore 컬렉션 검증",
+      "한계 정직 고지: 단일 인스턴스 내구성용(blob-per-store·1MiB) — 다중 인스턴스 정합은 per-record 승격 시(§3-1 잔여). tsc·vitest 441(+19)·arch 0 · 잔여 키회전(KAMIS)·git 이력 확인은 HUMAN GATE",
+    ],
+  },
+  {
     version: "0.45.0",
     date: "2026-06-09",
     title: "출시 전 종합 테스트 — 보안 감사 확정결함 수정(P1 결속강제 + P2 4종)",

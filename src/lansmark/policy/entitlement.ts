@@ -36,10 +36,14 @@ export async function assertPaidEntitlement(headers: HeaderReader, opts?: { sess
   if (!token) throw new EntitlementError(402, "Paid simulation access required.");
   const ent = verifyEntitlementToken(token);
   if (!ent) throw new EntitlementError(403, "Invalid or expired entitlement.");
-  // 결속 강제(레드팀 #3 심화) — 토큰이 특정 구매자 계정(boundAccount)에 결속됐고 '로그인 세션이 있으면', 그 계정과 일치해야 사용 가능.
-  //   → 로그인한 타인이 유출된 결속 토큰을 도용하는 시나리오 차단. (세션이 없을 땐 bearer 사용 유지 — 결속 토큰의 '익명' 사용 거부는 별도 제품결정 + DB 결속 필요.)
-  if (ent.boundAccount && opts?.sessionAccountId && ent.boundAccount !== opts.sessionAccountId) {
-    throw new EntitlementError(403, "This entitlement is bound to another account.");
+  // 결속 강제(감사 M8 — 0.45.0의 '세션 있을 때만 검사'를 강화) — 토큰이 구매자 계정(boundAccount)에 결속됐으면 반드시 그 계정으로 로그인해야 사용 가능.
+  //   ① 세션 없음 → 거부(로그인 요구): 도용자가 '로그아웃 후 bearer'로 우회하던 구멍을 막는다.
+  //   ② 세션 불일치 → 거부: 로그인한 타인의 도용 차단.
+  //   결속은 '결제 당시 로그인한 구매자'에게만 설정되므로(payment confirm), 그 구매자는 본인 계정으로 로그인해 사용한다(30일 세션·다기기는 link-entitlement).
+  //   결속 없는 토큰(익명 결제)은 종전대로 bearer.
+  if (ent.boundAccount) {
+    if (!opts?.sessionAccountId) throw new EntitlementError(403, "Login required for account-bound entitlement.");
+    if (ent.boundAccount !== opts.sessionAccountId) throw new EntitlementError(403, "This entitlement is bound to another account.");
   }
   return ent;
 }

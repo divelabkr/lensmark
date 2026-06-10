@@ -48,9 +48,10 @@ export function handlePgWebhook(ctx: WebhookCtx): { ok: boolean; reason?: string
   // '결제 성공' ≠ '이 제품 가격을 정확히 결제'. 서버권위 가격과 불일치면 발급 안 함(부분결제·할인·타상품·미상금액 fail-closed).
   if (order.totalAmount !== ctx.expectedAmount) return { ok: true, order, reason: "amount-mismatch" };
   if (ctx.store.seen(order.orderId)) return { ok: true, order, reason: "duplicate" };
-  ctx.store.mark(order.orderId);
   // userId는 서버 유래(orderId 기반, HMAC 검증된 페이로드) — 임의 클라 userId 주입 차단(레드팀 M2).
   // jti=주문 결정적 → confirm 경로와 동일 토큰(quota 공유·이중발급 차단·레드팀 PAY-DOUBLE-MINT)
+  // ⚠ mint 성공 후 mark(감사 Low) — mint가 throw(시크릿 부재 등)하면 mark 안 하므로 PG 재전송 시 재발급 가능(주문 영구잠금 방지).
   const token = mintEntitlementToken({ userId: ctx.userOf(order), source: "order", reference: order.orderId, jti: orderJti(order.orderId), exp: Date.now() + (ctx.ttlMs ?? 30 * 86400000) });
+  ctx.store.mark(order.orderId);
   return { ok: true, order, entitlementToken: token };
 }

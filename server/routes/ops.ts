@@ -7,25 +7,43 @@ import { json, readBody } from "../respond";
 import { isObject } from "../../src/lansmark/api/parcelRequest";
 import { adminOk } from "../middleware";
 import { VALIDATED_THRESHOLD } from "../../src/lansmark/core/calibration"; // 검증 판정 SSOT(임계) — ops도 동일 기준
-import type { RouteFn } from "../context";
+import type { Ctx, RouteFn } from "../context";
+import type * as http from "node:http";
+
+/**
+ * ops '쓰기'(revoke·paid-gate) 공통 가드(감사 M4) — 읽기(stats)와 분리.
+ *   ① 운영+토큰미설정이면 거부(ALLOW_OPEN_CONSOLE은 통계 공개일 뿐, 쓰기까지 열지 않는다)
+ *   ② 관리자 토큰 검증(adminOk) ③ Content-Type: application/json 요구(단순요청 cross-origin POST=CSRF 차단)
+ *   반환 true = 차단됨(응답 종료). false = 통과.
+ */
+function blockedOpsMutation(req: http.IncomingMessage, res: any, ctx: Ctx): boolean {
+  if (ctx.config.isProd && !ctx.config.adminToken) { json(res, 403, { error: "운영 쓰기는 관리자 토큰이 필요합니다(콘솔 공개로 열리지 않음).", code: "ADMIN_TOKEN_REQUIRED" }); return true; }
+  if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
+  const ct = String(req.headers["content-type"] || "");
+  if (!ct.includes("application/json")) { json(res, 415, { error: "Content-Type: application/json 이 필요합니다.", code: "BAD_CONTENT_TYPE" }); return true; } // CSRF(단순요청) 차단
+  return false;
+}
 
 export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
-  // 토큰 실효(환불/분쟁) — 관리자 전용. revoke 능력을 실제 운영 경로에 연결.
+  // 토큰 실효(환불/분쟁) — 관리자 전용 쓰기. revoke 능력을 실제 운영 경로에 연결.
   if (url.pathname === "/api/ops/revoke" && req.method === "POST") {
-    if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
+    if (blockedOpsMutation(req, res, ctx)) return true;
     let b: any = {};
     try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; } // 원시 JSON도 {}로 정규화(500 방지)
     const jti = typeof b.jti === "string" ? b.jti.trim() : "";
     if (!jti) { json(res, 400, { error: "jti가 필요합니다.", code: "JTI_REQUIRED" }); return true; }
     ctx.entitlement.revoke(jti);
     ctx.logOps("실효", `엔티틀먼트 실효 jti=${jti.slice(0, 12)}…`);
-    json(res, 200, { ok: true, revoked: jti, revokedTotal: ctx.entitlement.revokedSize() });
+    // firestore: 실효를 '원격 반영 후' 응답(H3) — durable:false면 운영자가 재시도/인지. file/memory는 flush 동기라 항상 durable.
+    let durable = true;
+    try { await ctx.entitlement.persistRevokedNow?.(); } catch { durable = false; }
+    json(res, 200, { ok: true, revoked: jti, durable, revokedTotal: ctx.entitlement.revokedSize() });
     return true;
   }
 
-  // 유료 게이트 런타임 토글(영속) — 무료 베타 ON↔OFF. 관리자 전용. '시점 되면 반영'을 위해 재시작 없이 전환.
+  // 유료 게이트 런타임 토글(영속) — 무료 베타 ON↔OFF. 관리자 전용 쓰기. 재시작 없이 전환.
   if (url.pathname === "/api/ops/paid-gate" && req.method === "POST") {
-    if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
+    if (blockedOpsMutation(req, res, ctx)) return true;
     let b: any = {};
     try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; } // 원시 JSON도 {}로 정규화(500 방지)
     if (typeof b.requireEntitlement !== "boolean") { json(res, 400, { error: "requireEntitlement(boolean)이 필요합니다.", code: "BAD_VALUE" }); return true; }
@@ -33,8 +51,13 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     if (b.requireEntitlement === false && ctx.config.isProd && process.env.LANSMARK_ALLOW_OPEN_PAID !== "1") {
       json(res, 400, { error: "운영에서 유료 게이트 비활성(무료 개방)은 LANSMARK_ALLOW_OPEN_PAID=1 설정이 필요합니다.", code: "OPEN_PAID_NOT_ACKED" }); return true;
     }
+    // H2: 엔티틀먼트 스토어가 비정상(firestore 워밍 실패=sealed·빈 상태)일 때 유료 게이트 ON 거부 —
+    //   빈 revoked로 실효 토큰이 통과하고 revoke가 무음 실패하는 상태에서 과금을 켜지 않는다(fail-closed).
+    if (b.requireEntitlement === true && ctx.entitlement.isDegraded?.()) {
+      json(res, 409, { error: "엔티틀먼트 영속이 비정상(워밍 실패) 상태 — 유료 게이트를 켤 수 없습니다. 복구 후 재시도하세요.", code: "STORE_DEGRADED" }); return true;
+    }
     ctx.config.requireEntitlement = b.requireEntitlement;          // 즉시 반영(요청 readers가 ctx.config 경유)
-    ctx.runtimeFlags.setRequireEntitlement(b.requireEntitlement);  // 영속(재시작 보존)
+    ctx.runtimeFlags.setRequireEntitlement(b.requireEntitlement);  // 영속(재시작 보존 — firestore/file)
     ctx.logOps("게이트", `유료 게이트 ${b.requireEntitlement ? "ON(유료)" : "OFF(무료 베타)"}`);
     json(res, 200, { ok: true, requireEntitlement: ctx.config.requireEntitlement });
     return true;
@@ -76,6 +99,8 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     payment: { mode: ctx.config.tossClientKey ? "live" : "mock", requireEntitlement: ctx.config.requireEntitlement, overridden: ctx.runtimeFlags.requireEntitlement() !== null, priceKrw: ctx.config.simPriceKrw },
     recent: ctx.opsLog.slice(0, 20),
     config: { dataMode: ctx.config.dataMode, port: ctx.config.port, store: ctx.storeMode },
+    // 스토어 건전성 — firestore 워밍 실패(sealed)면 true. 운영자가 실효 부활 위험을 인지하고 게이트 ON 자제(H2).
+    storeDegraded: ctx.entitlement.isDegraded?.() ?? false,
   });
   return true;
 };

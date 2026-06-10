@@ -44,7 +44,9 @@ export class JsonFile<T> {
             catch { this.sealed = true; console.warn(`[jsonFile] ${this.path} 복호 실패(키 불일치/손상) — 덮어쓰기 차단`); } // 잘못된 키로 원본을 날리지 않음
           }
         } else {
-          this.data = JSON.parse(raw) as T;               // 평문(키 설정 시 다음 flush에서 암호화로 이행)
+          // 평문(키 설정 시 다음 flush에서 암호화로 이행). 손상 시 sealed — 빈 상태로 덮어써 보안 상태(실효 등) 유실 방지(감사 M3).
+          try { this.data = JSON.parse(raw) as T; }
+          catch { this.sealed = true; console.warn(`[jsonFile] ${this.path} 평문 파싱 실패(손상) — 덮어쓰기 차단(데이터 보호). 파일 확인/격리 필요.`); }
         }
       }
     } catch { /* 파일 읽기 오류 → initial 유지(가용성 우선) */ }

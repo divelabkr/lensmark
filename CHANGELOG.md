@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.46.0 — 2026-06-10 · Firestore 영속 + CI + 3-에이전트 보안감사 수정
+> Cloud Run '재배포=데이터 소실' 종결 + push마다 GitHub 그린 게이트 + 3-에이전트 화이트박스 감사 확정결함(High 4·Med 5·Low 다수) 수정. 무의존성 유지. tsc·vitest **441**(+19)·arch 0.
+- **Firestore 영속**(`db/firestoreLite.ts`·`db/firestoreStores.ts`·`LANSMARK_STORE=firestore`) — 계정·세션·재배일지·실측·**유료권한 소진/실효**·웹훅 멱등·구독·계측·감사로그(lm_audit)·런타임 토글이 재배포 후 유지. SDK 없이 **메타데이터 토큰+REST**. write-through·부팅 워밍(listen 前)
+- **CI**(`.github/workflows/ci.yml`) push/PR마다 tsc·vitest·arch + **RDA 실데이터 파이프라인 사전구축**(`npm run rda:build`·인용/컬럼 검증·폭 유도 정직표기)
+- **보안 감사 수정** — **H1** firestore 토글 비영속/tsc 에러→flags firestore 백엔드+워밍 후 적용 · **H2** sealed×게이트ON 실효부활→409 STORE_DEGRADED 거부+stats 노출 · **H3** revoke 내구확인(durable 플래그)+SIGTERM drain · **M1** 워밍 allSettled · **M2** use/revoked 2문서 분리 · **M3** 평문손상 sealed · **M4** ops 변이 토큰필수+JSON content-type(CSRF) · **M5** CSV 인용/컬럼 거부 · **M8** 결속토큰 본인 로그인 필수(익명 도용 봉쇄) · **H4** 캡처 샘플 본문 키 마스킹 · Low(quota 환불·만료 챌린지 정리·OTP 타이밍세이프·웹훅 mint→mark·firestore 컬렉션 검증)
+- 한계(정직): blob-per-store(1MiB)·단일 인스턴스 — **다중 인스턴스 정합은 per-record 승격 시**(§3-1 잔여). 잔여 HUMAN GATE: KAMIS 키 회전·`git log --all -- .env samples/` 이력 확인. DEPLOY A-7·ROADMAP §3-1 갱신
+
 ## 0.45.0 — 2026-06-09 · 출시 전 종합 테스트 — 보안 감사 확정결함 수정
 > 4분류 테스트 체계(단위·통합·시스템·인수 × 기능·성능·보안·사용성 × 화이트/블랙 × 회귀·스모크) 실행. 3-에이전트 병렬 화이트박스 감사 + 블랙박스/부하/기기. 확정결함(P1 1 + P2 4) 수정. tsc·vitest **422**(+4)·arch 0.
 - **[P1] 유료권한 계정 결속 미강제 수정** — `boundAccount` 토큰이 유료 기능 엔드포인트에서 순수 bearer로 동작(유출 시 누구나 사용)하던 갭. `server/paidAccess.ts`(세션-인지 게이트)로 `simulate·feedback·guide·foreign·budget·journal`을 통일 적용: 결속 토큰 + 로그인 세션 불일치 → **403**(타인 도용 차단), 세션 없으면 bearer 유지(익명 결제 흐름). `assertPaidEntitlement(headers, {sessionAccountId})` + 4 회귀 테스트

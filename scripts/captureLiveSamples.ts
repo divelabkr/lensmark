@@ -23,14 +23,22 @@ loadDotenv();
 const OUT = join(process.cwd(), "samples");
 mkdirSync(OUT, { recursive: true });
 
-const mask = (s: string) => s.replace(/((?:authKey|p_cert_key|p_cert_id|key)=)[^&\s]+/gi, "$1***"); // 저장물에 키 노출 방지
-const save = (name: string, body: string) => { writeFileSync(join(OUT, name), body); console.log(`  ✔ samples/${name} (${body.length}B)`); };
+// 실키 목록(.env에서) — 응답 본문에 '에코'된 키까지 마스킹하기 위함(감사 H4: KAMIS는 본문 condition에 p_key/p_id를 되돌려줌).
+const SECRET_VALUES = ["VWORLD_API_KEY", "KMA_API_KEY", "KAMIS_API_KEY", "KAMIS_API_ID", "PERENUAL_API_KEY", "TREFLE_TOKEN", "NCPMS_API_KEY", "NONGSARO_API_KEY", "DATA_GO_KR_SERVICE_KEY", "TOSS_SECRET_KEY", "PG_WEBHOOK_SECRET"]
+  .map((k) => process.env[k]).filter((v): v is string => !!v && v.length >= 6);
+/** URL·본문 모두 마스킹 — ① 키=값 쿼리/필드 패턴 ② .env 실키 값 자체를 직접 치환(본문 에코·다른 필드명 대비). */
+function maskAll(s: string): string {
+  let out = s.replace(/((?:authKey|serviceKey|apiKey|p_cert_key|p_cert_id|p_key|p_id|key)["']?\s*[:=]\s*["']?)[^"',&\s}\]]+/gi, "$1***");
+  for (const v of SECRET_VALUES) out = out.split(v).join("***"); // 실키 값 직접 제거(형식·필드명 무관)
+  return out;
+}
+const save = (name: string, body: string) => { writeFileSync(join(OUT, name), maskAll(body)); console.log(`  ✔ samples/${name} (${body.length}B · 키 마스킹)`); };
 const skip = (name: string, why: string) => console.log(`  – ${name} 건너뜀 — ${why}`);
 
-/** 원본 응답을 헤더 주석(상태·마스킹된 URL)과 함께 반환. */
+/** 원본 응답을 헤더 주석(상태·마스킹된 URL)과 함께 반환. 본문은 save()에서 한 번 더 마스킹. */
 async function raw(url: string): Promise<string> {
   const r = await fetch(url);
-  const head = `# HTTP ${r.status} ${r.statusText}\n# ${mask(url)}\n# captured ${new Date().toISOString()}\n\n`;
+  const head = `# HTTP ${r.status} ${r.statusText}\n# ${maskAll(url)}\n# captured ${new Date().toISOString()}\n\n`;
   return head + (await r.text());
 }
 
