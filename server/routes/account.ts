@@ -66,6 +66,7 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     if (!acct) { // 신규 가입
       acct = { id: "acct_" + crypto.randomBytes(12).toString("hex"), createdAt: new Date().toISOString(), authRefs: [{ method: result.method, subjectHash: h }] };
       ctx.accounts.create(acct);
+      ctx.analytics.signup(result.method); // 가입 추적(방법별·일별 — OPS 회원 섹션 · 이메일/휴대폰 구분)
       isNew = true;
     }
     const token = crypto.randomBytes(24).toString("hex");

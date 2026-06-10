@@ -40,7 +40,7 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
         limit = clampCandidateLimit(q.get("limit"), 6);
       }
     } catch (e) { badInput(res, e); return true; }
-    ctx.analytics.funnel("recommend"); // 퍼널 1단계: 무료 추천 조회
+    ctx.analytics.funnel("recommend", req.headers["x-lansmark-anon"] as string | undefined); // 퍼널 1단계(유입) + 익명 기기로 신규/재방문 판정
     json(res, 200, { ok: true, mode: "free", paywallAfter: "crop_candidate_top", candidates: rankCropCandidates(land, limit) });
     return true;
   }

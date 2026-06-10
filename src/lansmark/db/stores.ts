@@ -13,7 +13,7 @@ import { InMemoryJournalStore, type JournalStore } from "../journal/journalStore
 import type { JournalEntry } from "../journal/types";
 import { InMemorySubscriptionStore, type SubscriptionStore } from "../notify/subscriptionStore";
 import type { AlertSubscription } from "../notify/alertSubscription";
-import { InMemoryAnalyticsStore } from "../analytics/eventStore";
+import { InMemoryAnalyticsStore, type DayCounts } from "../analytics/eventStore";
 import type { AnalyticsStore } from "../analytics/types";
 import { InMemoryAccountStore, type AccountStore } from "../account/accountStore";
 import { InMemorySessionStore, type SessionStore } from "../account/sessionStore";
@@ -148,16 +148,19 @@ export class FileSubscriptionStore extends InMemorySubscriptionStore {
 /** 메모리 어댑터 상속 — 로드 + throttle flush. 분석 이벤트는 빈번(매 추천·시뮬)하므로 매번 동기 fs 쓰기는 부담 →
  *   N건마다 1회만 디스크 반영(메모리는 항상 최신, 크래시 시 최근 <N건만 손실=집계엔 무해). PII 없음. */
 export class FileAnalyticsStore extends InMemoryAnalyticsStore {
-  private file: JsonFile<{ funnel: Record<string, number>; demand: [string, number][]; gaps: [string, number][]; since: string }>;
+  private file: JsonFile<{ funnel: Record<string, number>; demand: [string, number][]; gaps: [string, number][]; since: string; daily: [string, DayCounts][]; seen: string[]; signups: Record<string, number> }>;
   private dirty = 0;
   private static readonly FLUSH_EVERY = 25; // 25 이벤트마다 1회 디스크 쓰기(동기 fs 부담 완화)
   constructor(path: string) {
     super();
-    this.file = new JsonFile(path, { funnel: {}, demand: [], gaps: [], since: this.since });
+    this.file = new JsonFile(path, { funnel: {}, demand: [], gaps: [], since: this.since, daily: [], seen: [], signups: {} });
     this.funnelC = this.file.data.funnel ?? {};
     this.demandC = new Map(this.file.data.demand ?? []);
     this.gapC = new Map(this.file.data.gaps ?? []);
     this.since = this.file.data.since ?? this.since; // 최초 집계 시작 시각 보존(재시작 누적)
+    this.dailyC = new Map(this.file.data.daily ?? []);  // 일별 시계열(롤링)
+    this.seenAnon = new Set(this.file.data.seen ?? []); // 익명 기기 해시(신규/재방문)
+    this.signupC = this.file.data.signups ?? {};         // 가입 방법별 누적
   }
   protected persist(): void {
     if (++this.dirty < FileAnalyticsStore.FLUSH_EVERY) return; // throttle
@@ -166,7 +169,7 @@ export class FileAnalyticsStore extends InMemoryAnalyticsStore {
   /** 즉시 디스크 반영(throttle 무시) — graceful 종료 훅(SIGTERM/SIGINT)에서 호출(레드팀 L-3, 버퍼 손실 방지). */
   flush(): void {
     this.dirty = 0;
-    this.file.data = { funnel: this.funnelC, demand: [...this.demandC], gaps: [...this.gapC], since: this.since };
+    this.file.data = { funnel: this.funnelC, demand: [...this.demandC], gaps: [...this.gapC], since: this.since, daily: [...this.dailyC], seen: [...this.seenAnon], signups: this.signupC };
     this.file.flush();
   }
 }

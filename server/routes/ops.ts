@@ -88,7 +88,8 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
   json(res, 200, {
     authConfigured: !!ctx.config.adminToken,
     flywheel: { records: rows.length, withActuals, byCrop, validatedBuckets },
-    analytics: ctx.analytics.snapshot(20), // 익명 수요·퍼널 집계(PII 0) — 무료 베타에서 '무엇을 얻는가'
+    analytics: ctx.analytics.snapshot(20), // 익명 수요·퍼널·시계열·신규/재방문·가입(PII 0) — 무료 베타에서 '무엇을 얻는가'
+    members: { accounts: ctx.accounts.size(), sessions: ctx.sessions.size() }, // 회원 — 가입 총원·활성 세션(방법별 가입은 analytics.signups)
     usage: {
       simRuns: ctx.metrics.simRuns,
       entitlementsMinted: ctx.metrics.entitlementsMinted,

@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.52.0",
+    date: "2026-06-11",
+    title: "OPS 고객 흐름 데이터(백엔드) — 일별 시계열 + 신규/재방문 + 가입(방법별)",
+    items: [
+      "일별 시계열(롤링 30일) — 퍼널 6단계·신규/재방문·가입을 날짜별 버킷으로 집계(snapshot.days). '유입/전환/가입 추세'(어제 짚은 시계열 0 갭)의 토대. 전부 수(count)만·바운드(메모리/blob<1MiB 안전)",
+      "신규 vs 재방문(체류) — 익명 기기ID(x-lansmark-anon)를 FNV 해시 토큰으로 '중복제거 집합'(seenAnon)에만 보관 → 일별 신규/재방문 '수'만 집계, 개별 여정·시퀀스는 미저장(PII 0 유지·사용자 승인 방식). 유입(recommend)에서 당일 1회 판정(중복 클릭/헤더없음/위조 제외). 상한 20k·FIFO·재배포 영속(firestore)",
+      "가입 추적(방법별) — 계정 신규 생성 시 analytics.signup(method)로 email/phone 구분 누적 + 일별. /api/ops/stats에 members(가입 총원·활성 세션) + analytics(days·signups) 노출. 이메일 로그인 가입이 OPS에 집계로 반영(로그인 기능은 v0.43 기존)",
+      "정직성/바운드 유지 — 집계만·롤링·상한, 디바운스 영속(v0.48) 그대로. anonId는 유효 포맷만 인정(즉석 생성·위조 제외 → '신규' 오염 방지). 함수 호환(funnel anonId 선택적)",
+      "검증: 회귀 +4(일별 버킷·신규/재방문·가입 화이트리스트·File/firestore 영속+재배포 재방문) · tsc·vitest 458(+4)·arch 0 · qwen 1차(치명 0). 다음(Slice 2): OPS 5섹션(회원·동향·매출·서버·종합) 재편 + 퍼널 드롭오프·시계열·신규vs재방문 시각화",
+    ],
+  },
+  {
     version: "0.51.0",
     date: "2026-06-11",
     title: "결과 카드 시각화 — 소득 확률 밴드 + 6축 근거 토네이도(정직성 유지)",

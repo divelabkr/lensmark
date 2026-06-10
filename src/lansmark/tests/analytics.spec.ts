@@ -74,14 +74,54 @@ describe("analytics — 익명 수요·퍼널 집계", () => {
   it("FileAnalyticsStore: flushNow 후 재로드 시 집계 보존(재시작 내구)", () => {
     const path = join(tmpdir(), "lensmark-analytics-test.json");
     if (existsSync(path)) rmSync(path);
+    const A = "anon-" + "d".repeat(16);
     const a = new FileAnalyticsStore(path);
     a.funnel("simulate"); a.demand("rice", "전북"); a.dataGap("crop:x");
+    a.funnel("recommend", A); a.signup("email"); // 일별·신규/재방문·가입도 직렬화 대상
     a.flush(); // throttle(25건) 무시하고 즉시 저장
     const b = new FileAnalyticsStore(path); // 새 인스턴스 = 재시작 모사
     const s = b.snapshot();
     expect(s.funnel.simulate).toBe(1);
     expect(s.demand[0]).toEqual({ cropId: "rice", region: "전북", sims: 1 });
     expect(s.dataGaps[0]).toEqual({ key: "crop:x", hits: 1 });
+    // 시계열·가입·신규/재방문 라운드트립(File 모드)
+    expect(s.signups.email).toBe(1);
+    expect(s.days[s.days.length - 1].newVisitors).toBe(1); // 신규 1 보존
+    b.funnel("recommend", A); // seenAnon 로드됨 + todaySeen 휘발 → 재방문
+    expect(b.snapshot().days.slice(-1)[0].returning).toBe(1);
     rmSync(path);
+  });
+
+  it("일별 버킷(시계열): funnel·signup이 오늘 날짜 버킷에 집계 + snapshot.days 노출", () => {
+    const a = new InMemoryAnalyticsStore();
+    a.funnel("recommend"); a.funnel("recommend"); a.funnel("simulate"); a.signup("email");
+    const s = a.snapshot();
+    expect(s.days.length).toBe(1);
+    const d = s.days[0];
+    expect(d.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(d.recommend).toBe(2); expect(d.simulate).toBe(1); expect(d.signups).toBe(1);
+    expect(s.signups.email).toBe(1);
+  });
+
+  it("신규/재방문: 유효 익명 기기는 당일 1회만 신규 · 중복 클릭/헤더없음/위조는 미집계", () => {
+    const a = new InMemoryAnalyticsStore();
+    const A = "anon-" + "a".repeat(16), B = "anon-" + "b".repeat(16);
+    a.funnel("recommend", A); a.funnel("recommend", A); // 같은 기기 2회 → 신규 1(당일 중복제거)
+    a.funnel("recommend", B);                            // 다른 기기 → 신규 2
+    a.funnel("recommend");                               // 헤더 없음 → 신규/재방문 미집계(유입 카운트만)
+    a.funnel("recommend", "anon-ZZZ");                   // 위조 포맷 → 미집계
+    const d = a.snapshot().days[0];
+    expect(d.newVisitors).toBe(2);
+    expect(d.returning).toBe(0);
+    expect(d.recommend).toBe(5); // funnel 누적은 전부(유입 5)
+  });
+
+  it("가입 방법 화이트리스트: 비정상 method는 '기타' 버킷(임의 키 차단)", () => {
+    const a = new InMemoryAnalyticsStore();
+    a.signup("email"); a.signup("phone"); a.signup("DROP TABLE");
+    const s = a.snapshot();
+    expect(s.signups.email).toBe(1);
+    expect(s.signups.phone).toBe(1);
+    expect(s.signups["기타"]).toBe(1);
   });
 });

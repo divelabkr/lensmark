@@ -200,6 +200,22 @@ describe("FirestoreAnalyticsStore — 저트래픽 유실 수정(디바운스)",
     const saved = JSON.parse(sets[0].json);
     expect(saved.funnel.recommend).toBe(1); expect(saved.funnel.simulate).toBe(1);
   });
+
+  it("시계열·가입 영속 + 재배포 후 '재방문' 판정(seenAnon 생존·todaySeen 리셋)", async () => {
+    const g = fakeGcp();
+    const A = "anon-" + "c".repeat(16);
+    const s1 = new FirestoreAnalyticsStore(new FsDoc(lite(g), "analytics"), 0); // 디바운스 off → 명시 flush
+    await s1.warm();
+    s1.funnel("recommend", A); s1.signup("email"); // 신규 1 + 가입(이메일)
+    s1.flush(); await tick();                        // 원격 영속
+    // 재배포 — 같은 원격 상태로 새 인스턴스(todaySeen은 휘발이라 비어 있음)
+    const s2 = new FirestoreAnalyticsStore(new FsDoc(lite(g), "analytics"), 0);
+    await s2.warm();
+    expect(s2.snapshot().signups.email).toBe(1);     // 가입 방법별 집계 생존
+    s2.funnel("recommend", A);                        // A는 seenAnon에 있음(로드됨) + todaySeen엔 없음 → 재방문
+    const days = s2.snapshot().days;
+    expect(days[days.length - 1].returning).toBe(1);  // 재배포 후에도 '신규' 아닌 '재방문'으로 인식
+  });
 });
 
 describe("createFirestoreStores — 일괄 생성·ready·auditSink", () => {

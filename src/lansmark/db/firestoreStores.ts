@@ -16,7 +16,7 @@ import { InMemoryJournalStore } from "../journal/journalStore";
 import type { JournalEntry } from "../journal/types";
 import { InMemorySubscriptionStore } from "../notify/subscriptionStore";
 import type { AlertSubscription } from "../notify/alertSubscription";
-import { InMemoryAnalyticsStore } from "../analytics/eventStore";
+import { InMemoryAnalyticsStore, type DayCounts } from "../analytics/eventStore";
 import { InMemoryAccountStore } from "../account/accountStore";
 import { InMemorySessionStore } from "../account/sessionStore";
 import type { Account, Session } from "../account/types";
@@ -168,8 +168,9 @@ export class FirestoreAnalyticsStore extends InMemoryAnalyticsStore {
   constructor(private readonly doc: FsDoc, private readonly debounceMs = 5_000) { super(); }
   async warm(): Promise<void> {
     const j = await this.doc.load();
-    if (j) { const d = JSON.parse(j) as { funnel: Record<string, number>; demand: [string, number][]; gaps: [string, number][]; since: string };
-      this.funnelC = d.funnel ?? {}; this.demandC = new Map(d.demand ?? []); this.gapC = new Map(d.gaps ?? []); this.since = d.since ?? this.since; }
+    if (j) { const d = JSON.parse(j) as { funnel: Record<string, number>; demand: [string, number][]; gaps: [string, number][]; since: string; daily?: [string, DayCounts][]; seen?: string[]; signups?: Record<string, number> };
+      this.funnelC = d.funnel ?? {}; this.demandC = new Map(d.demand ?? []); this.gapC = new Map(d.gaps ?? []); this.since = d.since ?? this.since;
+      this.dailyC = new Map(d.daily ?? []); this.seenAnon = new Set(d.seen ?? []); this.signupC = d.signups ?? {}; } // 시계열·신규/재방문·가입 복원(재배포 생존)
   }
   protected persist(): void {
     if (++this.dirty >= FirestoreAnalyticsStore.FLUSH_EVERY) { this.flush(); return; } // 25건 도달 → 즉시(버스트 흡수)
@@ -185,7 +186,7 @@ export class FirestoreAnalyticsStore extends InMemoryAnalyticsStore {
   flush(): void {
     if (this.timer) { clearTimeout(this.timer); this.timer = null; }
     this.dirty = 0;
-    this.doc.save(JSON.stringify({ funnel: this.funnelC, demand: [...this.demandC], gaps: [...this.gapC], since: this.since }));
+    this.doc.save(JSON.stringify({ funnel: this.funnelC, demand: [...this.demandC], gaps: [...this.gapC], since: this.since, daily: [...this.dailyC], seen: [...this.seenAnon], signups: this.signupC }));
   }
 }
 
