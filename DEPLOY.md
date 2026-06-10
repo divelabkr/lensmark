@@ -89,6 +89,20 @@ gcloud run services update lensmark-api --region asia-northeast3 --update-env-va
 검증: `/api/health`의 `store:"firestore"` + 일지 생성 → 재배포 → 일지 유지.
 > ✅ **lensmark-dev 전환 완료(2026-06-10 · `store:firestore`)** — 재배포 생존 실증: 실측 1건 → 재배포(인스턴스 완전 교체) → **records=2**(부팅 워밍이 기존을 로드해 이어씀 · file/`tmp`였다면 0). 유료 게이트 ON/OFF 라이브 토글도 검증(무권한 `/api/simulate` 402↔400). DB·IAM은 위 1회 스크립트로 구성 완료.
 
+## A-7b. 외부 API 실데이터(VWorld·KMA·KAMIS) — mock→live
+키는 `.env`(사장님 발급·HUMAN GATE) → Secret Manager(값 비노출·stdin) → Cloud Run `--update-secrets`. Toss/webhook(결제)은 유료 정식 때 별도.
+```bash
+PROJ_NUM=$(gcloud projects describe lensmark-dev --format='value(projectNumber)')
+for K in VWORLD_API_KEY KMA_API_KEY KAMIS_API_KEY KAMIS_API_ID; do
+  S="lansmark-$(echo $K | tr 'A-Z_' 'a-z-')"
+  printf '%s' "$(grep "^$K=" .env | cut -d= -f2- | tr -d '\"')" | gcloud secrets create "$S" --data-file=- --replication-policy=automatic
+  gcloud secrets add-iam-policy-binding "$S" --member="serviceAccount:${PROJ_NUM}-compute@developer.gserviceaccount.com" --role=roles/secretmanager.secretAccessor
+done
+gcloud run services update lensmark-api --region asia-northeast3 --update-secrets \
+  "VWORLD_API_KEY=lansmark-vworld-api-key:latest,KMA_API_KEY=lansmark-kma-api-key:latest,KAMIS_API_KEY=lansmark-kamis-api-key:latest,KAMIS_API_ID=lansmark-kamis-api-id:latest"
+```
+✅ 검증(2026-06-10): `/api/health` **5종 live**(타일·주소·필지·기후·시세) · `/api/geocode` 실좌표 · `/api/parcel` 실 PNU(4111313…) · `/api/simulate` apple 시세 P50 **9,086원/kg**. **미전환(정직)**: `vworldDem`(3D DEM 파싱 미구현·TODO) · Toss/webhook(유료 정식) · `rdaIncome`(RDA 소득자료 CSV 수령=HUMAN GATE → 소득 base는 아직 demo·`dataLabel:estimated`).
+
 ## A-8. ⚠ 한계
 - **firestore 미사용 시 상태 휘발**: 파일스토어는 재배포/회수에 초기화 — A-7로 전환 권장(베타 데이터 보호).
 - firestore 어댑터는 **단일 인스턴스 내구성**용(blob-per-store·문서 1MiB) — 다중 인스턴스 정합(유니크 제약·락)은 per-record 승격 후(§3-1 잔여 · max-instances>1 올리기 전 필수).
