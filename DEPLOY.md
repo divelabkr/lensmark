@@ -86,10 +86,12 @@ gcloud projects add-iam-policy-binding lensmark-dev \
 gcloud run services update lensmark-api --region asia-northeast3 --update-env-vars LANSMARK_STORE=firestore
 ```
 검증: `/api/health`의 `store:"firestore"` + 일지 생성 → 재배포 → 일지 유지.
+> ✅ **lensmark-dev 전환 완료(2026-06-10 · `store:firestore`)** — 재배포 생존 실증: 실측 1건 → 재배포(인스턴스 완전 교체) → **records=2**(부팅 워밍이 기존을 로드해 이어씀 · file/`tmp`였다면 0). 유료 게이트 ON/OFF 라이브 토글도 검증(무권한 `/api/simulate` 402↔400). DB·IAM은 위 1회 스크립트로 구성 완료.
 
 ## A-8. ⚠ 한계
 - **firestore 미사용 시 상태 휘발**: 파일스토어는 재배포/회수에 초기화 — A-7로 전환 권장(베타 데이터 보호).
 - firestore 어댑터는 **단일 인스턴스 내구성**용(blob-per-store·문서 1MiB) — 다중 인스턴스 정합(유니크 제약·락)은 per-record 승격 후(§3-1 잔여 · max-instances>1 올리기 전 필수).
+- **analytics(익명 수요·퍼널)** 는 throttle(25건마다 flush)·종료 flush 의존 — 재배포 직전 소량 유실 가능(점검 중). 계정·세션·일지·실측·quota/실효 등 **핵심 데이터는 write-through라 재배포 완전 생존**(실증됨).
 - 무료 베타로 시작 → 유료 전환은 ops 토글 + 결제 키 + §3-1 잔여.
 - 발송 키 전까지 로그인/알림은 dev 표시·fail-closed. 롤백: `gcloud run services update-traffic lensmark-api --to-revisions PREV=100`.
 
