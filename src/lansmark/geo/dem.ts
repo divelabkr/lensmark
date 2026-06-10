@@ -2,11 +2,12 @@ import type { BBox, DemGrid, LatLng } from "./types";
 import { distanceM } from "./crs";
 
 /** 필지 주변 DEM 격자(부분요청). ⚠ 전체 다운로드 불가 — 필지 주변만. */
-export async function fetchDem(_bbox: BBox, key: string, _level = 15): Promise<DemGrid> {
-  if (!key) throw new Error("VWORLD_API_KEY 필요(3D Data API DEM).");
-  // TODO(VWorld 3D Data API): bbox 영역(레벨≤15, ~1.5m) 부분 요청 → 높이 격자 파싱.
-  //   대안: 국토정보플랫폼 DEM(오프라인) 또는 자체 raster-dem 호스팅.
-  throw new Error("fetchDem 미구현 — VWorld 3D Data API(DEM) 연동 필요(키 있음).");
+export async function fetchDem(_bbox: BBox, _key: string, _level = 15): Promise<DemGrid> {
+  // 소스 조사 완료(2026-06): VWorld는 geocoder/data API만 제공 — 좌표→표고 REST가 없다.
+  //   국토지리정보원 DEM도 '대용량 파일 다운로드'(오프라인)뿐, 점 표고 조회 API 미제공 → 무료 정밀 REST 부재.
+  //   소스 옵션(확정 시 여기 구현): Google Elevation(유료키)·Open-Elevation(SRTM 30m 무료·거침)·자체 raster-dem 호스팅.
+  //   무료베타 결정(사용자): mock 유지 — terrain은 mockDem→terrainFromDem로 좌표 기반 추정(정직 라벨 source:"mock").
+  throw new Error("fetchDem 미구현 — 정밀 표고 소스 미확정(VWorld·국토지리정보원 REST 미제공). mock 폴백 사용 중.");
 }
 
 /** 키 없이 동작하는 결정적 mock DEM (좌표 해시 기반 경사면) */
