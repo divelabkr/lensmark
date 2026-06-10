@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.47.0 — 2026-06-10 · 운영 콘솔: 스토어 저하 경고 + 엔티틀먼트 실효(revoke) 컨트롤
+> 0.46.0 감사로 백엔드엔 생겼으나 콘솔이 못 따라간 공백을 메움 — 운영자가 환불·오용에 즉시 대응(revoke)하고, 스토어 저하 위험을 한눈에 인지. 단일 HTML·외부 리소스 0·시크릿 0 유지.
+- **엔티틀먼트 실효(revoke) UI**(`dashboard/lansmark_ops.html`·결제 섹션) — 지금까지 curl로만 가능하던 환불·분쟁·오용 대응을 콘솔에서: jti 입력→confirm(파괴적)→`POST /api/ops/revoke`. `durable===false`(원격 영속 실패)면 "재배포 시 부활 가능" 경고로 재시도 인지(H3 정합). 403/409/415는 사람이 읽을 메시지로
+- **스토어 저하(sealed) 경고** — firestore 워밍 실패 시 상단 배너 + 결제 섹션 정상/저하 pill + 저하면 '유료로 전환(켜기)' 버튼 비활성(서버 409 STORE_DEGRADED와 UI 일치 — 켰다 실패하는 경험 제거, H2 정합). 시스템 패널에 STORE(file/firestore) 노출
+- 제약 준수: 모든 동적 텍스트 `esc()`(XSS)·`addEventListener`만(CSP-safe)·디자인 토큰 재사용. tsc·vitest 441·arch 0 · 브라우저 스모크
+
 ## 0.46.0 — 2026-06-10 · Firestore 영속 + CI + 3-에이전트 보안감사 수정
 > Cloud Run '재배포=데이터 소실' 종결 + push마다 GitHub 그린 게이트 + 3-에이전트 화이트박스 감사 확정결함(High 4·Med 5·Low 다수) 수정. 무의존성 유지. tsc·vitest **441**(+19)·arch 0.
 - **Firestore 영속**(`db/firestoreLite.ts`·`db/firestoreStores.ts`·`LANSMARK_STORE=firestore`) — 계정·세션·재배일지·실측·**유료권한 소진/실효**·웹훅 멱등·구독·계측·감사로그(lm_audit)·런타임 토글이 재배포 후 유지. SDK 없이 **메타데이터 토큰+REST**. write-through·부팅 워밍(listen 前)

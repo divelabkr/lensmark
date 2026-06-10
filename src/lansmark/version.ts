@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.47.0",
+    date: "2026-06-10",
+    title: "운영 콘솔 — 스토어 저하 경고 + 엔티틀먼트 실효(revoke) 컨트롤",
+    items: [
+      "운영 콘솔(ops)에 엔티틀먼트 실효(revoke) UI — 지금까지 curl로만 가능하던 환불·분쟁·오용 대응을 콘솔에서: jti 입력→확인(파괴적)→POST /api/ops/revoke. durable=false(원격 영속 실패)면 '재배포 시 부활 가능' 경고로 운영자가 재시도 인지(H3 정합)",
+      "스토어 저하(sealed) 경고 배너 — firestore 워밍 실패 시 콘솔 상단에 명시(유료 소진·실효 미영속 위험). 결제 섹션에 스토어 정상/저하 pill + 저하면 '유료로 전환(켜기)' 버튼 비활성(서버 409 STORE_DEGRADED와 UI 일치 — 켰다 실패하는 경험 제거, H2 정합)",
+      "시스템 패널에 STORE(file/firestore) 노출 + 저하 시 경고 색. 모든 동적 텍스트 esc()(XSS)·외부 리소스 0·클라이언트 시크릿 0·CSP-safe(addEventListener) 유지",
+      "검증: tsc·vitest 441·arch 0 · 브라우저 스모크(배너 노출·revoke durable 결과·게이트 차단)",
+    ],
+  },
+  {
     version: "0.46.0",
     date: "2026-06-10",
     title: "재배포 데이터 보존(Firestore 영속) + CI + 3-에이전트 보안감사 수정(High 4·Med·Low)",
