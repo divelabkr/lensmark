@@ -114,7 +114,9 @@ export async function runParcelSimulationWithProviders(input: ParcelInput, provi
   } catch { /* 폴백: climate 없이 진행(신뢰도 하향) */ }
 
   let kamisPriceKrwPerKg = input.kamisPriceKrwPerKg;
-  try { const p = await providers.price.recentWholesale(input.cropId); if (p) kamisPriceKrwPerKg = p.priceKrwPerKg; } catch { /* 폴백: base 단가 */ }
+  // 실 시세(KAMIS)만 base.refPrice를 덮어쓴다 — mock 폴백 단가(source "mock-…")는 실 RDA 농가수취가보다 신뢰도가 낮아 주입하지 않음.
+  //   (미검증 작물의 mock 단가가 실 RDA 단가를 깎아 소득을 음수로 만들던 오류 차단 — 예: 블루베리 mock 8,200 vs 실 RDA 23,706원/kg.)
+  try { const p = await providers.price.recentWholesale(input.cropId); if (p && !p.source.startsWith("mock")) kamisPriceKrwPerKg = p.priceKrwPerKg; } catch { /* 폴백: base 단가 */ }
 
   return runParcelSimulation({ ...input, context: ctx, kamisPriceKrwPerKg });
 }

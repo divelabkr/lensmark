@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.60.0",
+    date: "2026-06-11",
+    title: "실 RDA 단가 우선 — mock 시세가 실데이터 단가를 덮어쓰던 소득 음수 오류 수정",
+    items: [
+      "라이브 배포 검증에서 발견 — 미검증 작물(블루베리 등 apple 외 9종)은 KAMIS가 null→mock 단가(블루베리 8,200원/kg)로 폴백하는데, 이 mock이 실 RDA 농가수취가(23,706원/kg)를 덮어써 매출이 1/3로 깎이고 소득이 음수로 표시됐다(블루베리 전남 P50 −381만). enrich(runParcelSimulationWithProviders)가 provider 단가를 무조건 주입하던 것을, source가 'mock-…'이 아닌 실 시세만 주입하도록 수정 → 실 refPrice 사용(블루베리 P50 +2,131만 복원)",
+      "우선순위 명확화 — 실 KAMIS 시세(source 'KAMIS …', apple) > 실 RDA refPrice(verified base) > mock. '실데이터가 mock을 이긴다'. apple은 실 KAMIS 그대로, 나머지 9 실RDA 작물은 실 refPrice 사용. v0.59가 비용을·v0.60이 단가를 바로잡아 실 소득 현실화(블루베리 데모 −5,694만 → 실 +599~+2,131~+3,663만)",
+      "검증: 회귀 +2(블루베리 mock 단가 미주입→실 refPrice·소득 양수 / 명시 실단가 정상 주입) · tsc·vitest 482·arch 0. 라이브 재배포로 9작물 단가 교정 반영",
+    ],
+  },
+  {
     version: "0.59.0",
     date: "2026-06-11",
     title: "실 RDA 소득자료 적재(2024) — 10작물 데모→검증 + 연차/판로 구조 보존",

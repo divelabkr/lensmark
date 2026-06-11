@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.60.0 — 2026-06-11 · 실 RDA 단가 우선 — mock 시세가 실데이터를 덮어쓰던 소득 음수 오류 수정
+> 라이브 배포 검증에서 발견. v0.59가 비용을·v0.60이 단가를 바로잡아 실 소득 현실화. tsc·vitest **482**·arch 0.
+- **단가 소스 우선순위 수정**(`parcelSimulator.runParcelSimulationWithProviders`) — 미검증 작물(apple 외 9종)은 KAMIS가 null→**mock 단가**(블루베리 8,200원/kg)로 폴백하는데, 이 mock이 **실 RDA 농가수취가(23,706원/kg)를 덮어써** 매출 1/3·소득 음수(블루베리 전남 P50 −381만). provider 단가를 무조건 주입하던 것을 **source가 'mock-…'이 아닌 실 시세만 주입**하도록 수정 → 실 refPrice 사용
+- **우선순위** — 실 KAMIS 시세(apple) > 실 RDA refPrice(verified) > mock. '실데이터가 mock을 이긴다'. **블루베리 데모 −5,694만 → 실 +599~+2,131~+3,663만**(전 9작물 단가 교정)
+- **검증** — 회귀 +2(mock 단가 미주입→실 refPrice·소득 양수 / 명시 실단가 정상 주입) · tsc·vitest **482**·arch 0 · 라이브 재배포 반영
+
 ## 0.59.0 — 2026-06-11 · 실 RDA 소득자료 적재(2024) — 10작물 데모→검증
 > 농진청 농산물소득조사 2024 전국 총괄표 → 10작물 실 base. 데모 비용 과대(현실 3~5배) 종결. tsc·vitest **480**·arch 0.
 - **실데이터 적재**(`rda:build` ← `scripts/rdaReal.2024.csv`) — 사과·블루베리·포도·고구마·감자·딸기·배추(가을)·참깨·들깨·보리 10작물. `getRdaBase`가 `RDA_REAL` 우선(verified·baseYear 2024·출처). **블루베리 1,000평 '나쁠 때 −5,694만'(데모) → +509만~+2,046만~+3,582만(실)**. v0.58 하한캡은 실 비용이 현실적이라 여전히 휴면
