@@ -12,6 +12,9 @@ import type * as http from "node:http";
 import { readFileSync, statSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { join } from "node:path";
+import { assessQuality } from "../../src/lansmark/quality/qualityGate";
+import { integrationReadiness } from "../../src/lansmark/data/providers";
+import { RDA_REAL_META } from "../../src/lansmark/data/rdaIncome.real";
 
 // 앱 첫로드 페이로드(최적화 트리거) — over-the-wire 비용. 파일 변경(mtime) 시에만 재계산(gzip 비쌈) → 운영선 1회.
 let _payloadCache: { mtimeMs: number; rawKB: number; gzipKB: number } | null = null;
@@ -108,6 +111,12 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     payload: appPayloadKB(ctx.config.dashboardDir),                        // 앱 첫로드(gzip=실전송) — 페이로드 분할/지연로드 트리거
     headroom: { feedback: { n: rows.length, cap: 20000 }, demandKeys: { n: an.demandKeys, cap: 10000 } }, // blob 1MiB·차원폭증 — per-record/DB 승격 트리거
   };
+  // 데이터 품질 게이트 — '운영 녹색'과 별개로 넘기는 데이터가 검증/정직한지(신뢰 피쉬본 + 제품 자동보수의 근거)
+  const quality = assessQuality({
+    integrations: integrationReadiness().integrations,
+    rdaMeta: RDA_REAL_META,
+    flywheel: { records: rows.length, withActuals, validatedBuckets: validatedBuckets.filter((b) => b.validated).length },
+  });
 
   json(res, 200, {
     authConfigured: !!ctx.config.adminToken,
@@ -115,6 +124,7 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     analytics: an, // 익명 수요·퍼널·시계열·신규/재방문·가입(PII 0) — 무료 베타에서 '무엇을 얻는가'
     members: { accounts: ctx.accounts.size(), sessions: ctx.sessions.size() }, // 회원 — 가입 총원·활성 세션(방법별 가입은 analytics.signups)
     optimization, // 최적화 '언제' 트리거(페이로드·저장소 헤드룸)
+    quality,      // 데이터 품질 게이트(신뢰 피쉬본) — 운영 녹색 ≠ 데이터 정확
     usage: {
       simRuns: ctx.metrics.simRuns,
       entitlementsMinted: ctx.metrics.entitlementsMinted,

@@ -319,6 +319,15 @@ export const FEATURES: Feature[] = [
     notes: "Phase A. 기존 라우트(recommend/simulate/guide/foreign/journal/subscribe) 성공 시점에 집계 호출 — 새 공개 엔드포인트 0(스팸·poison 표면 최소). 지도 탐색·이탈(클라 비콘)은 공개 ingress라 A.2로 분리. 발송 리마인드(slow loop)는 SMS seam·HUMAN GATE.",
   },
   {
+    id: "data-quality-gate", name: "데이터 품질 게이트(신뢰 피쉬본)", stage: "ops",
+    flow: "운영 녹색과 별개로 '넘기는 데이터가 검증/정직한가'를 차원별 게이트(ok/warn/fail)로 평가 — 기존 신호 집계(integrationReadiness·RDA_REAL_META·flywheel). OPS 종합에 신뢰 피쉬본(머리=등급/verdict·뼈=원인별 색) + 제품 자동 보수(base 미검증이면 앱 '✓검증' 차단·'추정' 강제). /api/ops/stats.quality 노출",
+    endpoints: [],
+    files: ["src/lansmark/quality/qualityGate.ts"],
+    tests: ["src/lansmark/tests/qualityGate.spec.ts"],
+    guardrails: ["'에러 없음'이 아니라 '양성 신호'로 채점(조용한 mock/데모=녹색 아님)", "fail-closed(모르면 warn·base 미검증=unverified)", "차원 게이트가 본질·점수는 머리글 등급", "제품 자동 보수=base 미검증이면 ✓검증 차단·추정 강제"], status: "live",
+    notes: "v1=린(소스 live↔mock·base 검증·DEM·보정 게이트). 탐지형(통합 live) vs 구조형(RDA 데모·DEM REST 미제공) 구분. 후속: 값-범위 sanity·신선도/스키마 게이트, Tier 1 ops watcher(읽기·진단·호출)가 이 quality를 소비.",
+  },
+  {
     id: "user-account", name: "계정·세션(가입 + 익명→계정 이관)", stage: "platform",
     flow: "익명(기기)→가입(휴대폰 OTP 또는 이메일 매직링크 병행)→계정(acct:Z)·세션. CompositeVerifier가 method로 라우팅. 로그인 시 일지를 계정 신원으로 귀속, link-anon이 기존 익명 일지를 계정으로 이관(재시작 보존). 이메일 매직링크는 /app?lm_login=challengeId~token 착지→자동 verify. 실발송(SMS/이메일)은 제공자 키=HUMAN GATE(키 있으면 발송·dev는 코드/링크 노출·운영+키없음 fail-closed). 카카오는 같은 인터페이스로 추후 드롭인",
     endpoints: ["/api/account/auth/start", "/api/account/auth/verify", "/api/account/me", "/api/account/logout", "/api/account/link-anon", "/api/account/link-entitlement"],

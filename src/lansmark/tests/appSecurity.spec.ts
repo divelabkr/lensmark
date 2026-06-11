@@ -58,3 +58,13 @@ describe("result card visualization (probability band + factor tornado)", () => 
     expect(html).toContain('f.target==="cost"?raw<0:raw>0'); // 비용 증가=소득↓로 정직 매핑(가짜 income% 날조 X)
   });
 });
+
+// 자동 보수(품질 게이트) — base 데모/미검증이면 '✓검증' 차단·'추정' 강제(정직성 행위 고정)
+describe("auto-conservative data gate (base 미검증 → ✓검증 차단)", () => {
+  it("결과 카드 ✓검증은 보정+base 검증 둘 다일 때만(데모면 추정 강제)", () => {
+    expect(html).toContain("(validated&&!baseDemo)?'✓ 검증':'추정'");
+  });
+  it("비교표 ✓검증도 base 검증 동반 필수", () => {
+    expect(html).toContain('r.sim.dataLabel==="validated"&&!/데모|미검증/.test(r.sim.baseSource');
+  });
+});

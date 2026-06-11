@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.56.0",
+    date: "2026-06-11",
+    title: "데이터 품질 게이트 v1 — 신뢰 피쉬본 + 제품 자동 보수(✓검증 차단)",
+    items: [
+      "'운영 녹색 ≠ 데이터 정확' — 넘기는 데이터가 검증/정직한지 차원별 게이트로 평가하는 품질층(quality/qualityGate.ts·순수·fail-closed). 기존 신호 집계(integrationReadiness·RDA_REAL_META·flywheel): 소득 base(데모=fail)·시세·기후·지도·DEM·보정·가드레일 → ok/warn/fail + dataTrust(unverified/estimated/verified) + 등급 A~D. 핵심: '에러 없음'이 아니라 '양성 신호'로 채점(조용한 mock/데모=녹색 아님)·모르면 warn",
+      "OPS 신뢰 피쉬본(종합 최상단) — 머리(등급·verdict) + 카테고리 뼈(원인별 ok/warn/fail 색)로 '어디가 문제인지' 한눈에. '운영 녹색 ≠ 데이터 정확' 명시. /api/ops/stats.quality 노출(admin 게이트)",
+      "제품 자동 보수 — base가 데모/미검증이면 앱 결과 카드·비교표의 '✓검증' 배지를 차단하고 '추정' 강제(보정이 validated여도). 품질 게이트가 정직성 가드레일을 운영화. 현재 RDA=데모(RDA_REAL_META=null)라 즉시 효력 — '검증' 오인 차단",
+      "검증: 회귀 +7(qualityGate 5 — fail-closed·verified·estimated·mock=녹색아님·구조형 / 앱 자동보수 게이트 2) + 헤드리스 피쉬본 렌더 6/6 · tsc·vitest 469·arch 0(featureMap data-quality-gate 등록). v1=린(탐지형 통합 live vs 구조형 RDA/DEM 구분) · 후속: 값-범위 sanity·신선도/스키마 게이트, Tier 1 ops watcher가 이 quality 소비",
+    ],
+  },
+  {
     version: "0.55.0",
     date: "2026-06-11",
     title: "OPS 최적화 트리거 — 페이로드·저장소 헤드룸을 데이터로 ('언제' 판정)",
