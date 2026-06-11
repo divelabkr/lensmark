@@ -38,6 +38,7 @@
 
 ## 5) 운영 후 강화 (P1/P2 — 미구현)
 - 감사로그 외부 전송(SIEM)·로테이션 · 세션 httpOnly+Secure 쿠키(현재 localStorage·강한 CSP로 완화) · 계정 lockout/이상탐지 · 멀티인스턴스 DB(유니크 제약·락) · 백업 암호화 · 개인정보 영향평가(PIA, 규모 시)
+- **익명 계측(신규/재방문·v0.52) 알려진 한계** — 브라우저 익명ID(`x-lansmark-anon`)를 비식별 해시 집합으로만 중복제거(여정 미저장·PII 0). 단 ⚠ **위조 가능**: 조작된 anon-id 스팸으로 신규/재방문 수 부풀리기·`seenAnon` FIFO 축출 가능 → `/api/*` 글로벌 레이트리밋(IP당)으로 바운드 + 콘솔 '참고용' 라벨로 완화. '검증된 사실' 아님(마케팅 수치 사용 금지). 정밀 집계는 DB 어댑터(per-record·ROADMAP §3-1) 승격 시. **처리방침에 익명 접속 집계 고지 반영(`dashboard/lansmark_privacy.html`) — 법무 검토는 HUMAN GATE.**
 
 ## 6) PIPA(개인정보) — `LEGAL_CHECKLIST.md` 참조
 동의·마스킹·삭제권·파기·at-rest 암호화 seam 구현. 방침 확정·사업자정보·위탁계약·키 주입은 법무/운영 HUMAN GATE.

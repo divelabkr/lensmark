@@ -40,7 +40,8 @@ export class InMemoryAnalyticsStore implements AnalyticsStore {
     this.funnelC[stage] = (this.funnelC[stage] ?? 0) + 1;
     const b = this.day();
     b[stage] += 1;                                     // 일별 버킷(stage 키=DayCounts 필드)
-    // 신규/재방문 — '유입'(recommend)에서만, 유효 익명 기기를 당일 1회 판정(세션 시작 신호·중복 클릭 무시)
+    // 신규/재방문 — '유입'(recommend)에서만, 유효 익명 기기를 당일 1회 판정(세션 시작 신호·중복 클릭 무시).
+    // ⚠ 위조 가능(red-team): 조작된 anon-id 스팸으로 신규 부풀리기/seenAnon FIFO 축출 가능 → /api/* 글로벌 레이트리밋(IP당)으로 바운드 + UI '참고용' 라벨. 정밀 집계는 DB 어댑터(§3-1).
     if (stage === "recommend") {
       const t = this.anonToken(anonId);
       if (t && !this.todaySeen.has(t)) {

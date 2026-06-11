@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.54.0",
+    date: "2026-06-11",
+    title: "Red-team 잔여 처리 — 처리방침 익명계측 고지 + OPS XSS 가드 + 스팸 한계 명시",
+    items: [
+      "(#1 프라이버시) 개인정보처리방침에 '익명 접속 집계(신규/재방문)' 수집항목 명시 — 브라우저 익명ID는 비식별 해시로 중복제거에만 사용·집계 수치만 보존·개별 여정 미저장. ⚠ 법무 검토는 HUMAN GATE",
+      "(#2 OPS XSS 회귀가드) opsSecurity.spec 신설 — 운영 콘솔도 app html처럼 esc 배선(감사로그·데이터갭·수요 등 서버유래 싱크)·CSP-safe(inline onclick 0·addEventListener만)·관리자 게이트를 회귀로 고정. 5섹션 재편(v0.53) 후 미escape 싱크 유입 차단",
+      "(#3 스팸 한계 명시) 익명 신규/재방문은 조작된 anon-id 스팸으로 부풀리기 가능 → /api/* 글로벌 레이트리밋(IP당)으로 바운드 + 콘솔 '참고용' 라벨. '검증된 사실' 아님(마케팅 수치 금지). eventStore 주석 + SECURITY.md §5 기록",
+      "(#4 실브라우저 렌더) 프리뷰 브라우저가 이 환경 루프백 격리로 불가 → 헤드리스 실행 스모크(DOM 스텁으로 ops load()를 실 stats 형상 데이터에 실행)로 런타임 무오류·5섹션 패널 렌더·활동로그 esc 페이로드 무력화 실증(10/10). 실픽셀·CSP는 사용자 /ops 확인 몫",
+      "검증: tsc·vitest 461(+3 opsSecurity)·arch 0. 적대 점검은 솔로 red-team(주입·PII·스팸·동시성) — 결제·인증·해자 변경 아니라 멀티에이전트 풀 red-team은 결제 라이브/실 RDA 시로 보류",
+    ],
+  },
+  {
     version: "0.53.0",
     date: "2026-06-11",
     title: "OPS 콘솔 5섹션 재편(종합·회원·동향·매출·서버) + 고객 흐름 시각화",
