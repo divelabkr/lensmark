@@ -328,6 +328,15 @@ export const FEATURES: Feature[] = [
     notes: "v1=린(소스 live↔mock·base 검증·DEM·보정 게이트). 탐지형(통합 live) vs 구조형(RDA 데모·DEM REST 미제공) 구분. 후속: 값-범위 sanity·신선도/스키마 게이트, Tier 1 ops watcher(읽기·진단·호출)가 이 quality를 소비.",
   },
   {
+    id: "ops-watcher", name: "Tier 1 ops watcher(읽기·진단)", stage: "ops",
+    flow: "읽기 전용 감시자 — /api/ops/stats(품질 게이트·최적화 트리거·스토어 저하·5xx)를 읽어 crit/warn/ok로 롤업 + 평문 진단·권고. 채널 무관(stdout+exit code) → cron·GitHub Action·Claude Code 루틴이 얇게 래핑(슬랙·이메일·푸시). 행동권 0(Tier 2는 신뢰 번 뒤 별도).",
+    endpoints: [],
+    files: ["src/lansmark/ops/opsWatch.ts"],
+    tests: ["src/lansmark/tests/opsWatch.spec.ts"],
+    guardrails: ["읽기 전용·행동 0(재시작·토글·삭제 X)", "fail-closed로 알림(모르면 묻어두지 않음)", "임계는 콘솔 트리거와 단일 출처", "조언만 — 행동은 결정적·사람"], status: "live",
+    notes: "CLI=scripts/opsWatch.ts(npm run ops:watch · env LANSMARK_BASE·LANSMARK_ADMIN_TOKEN). exit 0=ok/1=findings/2=접근오류. Tier 2(좁은 가역 자동행동·킬스위치)는 신뢰 검증 후·별 슬라이스.",
+  },
+  {
     id: "user-account", name: "계정·세션(가입 + 익명→계정 이관)", stage: "platform",
     flow: "익명(기기)→가입(휴대폰 OTP 또는 이메일 매직링크 병행)→계정(acct:Z)·세션. CompositeVerifier가 method로 라우팅. 로그인 시 일지를 계정 신원으로 귀속, link-anon이 기존 익명 일지를 계정으로 이관(재시작 보존). 이메일 매직링크는 /app?lm_login=challengeId~token 착지→자동 verify. 실발송(SMS/이메일)은 제공자 키=HUMAN GATE(키 있으면 발송·dev는 코드/링크 노출·운영+키없음 fail-closed). 카카오는 같은 인터페이스로 추후 드롭인",
     endpoints: ["/api/account/auth/start", "/api/account/auth/verify", "/api/account/me", "/api/account/logout", "/api/account/link-anon", "/api/account/link-entitlement"],

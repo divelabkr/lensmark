@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.57.0 — 2026-06-11 · Tier 1 ops watcher — 읽기·진단(행동 0)
+> 서버를 '책임지는 자율 AI'가 아니라 '깨우는 감시자'로 — /api/ops/stats를 읽어 평문 진단·권고. 행동권 0. tsc·vitest **475**(+6)·arch 0.
+- **읽기 전용 감시자**(`ops/opsWatch.ts`) — 신뢰 피쉬본·최적화 트리거·스토어 저하·5xx를 **crit/warn/ok 롤업** + 항목별 진단·권고. ⚠ **행동권 0**(재시작·토글·삭제 X) — Tier 1=조언만(레드팀 합의: AI는 조언, 행동은 결정적·사람). fail-closed로 알림
+- **채널 무관** — 순수 `evaluateOps` + `formatReport` + CLI(`scripts/opsWatch.ts` · `npm run ops:watch` · exit 0/1/2). cron·GitHub Action·Claude Code 루틴이 stdout/exit code를 얇게 래핑(슬랙·이메일·푸시). 임계는 콘솔 트리거와 단일 출처
+- **실증** — 로컬 서버 `ops:watch`가 실제 상태 정확 진단: 소득 base 데모→crit(미검증·`rda:build` 권고)·DEM 구조적 warn·보정 표본 warn·payload 55KB warn. live 소스(VWorld/KMA/KAMIS)는 무경고(정직)
+- **검증** — 회귀 +6(opsWatch) · featureMap `ops-watcher` 등록(arch 0). **Tier 2**(좁은 가역 자동행동·킬스위치)는 신뢰 검증 후 별 슬라이스
+
 ## 0.56.0 — 2026-06-11 · 데이터 품질 게이트 v1 — 신뢰 피쉬본 + 제품 자동 보수
 > '운영 녹색 ≠ 데이터 정확'을 못 박음 — 넘기는 데이터가 검증/정직한지 차원 게이트로 평가하고, base 미검증이면 앱이 자동으로 '✓검증' 차단·'추정' 강제. tsc·vitest **469**(+7)·arch 0.
 - **품질 모듈**(`quality/qualityGate.ts`·순수·fail-closed) — 기존 신호(`integrationReadiness`·`RDA_REAL_META`·flywheel)를 차원 게이트(ok/warn/fail): 소득 base(데모=**fail**)·시세·기후·지도·DEM·보정·가드레일 → `dataTrust`(unverified/estimated/verified)+등급 A~D. **'에러 없음'이 아니라 '양성 신호'로 채점**(조용한 mock/데모=녹색 아님)·모르면 warn

@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.57.0",
+    date: "2026-06-11",
+    title: "Tier 1 ops watcher(읽기·진단) — 품질·트리거를 평문 진단·권고로",
+    items: [
+      "읽기 전용 감시자(ops/opsWatch.ts) — /api/ops/stats(신뢰 피쉬본·최적화 트리거·스토어 저하·5xx)를 crit/warn/ok로 롤업 + 항목별 평문 진단·권고. ⚠ 행동권 0(재시작·토글·삭제 X) — Tier 1=조언만(레드팀 합의: AI는 조언, 행동은 결정적·사람). fail-closed로 알림(모르면 묻어두지 않음)",
+      "채널 무관 — 순수 평가기(evaluateOps) + 텍스트 리포트(formatReport) + CLI(scripts/opsWatch.ts · npm run ops:watch · exit 0=ok/1=findings/2=접근오류). cron·GitHub Action·Claude Code 루틴이 stdout/exit code를 얇게 래핑(슬랙·이메일·푸시). 임계는 콘솔 트리거와 단일 출처",
+      "실증 — 로컬 서버 대상 ops:watch가 실제 상태를 정확 진단: 소득 base 데모→crit(미검증·rda:build 권고)·DEM 구조적 warn·보정 표본 warn·payload 55KB warn. live 소스(VWorld/KMA/KAMIS)는 경고 없음(정직)",
+      "검증: 회귀 +6(opsWatch: ok·스토어crit·미검증crit·warn롤업·임계crit·formatReport) · tsc·vitest 475·arch 0(featureMap ops-watcher 등록). Tier 2(좁은 가역 자동행동·킬스위치)는 신뢰 검증 후 별 슬라이스",
+    ],
+  },
+  {
     version: "0.56.0",
     date: "2026-06-11",
     title: "데이터 품질 게이트 v1 — 신뢰 피쉬본 + 제품 자동 보수(✓검증 차단)",
