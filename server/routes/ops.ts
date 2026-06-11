@@ -13,6 +13,7 @@ import { readFileSync, statSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { join } from "node:path";
 import { assessQuality } from "../../src/lansmark/quality/qualityGate";
+import { evaluateOps } from "../../src/lansmark/ops/opsWatch"; // 콘솔 종합판정 — Tier1 감시자와 같은 문장(SSOT · UX 감사 O6)
 import { integrationReadiness } from "../../src/lansmark/data/providers";
 import { RDA_REAL_META } from "../../src/lansmark/data/rdaIncome.real";
 
@@ -52,12 +53,14 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; } // 원시 JSON도 {}로 정규화(500 방지)
     const jti = typeof b.jti === "string" ? b.jti.trim() : "";
     if (!jti) { json(res, 400, { error: "jti가 필요합니다.", code: "JTI_REQUIRED" }); return true; }
+    // 오타 무음 차단(O4) — revoke 전에 사용/실효 이력 조회(Set add는 아무 문자열이든 '성공'하므로, 이력 없으면 콘솔이 황색 경고).
+    const known = ctx.entitlement.hasUsage?.(jti) ?? true; // 미구현 어댑터는 판단 불가 → true(오경보 방지)
     ctx.entitlement.revoke(jti);
     ctx.logOps("실효", `엔티틀먼트 실효 jti=${jti.slice(0, 12)}…`);
     // firestore: 실효를 '원격 반영 후' 응답(H3) — durable:false면 운영자가 재시도/인지. file/memory는 flush 동기라 항상 durable.
     let durable = true;
     try { await ctx.entitlement.persistRevokedNow?.(); } catch { durable = false; }
-    json(res, 200, { ok: true, revoked: jti, durable, revokedTotal: ctx.entitlement.revokedSize() });
+    json(res, 200, { ok: true, revoked: jti, durable, known, revokedTotal: ctx.entitlement.revokedSize() });
     return true;
   }
 
@@ -118,25 +121,31 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     flywheel: { records: rows.length, withActuals, validatedBuckets: validatedBuckets.filter((b) => b.validated).length },
   });
 
+  // 종합판정(watch) — Tier1 감시자(evaluateOps)와 동일 로직·임계·문장(SSOT): 콘솔 첫 화면 '지금 괜찮나' 한 줄(O6).
+  const usage = {
+    simRuns: ctx.metrics.simRuns,
+    entitlementsMinted: ctx.metrics.entitlementsMinted,
+    mockPaysIssued: ctx.metrics.mockPaysIssued,
+    requests: ctx.metrics.reqCount,
+    errors: ctx.metrics.errCount,
+  };
+  const storeDegraded = ctx.entitlement.isDegraded?.() ?? false;
+  const watch = evaluateOps({ stats: { storeDegraded, usage, quality, optimization } });
+
   json(res, 200, {
     authConfigured: !!ctx.config.adminToken,
+    watch: { level: watch.level, summary: watch.summary, findings: watch.findings.slice(0, 3) }, // findings는 warn/crit만 생성됨 — 상위 3건(콘솔 띠)
     flywheel: { records: rows.length, withActuals, byCrop, validatedBuckets },
     analytics: an, // 익명 수요·퍼널·시계열·신규/재방문·가입(PII 0) — 무료 베타에서 '무엇을 얻는가'
     members: { accounts: ctx.accounts.size(), sessions: ctx.sessions.size() }, // 회원 — 가입 총원·활성 세션(방법별 가입은 analytics.signups)
     optimization, // 최적화 '언제' 트리거(페이로드·저장소 헤드룸)
     quality,      // 데이터 품질 게이트(신뢰 피쉬본) — 운영 녹색 ≠ 데이터 정확
-    usage: {
-      simRuns: ctx.metrics.simRuns,
-      entitlementsMinted: ctx.metrics.entitlementsMinted,
-      mockPaysIssued: ctx.metrics.mockPaysIssued,
-      requests: ctx.metrics.reqCount,
-      errors: ctx.metrics.errCount,
-    },
+    usage,
     payment: { mode: ctx.config.tossClientKey ? "live" : "mock", requireEntitlement: ctx.config.requireEntitlement, overridden: ctx.runtimeFlags.requireEntitlement() !== null, priceKrw: ctx.config.simPriceKrw },
     recent: ctx.opsLog.slice(0, 20),
     config: { dataMode: ctx.config.dataMode, port: ctx.config.port, store: ctx.storeMode },
     // 스토어 건전성 — firestore 워밍 실패(sealed)면 true. 운영자가 실효 부활 위험을 인지하고 게이트 ON 자제(H2).
-    storeDegraded: ctx.entitlement.isDegraded?.() ?? false,
+    storeDegraded,
   });
   return true;
 };

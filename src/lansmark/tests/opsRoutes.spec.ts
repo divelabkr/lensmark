@@ -111,4 +111,23 @@ describe("ops 유료 게이트 토글(/api/ops/paid-gate)", () => {
     expect(b.optimization.headroom.feedback.cap).toBe(20000);                          // blob 스케일 벽 분모
     expect(b.optimization.headroom.demandKeys.cap).toBe(10000);
   });
+
+  it("stats: 종합판정(watch) 노출 — 감시자(evaluateOps)와 같은 문장(O6)", async () => {
+    const res = mockRes();
+    await route(freshCtx(), mockReq("GET", { "x-lansmark-admin": ADMIN }), res, U("/api/ops/stats"));
+    const b = JSON.parse(res.captured.body);
+    expect(["ok", "warn", "crit"]).toContain(b.watch.level);  // 콘솔 첫 화면 띠의 레벨
+    expect(typeof b.watch.summary).toBe("string");
+    expect(Array.isArray(b.watch.findings)).toBe(true);        // 상위 권고(warn/crit만 생성)
+  });
+
+  it("revoke: 사용 이력 없는 jti는 known:false — 오타 무음 차단(O4)", async () => {
+    const ctx = freshCtx();
+    const res1 = mockRes();
+    await route(ctx, mockReq("POST", adminH, { jti: "typo-never-used" }), res1, U("/api/ops/revoke"));
+    expect(JSON.parse(res1.captured.body).known).toBe(false);  // 이력 없음 → 콘솔 황색 경고
+    const res2 = mockRes();
+    await route(ctx, mockReq("POST", adminH, { jti: "typo-never-used" }), res2, U("/api/ops/revoke"));
+    expect(JSON.parse(res2.captured.body).known).toBe(true);   // 직전 실효로 이력 생김(멱등 재실효는 known)
+  });
 });

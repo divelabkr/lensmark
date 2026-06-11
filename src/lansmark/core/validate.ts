@@ -30,29 +30,30 @@ function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
+// 검증 실패 문구는 사용자(귀농 농부)에게 400 응답으로 그대로 노출 — 영어 금지·복구 힌트 포함(한국어 일관성, UX 감사 2026-06-12).
 function requireArea(raw: unknown): number {
   const area = finiteNum(raw);
   if (area === undefined || area <= 0) {
-    throw new ValidationError("areaM2 is required and must be a finite number greater than 0.");
+    throw new ValidationError("면적(㎡)을 0보다 크게 입력해 주세요. (예: 1,000평 ≈ 3,300㎡)");
   }
   if (area > MAX_AREA_M2) {
-    throw new ValidationError(`areaM2 exceeds maximum (${MAX_AREA_M2}).`);
+    throw new ValidationError(`면적이 너무 큽니다 — 최대 ${(MAX_AREA_M2 / 10000).toLocaleString()}ha(약 ${Math.round(MAX_AREA_M2 / 3.305785).toLocaleString()}평)까지 시뮬레이션할 수 있어요.`);
   }
   return area;
 }
 
 export function validateLandInput(raw: unknown): LandInput {
-  if (!isObject(raw)) throw new ValidationError("land object is required.");
+  if (!isObject(raw)) throw new ValidationError("땅 정보(land)가 필요합니다 — 지도에서 필지를 먼저 선택해 주세요.");
   const areaM2 = requireArea(raw.areaM2);
 
   if (raw.polygonGeoJson !== undefined) {
     try {
       if (JSON.stringify(raw.polygonGeoJson).length > MAX_GEOJSON_BYTES) {
-        throw new ValidationError("polygonGeoJson is too large.");
+        throw new ValidationError("필지 경계 데이터가 너무 큽니다 — 필지를 다시 선택해 주세요.");
       }
     } catch (e) {
       if (e instanceof ValidationError) throw e;
-      throw new ValidationError("polygonGeoJson is not serializable.");
+      throw new ValidationError("필지 경계 데이터 형식이 올바르지 않습니다 — 필지를 다시 선택해 주세요.");
     }
   }
   // 나머지 필드는 enum/타입 기반 저위험 → 그대로 통과
@@ -66,12 +67,12 @@ export function clampCandidateLimit(raw: unknown, fallback: number): number {
 }
 
 export function validateSimulationInput(raw: unknown): SimulationInput {
-  if (!isObject(raw)) throw new ValidationError("input object is required.");
+  if (!isObject(raw)) throw new ValidationError("요청 형식이 올바르지 않습니다 — 새로고침 후 다시 시도해 주세요.");
 
   const land = validateLandInput(raw.land);
 
   const cropId = typeof raw.cropId === "string" ? raw.cropId : "";
-  if (!cropId) throw new ValidationError("cropId is required.");
+  if (!cropId) throw new ValidationError("작물을 먼저 선택해 주세요.");
   getCropProfile(cropId); // 미존재 cropId면 throw
 
   const cultivationType: CultivationType = CULTIVATION_TYPES.includes(raw.cultivationType as CultivationType)

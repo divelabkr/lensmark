@@ -25,6 +25,8 @@ export interface EntitlementStore {
   revoke(jti: string): void;
   revokedSize(): number;
   isRevoked(jti: string | undefined): boolean; // 토큰 검증과 별개로 실효 여부 조회 — consume 미호출 유료 surface의 킬스위치(레드팀 P1)
+  /** 이 인스턴스에서 사용/실효 이력이 있는 jti인지 — 콘솔 revoke 오타 무음 차단용(UX 감사 O4 · 이력 없으면 황색 안내). */
+  hasUsage?(jti: string): boolean;
   /** 소진 환불(다운스트림 실패 시 1회 복원) — 서비스 미제공인데 quota만 차감되는 불공정 방지(감사 Low). */
   refund?(jti: string | undefined): void;
   /** firestore: 실효의 내구 확인(원격 반영 후 응답·H3). 미구현 어댑터는 undefined. */
@@ -67,6 +69,7 @@ export class MemoryEntitlementStore implements EntitlementStore {
   }
   revokedSize(): number { return this.revoked.size; }
   isRevoked(jti: string | undefined): boolean { return jti != null && this.revoked.has(jti); } // consume 미호출 경로(guide/foreign/journal)도 실효 강제(레드팀 P1)
+  hasUsage(jti: string): boolean { return this.use.has(jti) || this.revoked.has(jti); } // 사용/실효 이력(단일 인스턴스 기준) — revoke 오타 경고(O4)
   /** 소진 1회 환불 — 소진 후 다운스트림(provider·엔진) 실패로 결과 미제공 시 quota 복원(과금 공정성·감사 Low). */
   refund(jti: string | undefined): void {
     if (!jti) return;

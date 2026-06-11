@@ -101,6 +101,9 @@
   .split{display:flex;height:30px;border-radius:9px;overflow:hidden;font-size:12px;font-weight:800}
   .split-n{background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;min-width:0}
   .split-r{background:#cdd6de;color:var(--ink2);display:flex;align-items:center;justify-content:center;min-width:0}
+  /* 피쉬본 뼈 그리드 — 폰(≤760px)에선 1열(인라인 2열 고정이 가로 깨짐 유발 · O8) */
+  .fbgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:760px){.fbgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -110,9 +113,11 @@
     <span class="mode" id="mode">mode —</span>
     <span class="upd" id="upd">—</span>
     <button class="btn" id="refresh">↻ 새로고침</button>
+    <button class="btn" id="logout" style="display:none" title="관리자 토큰 지우고 잠금">로그아웃</button>
     <a class="btn pri" href="/" target="_blank">제품 보기 →</a>
   </div>
   <main>
+    <div id="connwarn"></div><!-- 서버 연결 실패 배너 — 어느 탭에서든 보이게(스테일 데이터가 정상처럼 보이는 것 차단 · O3) -->
     <div id="authwarn"></div>
     <div id="degradewarn"></div>
     <!-- ===== 섹션 탭: 종합·회원·동향·매출·서버 ===== -->
@@ -126,6 +131,7 @@
 
     <!-- ===== 종합: 핵심 KPI 한눈 + 유입추세 + 상태 ===== -->
     <section class="tab active" data-tab="overview">
+      <div id="watchband"></div><!-- 종합판정 한 줄 — 서버 watch(Tier1 감시자와 동일 문장 · O6) -->
       <section class="w" style="margin-bottom:16px">
         <div class="w-h"><span class="ico" style="background:var(--green-s)">🐟</span>신뢰 피쉬본<span class="meta">운영 녹색 ≠ 데이터 정확</span></div>
         <div id="trust-fishbone"><div class="empty">측정 중…</div></div>
@@ -196,6 +202,8 @@
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const $=id=>document.getElementById(id);
 const won=n=>"₩"+Number(n||0).toLocaleString("ko-KR");
+const fmt=n=>Number(n||0).toLocaleString("ko-KR"); // 숫자 콤마 공용(원화 외 카운트도 — O10)
+const ktime=iso=>{const d=new Date(iso||0);return isNaN(d)?String(iso||"").slice(11,19):d.toLocaleTimeString("ko-KR",{hour12:false});}; // UTC ISO → KST 표시(O5 — 한 화면 두 시간대 금지)
 function statusOf(it){ if(it.live)return["live","LIVE"]; if(it.keyed)return["fallback","폴백"]; return["off","키 필요"]; }
 const LABEL={vworldTiles:"VWorld 타일",vworldGeocode:"주소→좌표",vworldParcel:"필지경계",vworldDem:"지형 DEM",kmaClimate:"기후(KMA)",kamisPrice:"도매가(KAMIS)",tossPayment:"결제(Toss)",pgWebhook:"PG 웹훅",rdaIncome:"소득 base(RDA)"};
 
@@ -272,29 +280,46 @@ function fishbone(q){
     const rows=items.map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11.5px"><span style="width:9px;height:9px;border-radius:50%;background:${SCOL[s.status]||'#9aa7ae'};flex:0 0 auto"></span><span style="color:var(--ink);font-weight:700;white-space:nowrap">${esc(s.label)}</span><span style="color:var(--ink3);font-weight:600;font-size:10.5px;overflow:hidden;text-overflow:ellipsis">${esc(s.note)}</span></div>`).join("");
     return `<div style="background:var(--line2);border-radius:10px;padding:9px 12px"><div style="font-size:11px;font-weight:800;color:var(--ink2);margin-bottom:3px">${esc(label)}</div>${rows}</div>`;
   }).join("");
-  return head+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${branches}</div>`;
+  return head+`<div class="fbgrid">${branches}</div>`; // 클래스 승격 — 폰 1열(O8)
 }
 function adminHdr(){const t=sessionStorage.getItem("lansmark_admin");return t?{"x-lansmark-admin":t}:{};}
-function renderLogin(){document.querySelector("main").innerHTML=`<section class="w" style="max-width:440px;margin:30px auto"><div class="w-h"><span class="ico" style="background:var(--line2)">🔒</span>관리자 인증</div><div style="font-size:12.5px;color:var(--ink2);font-weight:600;margin-bottom:11px">운영 콘솔은 관리자 토큰이 필요합니다.</div><input id="tok" class="inp" type="password" placeholder="LANSMARK_ADMIN_TOKEN" style="width:100%"><button class="btn pri" id="tokgo" style="margin-top:11px">로그인</button></section>`;$("tokgo").addEventListener("click",()=>{const v=$("tok").value.trim();if(v){sessionStorage.setItem("lansmark_admin",v);location.reload();}});}
+/* 로그인 폼(O2) — ① 10초 자동갱신이 입력 중인 토큰을 지우지 않게 재렌더 가드 ② Enter 제출 ③ 틀린 토큰이면 사유 표시(빈 폼 재등장 금지). */
+function renderLogin(invalid){
+  if($("tok"))return; // 이미 로그인 화면 — interval 재렌더로 입력 파괴 금지
+  document.querySelector("main").innerHTML=`<section class="w" style="max-width:440px;margin:30px auto"><div class="w-h"><span class="ico" style="background:var(--line2)">🔒</span>관리자 인증</div>${invalid?'<div class="awarn crit" style="margin-bottom:11px">토큰이 올바르지 않거나 만료되었습니다 — 다시 입력해 주세요.</div>':''}<div style="font-size:12.5px;color:var(--ink2);font-weight:600;margin-bottom:11px">운영 콘솔은 관리자 토큰이 필요합니다.</div><input id="tok" class="inp" type="password" placeholder="LANSMARK_ADMIN_TOKEN" style="width:100%"><button class="btn pri" id="tokgo" style="margin-top:11px">로그인</button></section>`;
+  const go=()=>{const v=$("tok").value.trim();if(v){sessionStorage.setItem("lansmark_admin",v);location.reload();}};
+  $("tokgo").addEventListener("click",go);
+  $("tok").addEventListener("keydown",e=>{if(e.key==="Enter")go();}); // 폰 키보드 '완료' 대응
+  $("tok").focus();
+}
 
+let lastOkAt=null; // 마지막 성공 갱신 시각 — 연결 실패 시 '얼마나 오래된 데이터인지' 명시(O3)
 async function load(){
   let h,s;
   try{
     h=await fetch("/api/health").then(r=>r.json());
     const sr=await fetch("/api/ops/stats",{headers:adminHdr()});
-    if(sr.status===401){renderLogin();return;}
+    if(sr.status===401){const had=!!sessionStorage.getItem("lansmark_admin");if(had)sessionStorage.removeItem("lansmark_admin");renderLogin(had);return;} // 틀린 토큰 → 사유 표시 + 저장 토큰 파기(O2)
     s=await sr.json();
-  }catch(e){$("intg-list").innerHTML=`<div class="err">연결 실패 — dev 서버 실행 중인지 확인</div>`;return;}
+  }catch(e){ // 서버 다운 — 어느 탭에서든 보이는 전역 배너 + 갱신시각 적색(스테일이 '정상'처럼 보이는 거짓 신호 차단 · O3)
+    const cw=$("connwarn");if(cw)cw.innerHTML=`<div class="awarn crit">⛔ 서버 연결 실패 — ${lastOkAt?("지금 보이는 수치는 마지막 성공 갱신 <b>"+esc(lastOkAt)+"</b> 기준(오래된 데이터)"):"표시할 데이터가 없습니다"} · 서버/네트워크 확인</div>`;
+    const up=$("upd");if(up){up.textContent="연결 실패";up.style.color="var(--red)";}
+    return;}
+  lastOkAt=new Date().toLocaleTimeString("ko-KR");
+  {const cw=$("connwarn");if(cw)cw.innerHTML="";const up=$("upd");if(up)up.style.color="";} // 복구 시 배너·색 원복
+  {const lo=$("logout");if(lo)lo.style.display=sessionStorage.getItem("lansmark_admin")?"":"none";} // 토큰 보유 시에만 로그아웃 노출(O2)
   $("authwarn").innerHTML=s.authConfigured?"":`<div class="awarn">⚠ 관리자 인증 미설정(개발 오픈) — 운영 배포 시 <code>LANSMARK_ADMIN_TOKEN</code> 설정 필요</div>`;
   // 스토어 저하(sealed) 경고 — 원격 영속 실패. 유료 소진·실효 미저장 위험(H2).
   $("degradewarn").innerHTML=s.storeDegraded?`<div class="awarn crit">⛔ 스토어 저하(sealed) — 원격 영속 실패. 유료 권한 소진·실효가 저장되지 않으며, 유료 게이트 켜기가 차단됩니다. 복구 후 재시도하세요.</div>`:"";
+  // 종합판정 띠(O6) — Tier1 감시자(evaluateOps)와 같은 문장(SSOT): "지금 괜찮나" 한 줄 + 최상위 권고.
+  {const w=s.watch,wb=$("watchband");if(wb){if(!w)wb.innerHTML="";else{const C={ok:["var(--green-s)","#0e9a4d"],warn:["var(--amber-s)","#9a6a06"],crit:["var(--red-s)","#b5321c"]}[w.level]||["var(--line2)","var(--ink2)"];const top=(w.findings&&w.findings[0])?` · <b>${esc(w.findings[0].area)}</b> → ${esc(w.findings[0].recommend)}`:"";wb.innerHTML=`<div style="background:${C[0]};border:1px solid ${C[1]}33;color:${C[1]};font-size:12.5px;font-weight:800;padding:11px 14px;border-radius:11px;margin-bottom:14px">${esc(w.summary)}${top}</div>`;}}}
   $("mode").innerHTML=`mode <b>${esc(h.mode||"—")}</b>`;
-  $("upd").textContent="갱신 "+new Date().toLocaleTimeString("ko-KR");
+  $("upd").textContent="갱신 "+lastOkAt;
 
   // ── 통합 준비도(도넛 + 미니 리스트) ──
   const ints=h.integrations||{}, keys=Object.keys(ints), liveN=keys.filter(k=>ints[k].live).length;
   $("int-c").textContent=`live ${liveN} / ${keys.length}`;
-  $("intg-gauge").innerHTML=donut(liveN,keys.length||1,liveN>=keys.length*0.5?"var(--green)":"var(--blue)",liveN,"/ "+keys.length+" LIVE");
+  $("intg-gauge").innerHTML=donut(liveN,keys.length||1,liveN>=keys.length*0.5?"var(--green)":"var(--amber)",liveN,"/ "+keys.length+" LIVE"); // 저조=amber(상태 stat과 색 일치 · O9)
   $("intg-list").innerHTML=keys.map(k=>{const it=ints[k],[c,t]=statusOf(it);return `<div class="ig"><span class="idot ${c}"></span><span class="inm">${esc(LABEL[k]||k)}</span><span class="ist ${c}">${t}</span></div>`;}).join("");
   $("intg-foot").textContent=`${liveN}종 실데이터 가동 · ${keys.length-liveN}종 mock/대기`;
 
@@ -303,16 +328,16 @@ async function load(){
   const actPct=recs>0?Math.round(acts/recs*100):0;
   $("moat-gauge").innerHTML=gauge(actPct,100,"var(--green)","실측 포함률 %");
   const bc=fw.byCrop||{}, ents=Object.entries(bc).sort((a,b)=>b[1]-a[1]);
-  $("moat-kpi").innerHTML=`<div class="stat-row"><div>${stat(recs,"보정 기록")}</div><div>${stat(acts,"실측 포함","var(--green)")}</div><div>${stat(ents.length,"작물 수")}</div></div>`;
+  $("moat-kpi").innerHTML=`<div class="stat-row"><div>${stat(fmt(recs),"보정 기록")}</div><div>${stat(fmt(acts),"실측 포함","var(--green)")}</div><div>${stat(fmt(ents.length),"작물 수")}</div></div>`;
   const bmax=ents.length?ents[0][1]:1;
   $("bycrop").innerHTML=ents.length?ents.slice(0,5).map(([c,n])=>hrow(c,n,n/bmax*100,true)).join(""):`<div class="empty">제품에서 '실측 기록'을 입력하면 집계됩니다.</div>`;
 
   // ── 시스템 · 건전성(LIVE 연동률 게이지 + KPI + usage) ──
   const u=s.usage||{}, cfg=s.config||{}, livePct=keys.length?Math.round(liveN/keys.length*100):0;
   $("sys-gauge").innerHTML=gauge(livePct,100,s.storeDegraded?"var(--red)":"var(--green)","연동 가동률 %");
-  $("sys-kpi").innerHTML=`<div class="stat-row"><div>${stat("v"+(h.version||"—"),"버전")}</div><div>${stat((cfg.store||"—")+(s.storeDegraded?" ⚠":""),"STORE",s.storeDegraded?"var(--red)":"var(--ink)")}</div><div>${stat(cfg.dataMode||"—","DATA")}</div></div>`;
-  $("sys-stat").innerHTML=stat((u.simRuns||0),"정밀 시뮬")+stat((u.requests||0),"API 요청")+stat((u.errors||0),"5xx 에러",(u.errors>0?"var(--red)":"var(--ink3)"));
-  $("sys-foot").textContent=s.storeDegraded?"⛔ 스토어 저하 — 영속 점검 필요":`정상 · PORT ${esc(cfg.port||"—")}`;
+  $("sys-kpi").innerHTML=`<div class="stat-row"><div>${stat("v"+(h.version||"—"),"버전")}</div><div>${stat((cfg.store||"—")+(s.storeDegraded?" ⚠":""),"저장 방식",s.storeDegraded?"var(--red)":"var(--ink)")}</div><div>${stat(cfg.dataMode||"—","데이터 모드")}</div></div>`; // 운영자 어휘(O11 — 값은 원어 유지)
+  $("sys-stat").innerHTML=stat(fmt(u.simRuns||0),"정밀 시뮬")+stat(fmt(u.requests||0),"API 요청")+stat(fmt(u.errors||0),"5xx 에러",(u.errors>=10?"var(--red)":u.errors>0?"var(--amber)":"var(--ink3)")); // 5xx 1~9=주의·10+=시급(감시자 임계와 일치 · O9)
+  $("sys-foot").textContent=s.storeDegraded?"⛔ 스토어 저하 — 영속 점검 필요":`정상 · 포트 ${esc(cfg.port||"—")}`;
 
   // ── 결제 · 유료권한(KPI + 게이트 토글 + revoke) ──
   const pay=s.payment||{};
@@ -320,9 +345,9 @@ async function load(){
     `<div class="kpi"><div class="v">${pay.mode==="live"?'<span class="pill on">LIVE</span>':'<span class="pill mock">MOCK</span>'}</div><div class="l">결제 모드(Toss)</div></div>`+
     `<div class="kpi"><div class="v">${pay.requireEntitlement?'<span class="pill on">ON</span>':'<span class="pill off">OFF</span>'}</div><div class="l">유료 게이트</div></div>`+
     kpi(won(pay.priceKrw),"정밀분석 단가")+
-    kpi(u.entitlementsMinted||0,"발급 엔티틀먼트","good")+
-    kpi(u.mockPaysIssued||0,"데모 결제")+
-    kpi(won((u.entitlementsMinted||0)*(pay.priceKrw||0)),"매출 추정","good");
+    kpi(fmt(u.entitlementsMinted||0),"발급 엔티틀먼트")+
+    kpi(fmt(u.mockPaysIssued||0),"데모 결제")+
+    kpi(won((u.entitlementsMinted||0)*(pay.priceKrw||0)),"매출 추정"); // 상시 녹색 금지 — 색은 '판정'에만(O9)
   // 유료 게이트 런타임 토글 — degraded면 '켜기' 차단(서버 409와 UI 일치·H2).
   {const on=!!pay.requireEntitlement, degraded=!!s.storeDegraded, blockOn=degraded&&!on;
     const storePill=degraded?'<span class="pill off">스토어 저하</span>':'<span class="pill on">스토어 정상</span>';
@@ -331,9 +356,10 @@ async function load(){
     if(pgb&&!blockOn)pgb.addEventListener("click",async()=>{const next=!on;if(!confirm(next?"유료 게이트를 켭니다 — 정밀분석·가이드 등이 유료(결제 필요)로 전환됩니다. 진행할까요?":"유료 게이트를 끕니다 — 무료 베타로 정밀분석·가이드·외래·일지가 무인증 개방됩니다. 진행할까요?"))return;pgb.disabled=true;try{const r=await fetch("/api/ops/paid-gate",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({requireEntitlement:next})});const j=await r.json().catch(()=>({}));if(!r.ok){alert("실패: "+(j.error||r.status));pgb.disabled=false;return;}load();}catch(e){alert("실패: "+(e&&e.message||e));pgb.disabled=false;}});
   }
   // 엔티틀먼트 실효(revoke) — 환불·오용 대응. durable=false면 원격 영속 실패 경고(H3).
-  {$("revoke-ctrl").innerHTML=`<div style="background:var(--line2);border-radius:12px;padding:14px 16px"><div style="font-size:12.5px;font-weight:800;margin-bottom:9px">엔티틀먼트 실효(revoke) <span style="font-weight:600;color:var(--ink3)">— 환불·분쟁·오용 시 토큰 무력화</span></div><div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center"><input id="revjti" class="inp" type="text" placeholder="jti (엔티틀먼트 토큰 ID)" autocomplete="off" style="flex:1;min-width:200px"><button class="btn" id="revbtn">실효</button></div><div id="revresult" style="margin-top:9px;font-size:11.5px;font-weight:600;line-height:1.5;min-height:1px"></div></div>`;
+  //   ⚠ 1회만 렌더(O1) — 10초 자동갱신이 입력 중인 jti·결과 메시지(durable 경고)를 파괴하지 않게. 위젯은 정적이라 재렌더 불필요.
+  if(!$("revjti")){$("revoke-ctrl").innerHTML=`<div style="background:var(--line2);border-radius:12px;padding:14px 16px"><div style="font-size:12.5px;font-weight:800;margin-bottom:9px">엔티틀먼트 실효(revoke) <span style="font-weight:600;color:var(--ink3)">— 환불·분쟁·오용 시 토큰 무력화</span></div><div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center"><input id="revjti" class="inp" type="text" placeholder="jti (엔티틀먼트 토큰 ID)" autocomplete="off" style="flex:1;min-width:200px"><button class="btn" id="revbtn">실효</button></div><div id="revresult" style="margin-top:9px;font-size:11.5px;font-weight:600;line-height:1.5;min-height:1px"></div></div>`;
     const rb=$("revbtn"),ri=$("revjti"),rr=$("revresult");
-    async function doRevoke(){const jti=(ri.value||"").trim();if(!jti){rr.innerHTML=`<span class="err">jti를 입력하세요.</span>`;return;}if(!confirm("이 엔티틀먼트를 실효합니다 — 되돌릴 수 없습니다. 진행할까요?"))return;rb.disabled=true;rr.innerHTML=`<span style="color:var(--ink3)">실효 중…</span>`;try{const r=await fetch("/api/ops/revoke",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({jti})});const j=await r.json().catch(()=>({}));if(!r.ok){rr.innerHTML=`<span class="err">실패: ${esc(j.error||("오류 "+r.status))}</span>`;rb.disabled=false;return;}const warn=j.durable===false?`<span style="color:var(--amber);font-weight:800">⚠ 원격 영속 실패 — 재배포 시 부활 가능(재시도 권장)</span>`:`<span style="color:#0e9a4d;font-weight:800">✓ 영속됨</span>`;rr.innerHTML=`실효 완료 <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px">${esc(String(j.revoked||jti).slice(0,16))}…</code> ${warn} <span style="color:var(--ink3)">· 누적 실효 ${esc(j.revokedTotal)}</span>`;ri.value="";rb.disabled=false;}catch(e){rr.innerHTML=`<span class="err">실패: ${esc(e&&e.message||e)}</span>`;rb.disabled=false;}}
+    async function doRevoke(){const jti=(ri.value||"").trim();if(!jti){rr.innerHTML=`<span class="err">jti를 입력하세요.</span>`;return;}if(!confirm("이 엔티틀먼트를 실효합니다 — 되돌릴 수 없습니다. 진행할까요?"))return;rb.disabled=true;rr.innerHTML=`<span style="color:var(--ink3)">실효 중…</span>`;try{const r=await fetch("/api/ops/revoke",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({jti})});const j=await r.json().catch(()=>({}));if(!r.ok){rr.innerHTML=`<span class="err">실패: ${esc(j.error||("오류 "+r.status))}</span>`;rb.disabled=false;return;}const warn=j.durable===false?`<span style="color:var(--amber);font-weight:800">⚠ 원격 영속 실패 — 재배포 시 부활 가능(재시도 권장)</span>`:`<span style="color:#0e9a4d;font-weight:800">✓ 영속됨</span>`;const kn=j.known===false?` <span style="color:var(--amber);font-weight:800">⚠ 발급·사용 이력 없는 jti — 오타이거나 미사용 토큰일 수 있음(원장 확인 권장)</span>`:"";rr.innerHTML=`실효 완료 <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px">${esc(String(j.revoked||jti).slice(0,16))}…</code> ${warn}${kn} <span style="color:var(--ink3)">· 누적 실효 ${esc(fmt(j.revokedTotal))}</span>`;ri.value="";rb.disabled=false;}catch(e){rr.innerHTML=`<span class="err">실패: ${esc(e&&e.message||e)}</span>`;rb.disabled=false;}}
     if(rb)rb.addEventListener("click",doRevoke);
     if(ri)ri.addEventListener("keydown",ev=>{if(ev.key==="Enter")doRevoke();});
   }
@@ -342,7 +368,9 @@ async function load(){
   const an=s.analytics||{funnel:{},demand:[],dataGaps:[],demandKeys:0,days:[],signups:{}};
   const FSTAGE=[["recommend","추천(유입)"],["simulate","정밀 시뮬"],["guide","가이드"],["foreign","외래 조회"],["journal","일지 시작"],["subscribe","알림 옵트인"]];
   $("an-c").textContent="작물×지역 "+(an.demandKeys||0);
-  $("funnel").innerHTML=funnelDrop(FSTAGE.map(([k,l])=>({key:k,label:l,n:(an.funnel||{})[k]||0})));
+  // 퍼널 제로 상태(O12) — 0 막대 6줄 대신 '무엇을 하면 채워지는지' 안내(다른 패널과 일관).
+  const fStages=FSTAGE.map(([k,l])=>({key:k,label:l,n:(an.funnel||{})[k]||0})), fTotal=fStages.reduce((a,x)=>a+x.n,0);
+  $("funnel").innerHTML=fTotal?funnelDrop(fStages):`<div class="empty">아직 유입이 없습니다 — 제품 링크를 공유하면 단계별 흐름이 집계됩니다.</div>`;
   const dm=an.demand||[], dmax=dm.length?dm[0].sims:1;
   $("demand").innerHTML=dm.length?dm.slice(0,6).map(d=>hrow(d.cropId,d.sims,d.sims/dmax*100,true,`<span style="color:var(--ink3);font-size:10.5px;flex:0 0 auto">${esc(d.region)}</span>`)).join(""):`<div class="empty">사용자가 정밀 시뮬을 돌리면 집계됩니다.</div>`;
   const dg=an.dataGaps||[];
@@ -353,7 +381,7 @@ async function load(){
 
   // ── 최근 활동 ──
   const rec=s.recent||[];
-  $("recent").innerHTML=rec.length?rec.slice(0,12).map(e=>`<div class="rec"><span class="rt">${esc(e.type)}</span><span class="rd">${esc(e.detail)}</span><span class="rti">${esc((e.at||"").slice(11,19))}</span></div>`).join(""):`<div class="empty">활동 없음</div>`;
+  $("recent").innerHTML=rec.length?rec.slice(0,12).map(e=>`<div class="rec"><span class="rt">${esc(e.type)}</span><span class="rd">${esc(e.detail)}</span><span class="rti">${esc(ktime(e.at))}</span></div>`).join(""):`<div class="empty">활동 없음</div>`; // KST 표시(O5)
 
   // ── 시계열 파생(종합·회원·추세) — analytics.days/signups + members ──
   const days=an.days||[], signups=an.signups||{}, mem=s.members||{accounts:0,sessions:0};
@@ -363,14 +391,14 @@ async function load(){
   const revEst=(u.entitlementsMinted||0)*(pay.priceKrw||0), totalSignups=Object.values(signups).reduce((a,b)=>a+(Number(b)||0),0);
   // 종합 KPI + 유입추세 + 상태
   $("ov-kpi").innerHTML=
-    kpi(todayD.recommend||0,"오늘 유입")+
-    kpi(convPct+"%","추천→시뮬 전환","good")+
-    kpi(totalSignups,"누적 가입")+
-    kpi(mem.sessions||0,"활성 세션")+
+    kpi(fmt(todayD.recommend||0),"오늘 유입(매일 09시 기준)")+ // '오늘' 경계=UTC 자정=한국 09시(서버 집계 키 · O5 정직 표기)
+    kpi(cumF.recommend>0?convPct+"%":"—","추천→시뮬 전환")+ // 0%도 녹색이던 상시색 제거(O9) · 유입 전엔 '—'
+    kpi(fmt(totalSignups),"누적 가입")+
+    kpi(fmt(mem.sessions||0),"활성 세션")+
     kpi(won(revEst),"매출 추정")+
     kpi((cfg.store||"—")+(s.storeDegraded?" ⚠":""),"스토어",s.storeDegraded?"bad":"good");
   $("ov-trend").innerHTML=sparkline(last14.map(d=>d.recommend||0),"var(--blue)");
-  $("ov-status").innerHTML=`<div class="stat-row"><div>${stat(liveN+"/"+keys.length,"LIVE 연동",liveN>=keys.length*0.5?"var(--green)":"var(--amber)")}</div><div>${stat(u.errors||0,"5xx 에러",u.errors>0?"var(--red)":"var(--ink3)")}</div><div>${stat("v"+(h.version||"—"),"버전")}</div></div>`+(s.storeDegraded?`<div class="awarn crit" style="margin-top:13px">⛔ 스토어 저하 — 영속 점검</div>`:`<div style="margin-top:13px;font-size:11.5px;color:var(--ink3);font-weight:600">정상 · ${esc(cfg.dataMode||"—")} · PORT ${esc(cfg.port||"—")}</div>`);
+  $("ov-status").innerHTML=`<div class="stat-row"><div>${stat(liveN+"/"+keys.length,"LIVE 연동",liveN>=keys.length*0.5?"var(--green)":"var(--amber)")}</div><div>${stat(fmt(u.errors||0),"5xx 에러",u.errors>=10?"var(--red)":u.errors>0?"var(--amber)":"var(--ink3)")}</div><div>${stat("v"+(h.version||"—"),"버전")}</div></div>`+(s.storeDegraded?`<div class="awarn crit" style="margin-top:13px">⛔ 스토어 저하 — 영속 점검</div>`:`<div style="margin-top:13px;font-size:11.5px;color:var(--ink3);font-weight:600">정상 · ${esc(cfg.dataMode||"—")} · 포트 ${esc(cfg.port||"—")}</div>`);
   // 신뢰 피쉬본(종합) — 데이터 품질 게이트(운영 녹색과 별개의 '데이터 정확' 축)
   $("trust-fishbone").innerHTML=fishbone(s.quality);
   // 최적화 트리거(종합) — 측정된 페이로드·헤드룸이 임계 넘으면 '언제'를 알려줌(느낌 아님)
@@ -379,16 +407,16 @@ async function load(){
   const tverdict=(v,warn,crit)=>v>=crit?"bad":v>=warn?"warn":"good", hpct=o=>o&&o.cap?Math.round((o.n||0)/o.cap*100):0;
   function trigRow(label,valHtml,vk,note){const c=TCOL[vk];return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line2);font-size:12px;font-weight:600"><span style="flex:1;color:var(--ink);min-width:0">${esc(label)} <span style="color:var(--ink3);font-weight:600;font-size:10.5px">${esc(note||"")}</span></span><span class="num" style="font-weight:800;color:var(--ink);white-space:nowrap">${valHtml}</span><span class="pill" style="background:${c}22;color:${c}">${esc(TWORD[vk])}</span></div>`;}
   $("opt-triggers").innerHTML=
-    trigRow("앱 첫로드(gzip)",`${esc(plK.gzipKB)}KB <span style="color:var(--ink3);font-weight:600">/ raw ${esc(plK.rawKB)}KB</span>`,tverdict(plK.gzipKB,55,75),"모바일 전송비용 → 분할/지연로드")+
-    trigRow("저장소 · 실측(해자)",`${esc((hr.feedback||{}).n||0)} / ${esc((hr.feedback||{}).cap||0)}`,tverdict(hpct(hr.feedback),60,80),"blob 1MiB → per-record 승격")+
-    trigRow("저장소 · 수요 키",`${esc((hr.demandKeys||{}).n||0)} / ${esc((hr.demandKeys||{}).cap||0)}`,tverdict(hpct(hr.demandKeys),60,80),"차원 폭증 → DB 집계")+
+    trigRow("앱 첫로드(gzip)",`${esc(plK.gzipKB)}KB <span style="color:var(--ink3);font-weight:600">/ 원본 ${esc(plK.rawKB)}KB</span>`,tverdict(plK.gzipKB,55,75),"모바일 첫 화면 전송량 — '검토'부터 분할 로드(개발 조치)")+
+    trigRow("저장소 · 실측(해자)",`${esc(fmt((hr.feedback||{}).n||0))} / ${esc(fmt((hr.feedback||{}).cap||0))}`,tverdict(hpct(hr.feedback),60,80),"실측 저장 한도 — 차기 전 저장구조 승격(개발 조치)")+
+    trigRow("저장소 · 수요 키",`${esc(fmt((hr.demandKeys||{}).n||0))} / ${esc(fmt((hr.demandKeys||{}).cap||0))}`,tverdict(hpct(hr.demandKeys),60,80),"수요 집계 한도 — 차기 전 DB 집계 전환(개발 조치)")+
     `<div style="padding:9px 0;border-top:1px solid var(--line2);font-size:11.5px;color:var(--ink3);font-weight:600">참여(이탈) 트리거 → <b style="color:var(--blue)">동향</b> 탭 퍼널 드롭오프 (추천→시뮬 ${esc(convPct)}%)</div>`;
   // 회원 KPI + 신규/재방문 + 가입 방법별 + 가입 추세
   $("mem-kpi").innerHTML=
-    kpi(mem.accounts||0,"가입 총원")+
-    kpi(mem.sessions||0,"활성 세션")+
-    kpi(todayD.newVisitors||0,"오늘 신규")+
-    kpi(todayD.returning||0,"오늘 재방문");
+    kpi(fmt(mem.accounts||0),"가입 총원")+
+    kpi(fmt(mem.sessions||0),"활성 세션")+
+    kpi(fmt(todayD.newVisitors||0),"오늘 신규(09시 기준)")+ // '오늘'=UTC 자정=한국 09시 리셋(O5)
+    kpi(fmt(todayD.returning||0),"오늘 재방문(09시 기준)");
   $("mem-nr").innerHTML=splitBar(wsum("newVisitors"),wsum("returning"));
   const SUL={email:"이메일",phone:"휴대폰",kakao:"카카오",mock:"데모",기타:"기타"};
   const suEnt=Object.entries(signups).sort((a,b)=>b[1]-a[1]), suMax=suEnt.length?suEnt[0][1]:1;
@@ -400,6 +428,7 @@ async function load(){
     `<div class="sub" style="margin:11px 0 4px">전환 <span>simulate</span></div>`+sparkline(last14.map(d=>d.simulate||0),"var(--green)");
 }
 $("refresh").addEventListener("click",load);
+$("logout").addEventListener("click",()=>{sessionStorage.removeItem("lansmark_admin");location.reload();}); // 토큰 파기 + 잠금(O2)
 // 섹션 탭 전환(종합·회원·동향·매출·서버) — CSP-safe(addEventListener)
 document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{
   const t=b.getAttribute("data-tab");
