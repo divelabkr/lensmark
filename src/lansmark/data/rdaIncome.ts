@@ -27,13 +27,21 @@ const scale = (r: SigmaRange, f: number): SigmaRange => ({
  * 작물별 소득 base (10a = 1,000㎡).
  * ① 실자료 우선: RDA_REAL에 행이 있으면 농진청 실 소득자료 사용(verified=true·baseYear·출처 표기).
  *    적재 절차: 자료 CSV → `npm run rda:build <csv>` → 이 테이블 재생성(rdaIncome.real.ts).
- *    ⚠ v1 실자료는 작물 단위 전국 평균 — 판로·연차 분화는 자료 범위 확보 후(그 전까지 옵션은 실값 기준 미분화).
+ *    실자료는 작물 단위 전국 평균(≈성숙기·혼합판로)이라 절대수준만 RDA로 두고, '연차 정착 ramp·판로 프리미엄'의
+ *    상대구조(성숙기=1·혼합=1 기준 비율)만 룰북에서 보강한다 — 다년생 과일의 정착기 손실·판로 차이를 보존하되 출처에 정직 표기.
  * ② 폴백: 룰북(crops.seed) 파생 "RDA 구조" 데모값 → verified=false(정직 라벨).
  */
 export function getRdaBase(cropId: string, _region?: string, opts?: RdaBaseOptions): RdaIncomeBase {
   const c = getCropProfile(cropId);
   const real = RDA_REAL[cropId];
-  if (real) return baseFromReal(real, c.cropNameKo); // 실자료 우선 — 시뮬 카드에 실연도·출처가 뜬다
+  if (real) {
+    const b = baseFromReal(real, c.cropNameKo); // 절대수준=실 RDA(verified·연도·출처)
+    const yr = c.economics.yieldKgPerM2ByYear, ch = c.economics.priceKrwPerKg;
+    const yFac = (yr[opts?.targetYear ?? "mature"] ?? yr.mature).p50 / (yr.mature.p50 || 1); // 연차 상대비(성숙기=1)
+    const pFac = (ch[opts?.salesChannel ?? "mixed"] ?? ch.mixed).p50 / (ch.mixed.p50 || 1);   // 판로 상대비(혼합=1)
+    if (yFac === 1 && pFac === 1) return b;
+    return { ...b, yieldKgPer10a: scale(b.yieldKgPer10a, yFac), refPriceKrwPerKg: scale(b.refPriceKrwPerKg, pFac), source: `${b.source} · 연차/판로 구조 룰북 보강` };
+  }
 
   const yieldByYear = c.economics.yieldKgPerM2ByYear;
   const yieldM2 = yieldByYear[opts?.targetYear ?? "mature"] ?? yieldByYear.mature; // 연차별 수량(없으면 성숙기)

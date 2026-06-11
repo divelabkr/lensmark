@@ -50,9 +50,15 @@ describe("baseFromReal — 실값 변환(verified·연도·출처)", () => {
   });
 });
 
-describe("getRdaBase — 실자료 미적재 시 데모 폴백 유지(현 상태 회귀 가드)", () => {
-  it("RDA_REAL 빈 테이블 → verified=false·데모 출처(기존 동작 불변)", () => {
-    const b = getRdaBase("sweet_potato");
+describe("getRdaBase — 실자료(2024) 적재 + 미수록 작물 데모 폴백", () => {
+  it("적재 작물(고구마) → verified=true · 실 출처·기준연도 2024", () => {
+    const b = getRdaBase("sweet_potato"); // RDA_REAL에 있음(소득조사 2024)
+    expect(b.verified).toBe(true);
+    expect(b.source).toContain("농진청 농산물소득조사");
+    expect(b.baseYear).toBe(2024);
+  });
+  it("미수록 작물(rice — 미곡 별도조사) → verified=false·데모 폴백(기존 동작 유지)", () => {
+    const b = getRdaBase("rice"); // RDA_REAL에 없음 → 데모
     expect(b.verified).toBe(false);
     expect(b.source).toContain("데모");
     expect(b.baseYear).toBeUndefined();
