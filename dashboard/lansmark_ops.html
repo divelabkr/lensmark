@@ -277,7 +277,7 @@ function fishbone(q){
       <div style="font-size:11px;color:var(--ink3);font-weight:600;margin-top:2px">운영 녹색 ≠ 데이터 정확 · 빨강 뼈를 먼저 보세요</div></div></div>`;
   const branches=CATS.map(([cat,label])=>{
     const items=q.sources.filter(s=>s.category===cat); if(!items.length) return "";
-    const rows=items.map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11.5px"><span style="width:9px;height:9px;border-radius:50%;background:${SCOL[s.status]||'#9aa7ae'};flex:0 0 auto"></span><span style="color:var(--ink);font-weight:700;white-space:nowrap">${esc(s.label)}</span><span style="color:var(--ink3);font-weight:600;font-size:10.5px;overflow:hidden;text-overflow:ellipsis">${esc(s.note)}</span></div>`).join("");
+    const rows=items.map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11.5px"><span style="width:9px;height:9px;border-radius:50%;background:${SCOL[s.status]||'#9aa7ae'};flex:0 0 auto"></span><span style="color:var(--ink);font-weight:700;white-space:nowrap">${esc(s.label)}</span><span style="color:var(--ink3);font-weight:600;font-size:10.5px;overflow:hidden;text-overflow:ellipsis">${esc(s.note)}</span></div>`+((s.status!=="ok"&&s.action)?`<div style="font-size:10.5px;color:${SCOL[s.status]};font-weight:700;margin:0 0 3px 17px">→ ${esc(s.action)}</div>`:"")).join(""); // 빨강/노랑 옆 '무엇을 할지'(qualityGate.action SSOT)
     return `<div style="background:var(--line2);border-radius:10px;padding:9px 12px"><div style="font-size:11px;font-weight:800;color:var(--ink2);margin-bottom:3px">${esc(label)}</div>${rows}</div>`;
   }).join("");
   return head+`<div class="fbgrid">${branches}</div>`; // 클래스 승격 — 폰 1열(O8)
@@ -385,13 +385,18 @@ async function load(){
 
   // ── 시계열 파생(종합·회원·추세) — analytics.days/signups + members ──
   const days=an.days||[], signups=an.signups||{}, mem=s.members||{accounts:0,sessions:0};
-  const last14=days.slice(-14), todayD=days[days.length-1]||{};
+  const last14=days.slice(-14), todayD=days[days.length-1]||{}, yestD=days[days.length-2]||{};
   const wsum=k=>last14.reduce((a,d)=>a+(d[k]||0),0);
+  // 전일 대비 델타(O 추천) — "오늘 유입 12 (+5)". days에 어제 값이 이미 있어 추가 계측 0.
+  const delta=k=>{const t=todayD[k]||0,y=yestD[k]||0,d=t-y;return days.length>=2?` <span style="font-size:11px;font-weight:800;color:${d>0?'#0e9a4d':d<0?'var(--red)':'var(--ink3)'}">${d>0?'+':''}${d}</span>`:"";};
+  // 도달 예측(O 추천) — 활성일(days.length)당 증가율로 한도 도달 시점 근사("이 속도면 약 N개월"). 추가 계측 0(근사·롤링30 기준).
+  const activeDays=Math.max(1,days.length);
+  const etaMo=o=>{const n=(o||{}).n||0,cap=(o||{}).cap||0;if(!cap||n<=0||days.length<3)return"";const rem=cap-n;if(rem<=0)return" · <b style=\"color:var(--red)\">한도 도달</b>";const mo=Math.round(rem/(n/activeDays)/30);return mo>0?` · 이 속도면 약 ${mo>120?'120+':mo}개월 후 도달(근사)`:"";};
   const cumF=an.funnel||{}, convPct=cumF.recommend>0?Math.round((cumF.simulate||0)/cumF.recommend*100):0;
   const revEst=(u.entitlementsMinted||0)*(pay.priceKrw||0), totalSignups=Object.values(signups).reduce((a,b)=>a+(Number(b)||0),0);
   // 종합 KPI + 유입추세 + 상태
   $("ov-kpi").innerHTML=
-    kpi(fmt(todayD.recommend||0),"오늘 유입(매일 09시 기준)")+ // '오늘' 경계=UTC 자정=한국 09시(서버 집계 키 · O5 정직 표기)
+    kpi(fmt(todayD.recommend||0)+delta("recommend"),"오늘 유입(매일 09시 기준)")+ // 전일 델타 병기 · '오늘' 경계=UTC 자정=한국 09시(O5)
     kpi(cumF.recommend>0?convPct+"%":"—","추천→시뮬 전환")+ // 0%도 녹색이던 상시색 제거(O9) · 유입 전엔 '—'
     kpi(fmt(totalSignups),"누적 가입")+
     kpi(fmt(mem.sessions||0),"활성 세션")+
@@ -408,15 +413,15 @@ async function load(){
   function trigRow(label,valHtml,vk,note){const c=TCOL[vk];return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line2);font-size:12px;font-weight:600"><span style="flex:1;color:var(--ink);min-width:0">${esc(label)} <span style="color:var(--ink3);font-weight:600;font-size:10.5px">${esc(note||"")}</span></span><span class="num" style="font-weight:800;color:var(--ink);white-space:nowrap">${valHtml}</span><span class="pill" style="background:${c}22;color:${c}">${esc(TWORD[vk])}</span></div>`;}
   $("opt-triggers").innerHTML=
     trigRow("앱 첫로드(gzip)",`${esc(plK.gzipKB)}KB <span style="color:var(--ink3);font-weight:600">/ 원본 ${esc(plK.rawKB)}KB</span>`,tverdict(plK.gzipKB,55,75),"모바일 첫 화면 전송량 — '검토'부터 분할 로드(개발 조치)")+
-    trigRow("저장소 · 실측(해자)",`${esc(fmt((hr.feedback||{}).n||0))} / ${esc(fmt((hr.feedback||{}).cap||0))}`,tverdict(hpct(hr.feedback),60,80),"실측 저장 한도 — 차기 전 저장구조 승격(개발 조치)")+
-    trigRow("저장소 · 수요 키",`${esc(fmt((hr.demandKeys||{}).n||0))} / ${esc(fmt((hr.demandKeys||{}).cap||0))}`,tverdict(hpct(hr.demandKeys),60,80),"수요 집계 한도 — 차기 전 DB 집계 전환(개발 조치)")+
+    trigRow("저장소 · 실측(해자)",`${esc(fmt((hr.feedback||{}).n||0))} / ${esc(fmt((hr.feedback||{}).cap||0))}`,tverdict(hpct(hr.feedback),60,80),"실측 저장 한도 — 차기 전 저장구조 승격(개발 조치)"+etaMo(hr.feedback))+
+    trigRow("저장소 · 수요 키",`${esc(fmt((hr.demandKeys||{}).n||0))} / ${esc(fmt((hr.demandKeys||{}).cap||0))}`,tverdict(hpct(hr.demandKeys),60,80),"수요 집계 한도 — 차기 전 DB 집계 전환(개발 조치)"+etaMo(hr.demandKeys))+
     `<div style="padding:9px 0;border-top:1px solid var(--line2);font-size:11.5px;color:var(--ink3);font-weight:600">참여(이탈) 트리거 → <b style="color:var(--blue)">동향</b> 탭 퍼널 드롭오프 (추천→시뮬 ${esc(convPct)}%)</div>`;
   // 회원 KPI + 신규/재방문 + 가입 방법별 + 가입 추세
   $("mem-kpi").innerHTML=
     kpi(fmt(mem.accounts||0),"가입 총원")+
     kpi(fmt(mem.sessions||0),"활성 세션")+
-    kpi(fmt(todayD.newVisitors||0),"오늘 신규(09시 기준)")+ // '오늘'=UTC 자정=한국 09시 리셋(O5)
-    kpi(fmt(todayD.returning||0),"오늘 재방문(09시 기준)");
+    kpi(fmt(todayD.newVisitors||0)+delta("newVisitors"),"오늘 신규(09시 기준)")+ // 전일 델타 · '오늘'=한국 09시 리셋(O5)
+    kpi(fmt(todayD.returning||0)+delta("returning"),"오늘 재방문(09시 기준)");
   $("mem-nr").innerHTML=splitBar(wsum("newVisitors"),wsum("returning"));
   const SUL={email:"이메일",phone:"휴대폰",kakao:"카카오",mock:"데모",기타:"기타"};
   const suEnt=Object.entries(signups).sort((a,b)=>b[1]-a[1]), suMax=suEnt.length?suEnt[0][1]:1;

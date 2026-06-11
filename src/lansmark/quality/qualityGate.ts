@@ -17,6 +17,7 @@ export interface QualitySource {
   category: QualityCategory;
   status: GateStatus;
   note: string;
+  action?: string; // warn/fail일 때 '무엇을 하면 되는지'(SSOT) — OPS 피쉬본·Tier1 감시자가 같은 문장을 소비(권고 이중관리 제거).
 }
 
 export interface QualityAssessment {
@@ -44,19 +45,25 @@ export function assessQuality(inp: QualityInputs): QualityAssessment {
   const sources: QualitySource[] = [
     // 데이터 소스 — 소득 base가 핵심(제품 가치 직결). 데모면 fail.
     { key: "rdaIncome", label: "소득 base(RDA)", category: "source", status: baseVerified ? "ok" : "fail",
-      note: baseVerified ? `실 RDA · ${inp.rdaMeta!.rows}행` : "데모·미검증(실 RDA 미적재)" },
+      note: baseVerified ? `실 RDA · ${inp.rdaMeta!.rows}행` : "데모·미검증(실 RDA 미적재)",
+      action: baseVerified ? undefined : "실 RDA 소득자료 적재(npm run rda:build) — 그 전엔 앱이 '추정' 강제(정상)" },
     { key: "kamisPrice", label: "시세(KAMIS)", category: "source", status: live("kamisPrice").live ? "ok" : "warn",
-      note: live("kamisPrice").live ? "live(검증 품목)" : "mock/일부 폴백" },
+      note: live("kamisPrice").live ? "live(검증 품목)" : "mock/일부 폴백",
+      action: live("kamisPrice").live ? undefined : "KAMIS 품목코드 연결로 live 품목 확장(미검증 작물은 실 RDA 단가 사용)" },
     { key: "kmaClimate", label: "기후(KMA)", category: "source", status: live("kmaClimate").live ? "ok" : "warn",
-      note: live("kmaClimate").live ? "live" : "mock(키 없음)" },
+      note: live("kmaClimate").live ? "live" : "mock(키 없음)",
+      action: live("kmaClimate").live ? undefined : "KMA_API_KEY 설정 → 기후 live 전환" },
     { key: "vworld", label: "지도·필지(VWorld)", category: "source",
       status: live("vworldGeocode").live && live("vworldParcel").live ? "ok" : "warn",
-      note: live("vworldGeocode").live && live("vworldParcel").live ? "live" : "mock 폴백" },
+      note: live("vworldGeocode").live && live("vworldParcel").live ? "live" : "mock 폴백",
+      action: live("vworldGeocode").live && live("vworldParcel").live ? undefined : "VWORLD_API_KEY 설정 → 지도·필지 live 전환" },
     // 입력 품질 — DEM은 REST 미제공(구조적)으로 항상 mock 경사 → warn.
-    { key: "vworldDem", label: "표고·경사(DEM)", category: "input", status: "warn", note: "REST 미제공 → mock 경사(구조적)" },
+    { key: "vworldDem", label: "표고·경사(DEM)", category: "input", status: "warn", note: "REST 미제공 → mock 경사(구조적)",
+      action: "구조적 한계(REST 미제공) — 대안 DEM 소스 검토(즉시 조치 불필요)" },
     // 보정·해자 — 검증 버킷이 있어야 ok.
     { key: "calibration", label: "실측 보정(해자)", category: "calibration", status: calibOk ? "ok" : "warn",
-      note: calibOk ? `검증 버킷 ${fw.validatedBuckets} · 실측 ${fw.withActuals}` : "검증 표본 부족(<5건)" },
+      note: calibOk ? `검증 버킷 ${fw.validatedBuckets} · 실측 ${fw.withActuals}` : "검증 표본 부족(<5건)",
+      action: calibOk ? undefined : "제품에서 서로 다른 농가 실측 5건↑ 모이면 검증(사용 유도 — 코드 조치 아님)" },
     // 가드레일 — 범위·면책·단일값금지는 코드·훅으로 강제(구조적 ok).
     { key: "guardrail", label: "가드레일(범위·면책·단일값금지)", category: "guardrail", status: "ok", note: "코드·훅으로 강제" },
   ];

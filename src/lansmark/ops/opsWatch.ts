@@ -15,7 +15,7 @@ const PAYLOAD_WARN = 55, PAYLOAD_CRIT = 75, HEADROOM_WARN = 60, HEADROOM_CRIT = 
 export interface StatsLite {
   storeDegraded?: boolean;
   usage?: { errors?: number };
-  quality?: { grade: string; dataTrust: string; sources: { label: string; status: string; note: string }[] };
+  quality?: { grade: string; dataTrust: string; sources: { label: string; status: string; note: string; action?: string }[] };
   optimization?: { payload?: { gzipKB: number }; headroom?: Record<string, { n: number; cap: number }> };
 }
 
@@ -33,8 +33,9 @@ export function evaluateOps(inp: { stats: StatsLite }): WatchReport {
   if (q) {
     if (q.dataTrust === "unverified") F.push({ severity: "crit", area: "신뢰", msg: `등급 ${q.grade} · 미검증(운영 녹색이어도 데이터 정확 아님)`, recommend: "소득 base 실 RDA 적재(npm run rda:build) — 그 전엔 앱이 '추정' 강제(정상)" });
     for (const src of q.sources || []) {
-      if (src.status === "fail") F.push({ severity: "crit", area: "품질", msg: `${src.label}: ${src.note}`, recommend: "데이터 소스 실연동/적재 필요" });
-      else if (src.status === "warn") F.push({ severity: "warn", area: "품질", msg: `${src.label}: ${src.note}`, recommend: "키 연결 또는 구조적 한계 — 정직 라벨 유지" });
+      // 권고는 qualityGate.action(SSOT) — 콘솔 피쉬본과 같은 문장(이중관리 제거). 없으면 폴백.
+      if (src.status === "fail") F.push({ severity: "crit", area: "품질", msg: `${src.label}: ${src.note}`, recommend: src.action || "데이터 소스 실연동/적재 필요" });
+      else if (src.status === "warn") F.push({ severity: "warn", area: "품질", msg: `${src.label}: ${src.note}`, recommend: src.action || "키 연결 또는 구조적 한계 — 정직 라벨 유지" });
     }
   }
   // 최적화 트리거 — '언제 손댈지'

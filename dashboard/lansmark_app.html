@@ -560,6 +560,8 @@ async function ensureSim(st,cropId){
 
 /* ===== 렌더 helpers ===== */
 const fmt=n=>Math.round(n).toLocaleString("ko-KR");
+/* 큰 금액에 '약 N만원' 병기(귀농 사용자 직관 — 12,345,678원 → 약 1,235만원). |금액|≥1만일 때만. */
+const fmtMan=n=>{const m=Math.round(Math.abs(n)/10000);return m>=1?` <span style="opacity:.78;font-weight:700">(약 ${(n<0?'-':'')+m.toLocaleString("ko-KR")}만원)</span>`:"";};
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); // innerHTML 주입 차단
 const SAFE_CROP=/^[a-z_]{1,40}$/; // cropId 화이트리스트(공유링크 등 비신뢰 입력 차단)
 const okN=n=>typeof n==="number"&&isFinite(n); // 유한 좌표만
@@ -625,7 +627,10 @@ function growthCard(g){
   const strip=cal.months.map(m=>{const c=STAGE_C[m.stage]||STAGE_C.idle,t=STAGE_T[m.stage]||"";return `<div class="gm" title="${m.month}월${t?' · '+t:''}${m.frostRisk?' · ❄서리주의':''}${m.label?' · '+esc(m.label):''}" style="background:${c}">${m.frostRisk?'<span class="gf">❄</span>':''}<span class="gmn">${m.month}</span></div>`;}).join("");
   const rk=(arr,ic)=>(Array.isArray(arr)?arr:[]).map(r=>`<span class="grk">${ic} ${esc(r)}</span>`).join("");
   const ship=hv.length?`수확 <b>${hv.join("·")}월</b> = 출하 적기. 조기출하 vs 저장 후 단경기 출하에 따라 kg당 단가가 달라집니다 <span style="color:var(--ink3)">(월별 시장가 연동 예정)</span>.`:"수확월 데이터 미등록.";
-  return `<div class="card"><div class="ch"><span class="cname">🌱 생육·출하 타임라인</span><span class="badge b-tier">월력</span></div>
+  // 수확 D-day 배지 — 오늘 기준 가장 가까운 수확월까지 남은 개월(이미 가진 데이터만으로 계산). 0=이번 달.
+  const curM=new Date().getMonth()+1;
+  const dday=hv.length?(()=>{const n=hv.map(m=>(m-curM+12)%12).sort((a,b)=>a-b)[0];return n===0?'<span class="badge b-val">🗓 이번 달 수확기</span>':`<span class="badge b-tier">🗓 다음 수확까지 약 ${n}개월</span>`;})():"";
+  return `<div class="card"><div class="ch"><span class="cname">🌱 생육·출하 타임라인</span>${dday||'<span class="badge b-tier">월력</span>'}</div>
     <div class="gstrip">${strip}</div>
     <div class="glegend"><span><i style="background:${STAGE_C.sow}"></i>파종</span><span><i style="background:${STAGE_C.growth}"></i>생육</span><span><i style="background:${STAGE_C.bloom}"></i>개화</span><span><i style="background:${STAGE_C.harvest}"></i>수확·출하</span><span>❄ 서리주의</span></div>
     ${cal.note?`<div class="src" style="margin-top:7px">📌 ${esc(cal.note)}</div>`:""}
@@ -642,13 +647,13 @@ function simCardHtml(sim,terr,opts){
   const aspText=terr.aspect==='flat'?'평지':(ASPECT_KO[terr.aspect]||terr.aspect)+'향('+terr.aspect+')'; // "남향(S)" — 영문 약어 단독 금지
   return `
    ${FREEBETA?`<div class="src" style="background:#F1F8EE;border:1px solid var(--green-line);border-radius:9px;padding:8px 10px;margin-bottom:8px;font-weight:700;color:var(--green-mid)">🎁 무료 베타 — 정밀 분석을 <b>무료</b>로 제공 중입니다 <span style="font-weight:600;color:var(--ink2)">(유료 전환은 추후 오픈 예정)</span></div>`:''}
-   <div class="decide ${neg?'neg':''}"><div class="dl">${esc(sim.cropNameKo)} · 예상 소득(보통,P50)${neg&&baseDemo?' · ⚠미검증 기준값':''}</div><div class="dv num">${fmt(sim.incomeKrw.p50)}원</div>
+   <div class="decide ${neg?'neg':''}"><div class="dl">${esc(sim.cropNameKo)} · 예상 소득(보통,P50)${neg&&baseDemo?' · ⚠미검증 기준값':''}</div><div class="dv num">${fmt(sim.incomeKrw.p50)}원<span style="font-size:13px">${fmtMan(sim.incomeKrw.p50)}</span></div>
      <div class="dmeta">${fmt(sim.areaM2)}㎡(약 ${fmt(sim.areaM2/3.3058)}평) · 경사 ${terr.slopeDegree}° · ${aspText} · 표고 ${terr.altitudeM}m</div>
      ${neg&&baseDemo?`<div class="dmeta" style="margin-top:6px">※ ‘적자’가 아니라 <b>미검증 기준값(placeholder)</b> — 실 RDA 소득자료 연결 전엔 음수일 수 있습니다.</div>`:''}
      <span class="pill">적합 ${sw} (${score})</span><span class="pill">표준 대비 ${tdelta>=0?'+':''}${tdelta}%</span><span class="pill" title="자동 보수(품질 게이트): 보정 검증 + 기준(base) 검증 둘 다일 때만 ✓ — base가 데모/미검증이면 '추정' 강제">${(validated&&!baseDemo)?'✓ 검증':'추정'}</span>${baseDemo?'<span class="pill" title="기준 소득자료가 데모(미검증) — 실 RDA 연결 전: ✓검증 차단">기준값 데모</span>':''}</div>
    <div class="card"><div class="k3"><div class="gw">${gauge(Math.min(100,Math.max(0,score)),col)}<div class="gn num">${score}<small>/100</small></div></div>
      <div class="kbox"><div class="kl">손익분기 단가</div><div class="kv num">${fmt(sim.breakEvenPriceKrwPerKg)}<small>원/kg</small></div></div>
-     <div class="kbox"><div class="kl">매출(보통)</div><div class="kv num">${fmt(sim.revenueKrw.p50)}<small>원</small></div></div></div>
+     <div class="kbox"><div class="kl">매출(보통)</div><div class="kv num">${fmt(sim.revenueKrw.p50)}<small>원${fmtMan(sim.revenueKrw.p50)}</small></div></div></div>
      <div class="sectt" style="margin-top:11px">예상 소득 범위 (P10–P50–P90)</div>${bar(sim.incomeKrw,{col:neg?'w':'g',zero:true})}
      ${neg?`<div class="src">※ 보통값이 음수 — 현 base는 농진청 소득자료 <b>구조 데모(미검증)</b>. 실 RDA 소득자료 연결 시 정상화(HUMAN GATE).</div>`:""}
    </div>
@@ -727,13 +732,17 @@ function bindSim(st,rerender){
   if(hr)hr.addEventListener("click",()=>{let reg=(st.rec&&st.rec.region)||undefined;if(!reg){try{const c=coordOf(st);if(c&&c[0]!=null)reg=regionOf(c[0],c[1]).sido;}catch(_){}}openAlarmModal({cropId:st.sim&&st.sim.cropId,cropKo:st.sim&&st.sim.cropNameKo,region:reg});});
   const sim=st.sim,region=st.rec&&st.rec.region,pred={yieldKg:sim.yieldKg.p50,costKrw:sim.costKrw.p50,revenueKrw:sim.revenueKrw.p50};
   const rec=document.getElementById("e-rec");
-  // 실측 제출 결과 피드백 — 플라이휠 핵심 입력의 무음 성공/실패 금지(성공·실패 모두 토스트, 실패 시 입력 보존·버튼 복구)
+  // 실측 제출 결과 피드백 — 플라이휠 핵심 입력의 무음 성공/실패 금지 + '변화 한 줄'(보정 가치 체감)
   if(rec)rec.addEventListener("click",async()=>{const ay=Number(document.getElementById("e-ay").value)||null,ar=Number(document.getElementById("e-ar").value)||null;
     if(!ay&&!ar){toast("실제 수확량(kg) 또는 매출(원)을 먼저 입력해 주세요.");return;}
     rec.disabled=true;rec.textContent="기록 중…";
-    try{await apiFeedback(sim.cropId,region,st.terr,pred,{actualYieldKg:ay,actualCostKrw:pred.costKrw,actualRevenueKrw:ar});toast("✓ 실측이 기록되었습니다 — 예측 보정에 반영됩니다.");}
+    const before=(st.sim&&st.sim.incomeKrw&&st.sim.incomeKrw.p50); // 보정 전 P50(변화량 계산용)
+    try{await apiFeedback(sim.cropId,region,st.terr,pred,{actualYieldKg:ay,actualCostKrw:pred.costKrw,actualRevenueKrw:ar});}
     catch(e){toast("기록 실패: "+((e&&e.message)||"잠시 후 다시 시도해 주세요."));rec.disabled=false;rec.textContent="＋ 실측 기록";return;}
-    await reSim();});
+    await reSim();
+    const after=(st.sim&&st.sim.incomeKrw&&st.sim.incomeKrw.p50); // 보정 후 → 변화율 토스트(플라이휠 가치 체감)
+    if(typeof before==="number"&&typeof after==="number"&&before!==0){const p=Math.round((after-before)/Math.abs(before)*100);toast(p===0?"✓ 실측 반영 — 보통값 변동 없음":"✓ 실측 반영 — 보통값 "+(p>0?"+":"")+p+"% 조정");}
+    else toast("✓ 실측이 기록되었습니다 — 예측 보정에 반영됩니다.");});
   const dm=document.getElementById("e-demo");
   if(dm)dm.addEventListener("click",async()=>{dm.disabled=true;dm.textContent="기록 중…";for(let i=0;i<5;i++){try{await apiFeedback(sim.cropId,region,st.terr,pred,{actualYieldKg:Math.round(pred.yieldKg*1.2),actualCostKrw:pred.costKrw,actualRevenueKrw:Math.round(pred.revenueKrw*1.2)});}catch(_){}}await reSim();});
   renderJournal(st); // 재배 일지 패널(#jrn-panel) 비동기 채우기 — 시뮬카드는 보존
@@ -1385,7 +1394,7 @@ function renderDetailPin(){const st=pinState;if(!st)return;
   const guideSlot=(st.tier==="parcel"&&st.crop)?'<div class="card" id="guide-panel"></div>':''; // 품종·재배 가이드(무료=대표작물/유료=전체)
   if(st.tier!=="parcel"||!st.crop){plist.innerHTML=lcB+recHead+(st.tier!=="parcel"?hintCard("🔍","더 확대하면(필지 단계) 실제 재배가능 작물과 <b>소득 시뮬</b>이 가능합니다."):hintCard("👆","추천 작물을 누르면 그 작물의 <b>예상 소득</b>이 계산됩니다."));}
   else if(!isPro()&&!FREEBETA){plist.innerHTML=lcB+recHead+guideSlot+(st.entLost?errCard("이전 구매 권한이 종료되었습니다 — "+st.entLost):"")+paywallCard();bindPay(async()=>{st.simBusy=true;renderDetailPin();await ensureSim(st,st.crop);renderDetailPin();});renderGuide(st);} // 권한 만료/소진 사유를 페이월 위에 명시(말없는 회귀 금지)
-  else{plist.innerHTML=lcB+recHead+guideSlot+(st.simBusy?loading("실엔진 시뮬레이션 중…"):st.simErr?errCard(st.simErr):simCardHtml(st.sim,st.terr,st.opts));if(st.sim&&!st.simBusy)bindSim(st,renderDetailPin);renderGuide(st);}
+  else{plist.innerHTML=lcB+recHead+guideSlot+(st.simBusy?loading("실엔진 시뮬레이션 중…"):st.simErr?errCard(st.simErr):simCardHtml(st.sim,st.terr,st.opts));if(st.sim&&!st.simBusy){bindSim(st,renderDetailPin);saveLast();}renderGuide(st);} // 시뮬 완료 시 이어보기 스냅샷 저장
   bindReconfirm(st,renderDetailPin);
   const pickCrop=async(cropId)=>{st.crop=cropId;st.simBusy=true;renderDetailPin();await ensureSim(st,cropId);renderDetailPin();};
   bindChips(plist,pickCrop);
@@ -1412,7 +1421,7 @@ function renderSelect(){const items=[...SEL.values()];document.getElementById("c
   const recHead=recHeadHtml(it.rec,it.tier,chosen,null);
   if(it.tier!=="parcel"||!chosen){plist.innerHTML=lcB+recHead+(it.tier!=="parcel"?hintCard("🔍","확대(필지 단계)하면 실제 재배가능 + <b>소득 시뮬</b>."):hintCard("👆","추천 작물을 누르면 소득이 계산됩니다."));}
   else if(!isPro()&&!FREEBETA){plist.innerHTML=lcB+recHead+(it.entLost?errCard("이전 구매 권한이 종료되었습니다 — "+it.entLost):"")+paywallCard();bindPay(async()=>{it.simBusy=true;renderSelect();await ensureSim(it,it.crop);renderSelect();});}
-  else{plist.innerHTML=lcB+recHead+(it.simBusy?loading("실엔진 시뮬레이션 중…"):it.simErr?errCard(it.simErr):simCardHtml(it.sim,it.terr,it.opts));if(it.sim&&!it.simBusy)bindSim(it,renderSelect);}
+  else{plist.innerHTML=lcB+recHead+(it.simBusy?loading("실엔진 시뮬레이션 중…"):it.simErr?errCard(it.simErr):simCardHtml(it.sim,it.terr,it.opts));if(it.sim&&!it.simBusy){bindSim(it,renderSelect);saveLast();}}
   bindReconfirm(it,renderSelect);
   bindChips(plist,async(cropId)=>{CHOSEN[it.key]=cropId;it.crop=cropId;it.simBusy=true;renderSelect();await ensureSim(it,cropId);renderSelect();});
 }
@@ -1520,10 +1529,30 @@ document.getElementById("loadfile").addEventListener("change",e=>{const f=e.targ
 document.getElementById("pdf").addEventListener("click",()=>window.print());
 /* 공유 — opts(면적·판로·연차…) 포함: 받는 사람이 같은 숫자를 보게(누락 시 기본값 재계산 → 다른 소득). */
 document.getElementById("share").addEventListener("click",async()=>{const lite={mode:MODE,view:VIEW,sels:[...SEL.values()].map(it=>({lat:it.center[0],lng:it.center[1],tier:it.tier,crop:CHOSEN[it.key]||null,opts:it.opts})),pin:pinState?{lat:pinState.lat,lng:pinState.lng,tier:pinState.tier,crop:pinState.crop,opts:pinState.opts}:null};const h="#s="+btoa(unescape(encodeURIComponent(JSON.stringify(lite))));const url=location.origin+location.pathname+h;history.replaceState(null,"",h);try{await navigator.clipboard.writeText(url);alert("공유 링크 복사됨:\n"+url);}catch(_){prompt("공유 링크(복사하세요):",url);}});
-function restoreFromHash(){const m=location.hash.match(/#s=(.+)/);if(!m)return;try{const lite=JSON.parse(decodeURIComponent(escape(atob(m[1]))));restore(lite);}catch(_){}}
-init().then(handlePaymentReturn).then(restoreFromHash); // 결제창 복귀(실Toss) → 승인 → 잠금해제 → 상태복원 순
+function restoreFromHash(){const m=location.hash.match(/#s=(.+)/);if(!m)return false;try{const lite=JSON.parse(decodeURIComponent(escape(atob(m[1]))));restore(lite);return true;}catch(_){return false;}}
+/* ===== 이어보기(최대 갭 — 새로고침·뒤로가기에 분석 소실) — 마지막 분석을 localStorage에 자동저장 + 시작화면 칩 1개. =====
+   자동 강제복원은 안 함(빈 지도 시작도 유효한 의도) — 사용자가 '이어보기'를 탭해야 복원. opts 포함이라 같은 숫자 재현. */
+function saveLast(){try{const snap=snapshot();if(!snap.pin&&!(snap.sels&&snap.sels.length))return; // 분석 있을 때만
+  let label="";if(pinState&&pinState.sim)label=((pinState.rec&&pinState.rec.regionText)?pinState.rec.regionText+" ":"")+(pinState.sim.cropNameKo||"");
+  else if(SEL.size){const it=[...SEL.values()].pop();label=(it&&it.rec&&it.rec.regionText)?it.rec.regionText:("선택 "+SEL.size+"곳");}
+  localStorage.setItem("lansmark_last",JSON.stringify({snap,label}));}catch(_){}}
+function maybeShowResume(){
+  if(location.hash||pinState||SEL.size)return; // 이미 분석·공유링크면 생략
+  let saved;try{saved=JSON.parse(localStorage.getItem("lansmark_last")||"null");}catch(_){}
+  if(!saved||!saved.snap)return;
+  const plist=document.getElementById("plist");if(!plist)return;
+  const chip=document.createElement("div");chip.style.cssText="display:flex;gap:7px;align-items:center;margin:0 0 11px";
+  chip.innerHTML=`<button class="btn" id="resume-go" style="flex:1;background:var(--green-soft);border-color:var(--green-line);color:var(--green-mid);font-weight:800;text-align:left">↩ 지난 분석 이어보기${saved.label?' · <b>'+esc(saved.label)+'</b>':''}</button><button class="btn" id="resume-x" title="지우기" style="flex:0 0 auto">✕</button>`;
+  plist.insertBefore(chip,plist.firstChild);
+  chip.querySelector("#resume-go").addEventListener("click",()=>{try{restore(saved.snap);}catch(_){}});
+  chip.querySelector("#resume-x").addEventListener("click",()=>{try{localStorage.removeItem("lansmark_last");}catch(_){}chip.remove();});
+}
+init().then(handlePaymentReturn).then(()=>{const fromHash=restoreFromHash();if(!fromHash)maybeShowResume();}); // 결제복귀→해시복원, 둘 다 없으면 '이어보기' 칩
 /* ESC로 모달 닫기(접근성 최소) — 계정·알림·버전/웰컴 모달. ⚠ 결제목업(paymask)은 제외: 취소 버튼·배경 클릭이 프라미스 reject까지 처리(ESC 단순 제거 시 버튼이 '처리 중'에 멈춤). */
 document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;const m=document.getElementById("acct-modal")||document.getElementById("alarm-modal")||document.getElementById("vmodal");if(m)m.remove();});
+/* 오프라인 배너 — 시골 모바일 회선 직결. navigator.onLine + online/offline 이벤트로 상단 띠 표시(연결되면 자동 사라짐). */
+(function(){var b=document.createElement("div");b.id="offbar";b.style.cssText="position:fixed;left:0;right:0;top:0;z-index:4000;background:#b5321c;color:#fff;font-size:12px;font-weight:800;text-align:center;padding:6px 10px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.25)";b.textContent="📡 오프라인 — 인터넷 연결을 확인해 주세요(연결되면 자동 복구)";document.body.appendChild(b);
+  var upd=function(){b.style.display=navigator.onLine?"none":"block";};window.addEventListener("online",upd);window.addEventListener("offline",upd);upd();})();
 /* PWA: 서비스워커 등록(설치형·오프라인 쉘). 실패는 무시(앱은 정상 동작). */
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}
 </script>

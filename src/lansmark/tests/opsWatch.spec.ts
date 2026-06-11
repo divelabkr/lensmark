@@ -58,4 +58,14 @@ describe("opsWatch — Tier 1 진단(읽기 전용)", () => {
     expect(txt).toContain("스토어");
     expect(txt).toContain("→"); // 권고 줄
   });
+
+  it("품질 권고는 qualityGate.action(SSOT)을 그대로 소비 — 콘솔과 같은 문장(이중관리 제거)", () => {
+    const r = evaluateOps({ stats: { ...green,
+      quality: { grade: "C", dataTrust: "estimated", sources: [
+        { label: "표고·경사(DEM)", status: "warn", note: "REST 미제공", action: "대안 DEM 소스 검토(즉시 조치 불필요)" },
+        { label: "소득 base(RDA)", status: "fail", note: "데모", action: "실 RDA 적재(rda:build)" },
+      ] } } });
+    expect(r.findings.find((f) => f.msg.startsWith("표고·경사(DEM)"))?.recommend).toBe("대안 DEM 소스 검토(즉시 조치 불필요)"); // action 그대로
+    expect(r.findings.find((f) => f.msg.startsWith("소득 base(RDA)"))?.recommend).toBe("실 RDA 적재(rda:build)");
+  });
 });
