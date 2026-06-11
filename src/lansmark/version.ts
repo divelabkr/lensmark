@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.55.0",
+    date: "2026-06-11",
+    title: "OPS 최적화 트리거 — 페이로드·저장소 헤드룸을 데이터로 ('언제' 판정)",
+    items: [
+      "최적화를 '느낌'이 아니라 '측정'으로 — OPS 종합에 '⚡ 최적화 트리거' 패널: ① 앱 첫로드 페이로드(gzip/raw KB) ② 저장소 헤드룸(실측 n/20k·수요키 n/10k) ③ 참여(이탈)는 동향 퍼널로 연결. 각 항목을 임계로 '여유/검토/시급' 색 판정 → 선 넘을 때만 손대도록",
+      "백엔드(/api/ops/stats) — optimization{payload, headroom}. payload는 앱 HTML gzip(over-the-wire 비용)·mtime 캐시(파일 변경 시에만 재계산 → 운영 1회). headroom 분모는 blob 1MiB·차원폭증 한계(feedback 20k·demandKeys 10k) = per-record/DB 승격 신호",
+      "정직성 — 없는 '페이지뷰 이탈'은 만들지 않음. 측정 가능한 '지렛대(페이로드)'와 '스케일 벽(저장소)'만 노출하고, 참여 트리거는 기존 퍼널 드롭오프로 연결. '검토/시급일 때만 최적화 — 그 전엔 학습 우선' 문구 명시",
+      "검증: 회귀 +1(opsRoutes — stats 트리거 노출·gzip<raw·캡) + 헤드리스 스모크(임계 판정 6/6: gzip 58→검토·실측 71%→검토·수요키 88%→시급) · tsc·vitest 462·arch 0. qwen 생략(소규모·admin 읽기·자체검토+node)",
+    ],
+  },
+  {
     version: "0.54.0",
     date: "2026-06-11",
     title: "Red-team 잔여 처리 — 처리방침 익명계측 고지 + OPS XSS 가드 + 스팸 한계 명시",

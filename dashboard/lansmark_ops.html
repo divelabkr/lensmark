@@ -131,6 +131,11 @@
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--blue-s)">📈</span>유입 추세<span class="meta">14일</span></div><div id="ov-trend"></div><div class="w-foot">일별 유입(recommend) · 익명 집계</div></section>
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--amber-s)">🩺</span>상태</div><div id="ov-status"></div></section>
       </div>
+      <section class="w" style="margin-top:16px">
+        <div class="w-h"><span class="ico" style="background:var(--amber-s)">⚡</span>최적화 트리거<span class="meta">언제 손댈지 — 데이터로</span></div>
+        <div id="opt-triggers"><div class="empty">측정 중…</div></div>
+        <div class="w-foot">'검토/시급'일 때만 최적화 — 그 전엔 학습 우선</div>
+      </section>
     </section>
 
     <!-- ===== 회원: 가입·세션·신규/재방문·가입추세 ===== -->
@@ -343,6 +348,16 @@ async function load(){
     kpi((cfg.store||"—")+(s.storeDegraded?" ⚠":""),"스토어",s.storeDegraded?"bad":"good");
   $("ov-trend").innerHTML=sparkline(last14.map(d=>d.recommend||0),"var(--blue)");
   $("ov-status").innerHTML=`<div class="stat-row"><div>${stat(liveN+"/"+keys.length,"LIVE 연동",liveN>=keys.length*0.5?"var(--green)":"var(--amber)")}</div><div>${stat(u.errors||0,"5xx 에러",u.errors>0?"var(--red)":"var(--ink3)")}</div><div>${stat("v"+(h.version||"—"),"버전")}</div></div>`+(s.storeDegraded?`<div class="awarn crit" style="margin-top:13px">⛔ 스토어 저하 — 영속 점검</div>`:`<div style="margin-top:13px;font-size:11.5px;color:var(--ink3);font-weight:600">정상 · ${esc(cfg.dataMode||"—")} · PORT ${esc(cfg.port||"—")}</div>`);
+  // 최적화 트리거(종합) — 측정된 페이로드·헤드룸이 임계 넘으면 '언제'를 알려줌(느낌 아님)
+  const opt=s.optimization||{payload:{rawKB:0,gzipKB:0},headroom:{}}, plK=opt.payload||{rawKB:0,gzipKB:0}, hr=opt.headroom||{};
+  const TCOL={good:"#10b95c",warn:"#e6a019",bad:"#e2563f"}, TWORD={good:"여유",warn:"검토",bad:"시급"};
+  const tverdict=(v,warn,crit)=>v>=crit?"bad":v>=warn?"warn":"good", hpct=o=>o&&o.cap?Math.round((o.n||0)/o.cap*100):0;
+  function trigRow(label,valHtml,vk,note){const c=TCOL[vk];return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line2);font-size:12px;font-weight:600"><span style="flex:1;color:var(--ink);min-width:0">${esc(label)} <span style="color:var(--ink3);font-weight:600;font-size:10.5px">${esc(note||"")}</span></span><span class="num" style="font-weight:800;color:var(--ink);white-space:nowrap">${valHtml}</span><span class="pill" style="background:${c}22;color:${c}">${esc(TWORD[vk])}</span></div>`;}
+  $("opt-triggers").innerHTML=
+    trigRow("앱 첫로드(gzip)",`${esc(plK.gzipKB)}KB <span style="color:var(--ink3);font-weight:600">/ raw ${esc(plK.rawKB)}KB</span>`,tverdict(plK.gzipKB,55,75),"모바일 전송비용 → 분할/지연로드")+
+    trigRow("저장소 · 실측(해자)",`${esc((hr.feedback||{}).n||0)} / ${esc((hr.feedback||{}).cap||0)}`,tverdict(hpct(hr.feedback),60,80),"blob 1MiB → per-record 승격")+
+    trigRow("저장소 · 수요 키",`${esc((hr.demandKeys||{}).n||0)} / ${esc((hr.demandKeys||{}).cap||0)}`,tverdict(hpct(hr.demandKeys),60,80),"차원 폭증 → DB 집계")+
+    `<div style="padding:9px 0;border-top:1px solid var(--line2);font-size:11.5px;color:var(--ink3);font-weight:600">참여(이탈) 트리거 → <b style="color:var(--blue)">동향</b> 탭 퍼널 드롭오프 (추천→시뮬 ${esc(convPct)}%)</div>`;
   // 회원 KPI + 신규/재방문 + 가입 방법별 + 가입 추세
   $("mem-kpi").innerHTML=
     kpi(mem.accounts||0,"가입 총원")+

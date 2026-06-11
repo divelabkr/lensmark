@@ -99,4 +99,16 @@ describe("ops 유료 게이트 토글(/api/ops/paid-gate)", () => {
     expect(res.captured.code).toBe(200);
     expect(JSON.parse(res.captured.body).durable).toBe(true);
   });
+
+  it("stats: 최적화 트리거 노출 — 앱 payload(gzip<raw) + 저장소 헤드룸(캡)", async () => {
+    const res = mockRes();
+    await route(freshCtx(), mockReq("GET", { "x-lansmark-admin": ADMIN }), res, U("/api/ops/stats"));
+    expect(res.captured.code).toBe(200);
+    const b = JSON.parse(res.captured.body);
+    expect(b.optimization.payload.rawKB).toBeGreaterThan(0);                          // 앱 HTML 실측 크기
+    expect(b.optimization.payload.gzipKB).toBeGreaterThan(0);
+    expect(b.optimization.payload.gzipKB).toBeLessThan(b.optimization.payload.rawKB); // gzip < raw(전송비용 트리거)
+    expect(b.optimization.headroom.feedback.cap).toBe(20000);                          // blob 스케일 벽 분모
+    expect(b.optimization.headroom.demandKeys.cap).toBe(10000);
+  });
 });

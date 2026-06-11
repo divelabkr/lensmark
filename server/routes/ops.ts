@@ -9,6 +9,23 @@ import { adminOk } from "../middleware";
 import { VALIDATED_THRESHOLD } from "../../src/lansmark/core/calibration"; // 검증 판정 SSOT(임계) — ops도 동일 기준
 import type { Ctx, RouteFn } from "../context";
 import type * as http from "node:http";
+import { readFileSync, statSync } from "node:fs";
+import { gzipSync } from "node:zlib";
+import { join } from "node:path";
+
+// 앱 첫로드 페이로드(최적화 트리거) — over-the-wire 비용. 파일 변경(mtime) 시에만 재계산(gzip 비쌈) → 운영선 1회.
+let _payloadCache: { mtimeMs: number; rawKB: number; gzipKB: number } | null = null;
+function appPayloadKB(dir: string): { rawKB: number; gzipKB: number } {
+  try {
+    const p = join(dir, "lansmark_app.html");
+    const st = statSync(p);
+    if (!_payloadCache || _payloadCache.mtimeMs !== st.mtimeMs) {
+      const buf = readFileSync(p);
+      _payloadCache = { mtimeMs: st.mtimeMs, rawKB: Math.round(buf.length / 1024), gzipKB: Math.round(gzipSync(buf).length / 1024) };
+    }
+    return { rawKB: _payloadCache.rawKB, gzipKB: _payloadCache.gzipKB };
+  } catch { return { rawKB: 0, gzipKB: 0 }; }
+}
 
 /**
  * ops '쓰기'(revoke·paid-gate) 공통 가드(감사 M4) — 읽기(stats)와 분리.
@@ -85,11 +102,19 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     .sort((a, b) => b.actuals - a.actuals)
     .slice(0, 20);
 
+  const an = ctx.analytics.snapshot(20); // 한 번만 — analytics 노출 + 헤드룸 트리거에 공용
+  // 최적화 '언제' 트리거 — 측정된 지렛대(앱 첫로드 페이로드) + 스케일 벽(저장소 헤드룸). 임계 판정(색)은 콘솔이.
+  const optimization = {
+    payload: appPayloadKB(ctx.config.dashboardDir),                        // 앱 첫로드(gzip=실전송) — 페이로드 분할/지연로드 트리거
+    headroom: { feedback: { n: rows.length, cap: 20000 }, demandKeys: { n: an.demandKeys, cap: 10000 } }, // blob 1MiB·차원폭증 — per-record/DB 승격 트리거
+  };
+
   json(res, 200, {
     authConfigured: !!ctx.config.adminToken,
     flywheel: { records: rows.length, withActuals, byCrop, validatedBuckets },
-    analytics: ctx.analytics.snapshot(20), // 익명 수요·퍼널·시계열·신규/재방문·가입(PII 0) — 무료 베타에서 '무엇을 얻는가'
+    analytics: an, // 익명 수요·퍼널·시계열·신규/재방문·가입(PII 0) — 무료 베타에서 '무엇을 얻는가'
     members: { accounts: ctx.accounts.size(), sessions: ctx.sessions.size() }, // 회원 — 가입 총원·활성 세션(방법별 가입은 analytics.signups)
+    optimization, // 최적화 '언제' 트리거(페이로드·저장소 헤드룸)
     usage: {
       simRuns: ctx.metrics.simRuns,
       entitlementsMinted: ctx.metrics.entitlementsMinted,
