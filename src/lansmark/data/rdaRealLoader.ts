@@ -86,6 +86,48 @@ export function parseRdaCsv(text: string): RdaRealRow[] {
   return out;
 }
 
+/** 지역(도) 단위 실자료 — 전국 base를 해당 도 실값으로 오버라이드(있는 도만 · 없으면 전국 폴백). */
+export interface RdaRegionalRow {
+  yieldKgPer10a: SigmaRange;
+  operatingCostPer10aKrw: SigmaRange;
+  refPriceKrwPerKg: SigmaRange;
+}
+/** cropId → 지역(2자 코드: 전남·경기 등) → 지역 실자료. */
+export type RdaRegionalTable = Record<string, Record<string, RdaRegionalRow>>;
+
+/** 17 시도 2자 코드(지역 CSV 검증·정규화 기준). */
+export const REGION_CODES = new Set(["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]);
+
+/**
+ * 지역 CSV(헤더: cropId,region,yield_p50,cost_p50,price_p50) → 검증된 지역 테이블. region은 2자 코드.
+ *   폭(p10/p90)은 전국과 동일 규칙으로 보수적 유도(지역 자료도 단일 평균 → '폭 추정' 성격 동일).
+ */
+export function parseRdaRegionalCsv(text: string): RdaRegionalTable {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+  if (lines.length < 2) return {};
+  const head = lines[0].split(",").map((h) => h.trim());
+  const idx = (name: string) => head.indexOf(name);
+  for (const req of ["cropId", "region", "yield_p50", "cost_p50", "price_p50"]) {
+    if (idx(req) < 0) throw new Error(`지역 CSV 필수 컬럼 누락: ${req}`);
+  }
+  const out: RdaRegionalTable = {};
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].includes('"')) throw new Error(`지역 행 ${i + 1}: 인용(") 셀 미지원(시프트 오염 차단)`);
+    const c = lines[i].split(",").map((s) => s.trim());
+    if (c.length !== head.length) throw new Error(`지역 행 ${i + 1}: 컬럼 수(${c.length})≠헤더(${head.length})`);
+    const cropId = c[idx("cropId")], region = c[idx("region")];
+    if (!KNOWN.has(cropId)) throw new Error(`지역 행 ${i + 1}: 알 수 없는 cropId "${cropId}"`);
+    if (!REGION_CODES.has(region)) throw new Error(`지역 행 ${i + 1}: 알 수 없는 지역 "${region}"(2자 코드만)`);
+    const g = (name: string) => { const v = num(c[idx(name)]); if (v == null || Number.isNaN(v) || v <= 0) throw new Error(`지역 행 ${i + 1}: ${name} 양수 아님`); return v; };
+    (out[cropId] ??= {})[region] = {
+      yieldKgPer10a: rangeOf(g("yield_p50"), undefined, undefined, "yield").r,
+      operatingCostPer10aKrw: rangeOf(g("cost_p50"), undefined, undefined, "cost").r,
+      refPriceKrwPerKg: rangeOf(g("price_p50"), undefined, undefined, "price").r,
+    };
+  }
+  return out;
+}
+
 /** 실자료 행 → getRdaBase 반환형 보강용(검증 출처·연도 포함). rdaIncome.ts가 사용. */
 export function baseFromReal(row: RdaRealRow, cropNameKo: string) {
   return {

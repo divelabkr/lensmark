@@ -64,3 +64,21 @@ describe("getRdaBase — 실자료(2024) 적재 + 미수록 작물 데모 폴백
     expect(b.baseYear).toBeUndefined();
   });
 });
+
+describe("getRdaBase — 지역(도) 오버라이드 + 시도명 정규화 + 폴백", () => {
+  it("적재 도(블루베리 전남)는 그 도 실값 — 전체 시도명/2자 코드 모두 정규화", () => {
+    const full = getRdaBase("blueberry", "전라남도");
+    const short = getRdaBase("blueberry", "전남");
+    expect(full.yieldKgPer10a.p50).toBe(630);                 // 전남 실값(전국 491과 다름)
+    expect(full.verified).toBe(true);
+    expect(full.source).toContain("지역별");
+    expect(full.source).toContain("전남");
+    expect(short.yieldKgPer10a).toEqual(full.yieldKgPer10a);  // 전남 == 전라남도(정규화)
+  });
+  it("미조사 도(블루베리 제주)·미지원 형식 → 전국 base 폴백", () => {
+    const nat = getRdaBase("blueberry");
+    expect(getRdaBase("blueberry", "제주특별자치도").yieldKgPer10a).toEqual(nat.yieldKgPer10a); // 블루베리 제주 미조사 → 전국
+    expect(getRdaBase("blueberry", "제주특별자치도").source).not.toContain("지역별");
+    expect(getRdaBase("blueberry", "엉뚱지역").yieldKgPer10a).toEqual(nat.yieldKgPer10a);        // 미지원 형식 → 전국
+  });
+});

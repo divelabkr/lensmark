@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.61.0",
+    date: "2026-06-12",
+    title: "지역(도)별 실 RDA 소득 + 외래식물 seam 정직 교정",
+    items: [
+      "지역별 농산물소득조사 2024(도별 상세표) → 10작물 66개 도 실값 적재(rda:build 2번째 CSV). getRdaBase(cropId, region)이 해당 도 실자료로 절대수준 오버라이드(없는 도·미지원 형식은 전국 폴백). 프론트 전체 시도명(전라남도 등)→2자 코드 정규화. 예: 블루베리 전남 수량 630·경영비 860만(전국 491·518만과 다름) → 소득 전남 2,533만 vs 전국 2,131만",
+      "스키마: RdaRegionalTable + parseRdaRegionalCsv(검증·폭 유도·인용/컬럼 시프트 가드) · buildRdaReal이 <전국>.regional.csv 자동탐지해 RDA_REAL_REGION 생성 · getRdaBase에 normalizeRegion(17시도) 배선. 연차/판로 상대구조 보강은 지역값에도 동일. 데이터 검증: 체크섬(총수입−경영비=소득) 100%·전국값이 지역 min~max 내(9/10, barley만 단일도)",
+      "외래식물(Perenual) seam 정직 교정 — 라이브 실측(2026-06-12): 무료 티어는 species-list(분류)만, 재배상세(관수·일조·내한성)는 유료 전용(429 'Upgrade'). care-guide는 v1 경로(v2엔 없음). parsePlantDetail는 ShapeUnverifiedError 유지(추측 금지)·재배상세=새 HUMAN GATE(유료 Perenual)로 문서화·URL 교정. GBIF가 이미 분류를 더 정확히 줘 무료 티어는 제품가치 낮음",
+      "검증: 회귀 +2(지역 오버라이드·시도명 정규화·미수록 폴백) · tsc·vitest 484·arch 0",
+    ],
+  },
+  {
     version: "0.60.0",
     date: "2026-06-11",
     title: "실 RDA 단가 우선 — mock 시세가 실데이터 단가를 덮어쓰던 소득 음수 오류 수정",

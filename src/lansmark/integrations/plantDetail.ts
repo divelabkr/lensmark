@@ -1,11 +1,13 @@
 /**
  * 식물 재배정보 seam(HUMAN GATE) — 외래·임의 작물의 관수/일조/내한성/병해 등 상세.
  *   책임: Perenual(우선)·Trefle(폴백) URL 빌더 + 키게이트 raw fetch(샘플 캡처용). 파서는 실응답(JSON) 검증 후 작성.
- *   사실(리서치 2026-06-05):
- *     · Perenual: base https://perenual.com/api/v2 · key 파라미터 · JSON · 무료 100건/일(캐싱 필수) · species-list / species-care-guide-list.
- *     · Trefle:   base https://trefle.io/api/v1 · token 파라미터 · JSON · 120/분 · ⚠ /search 500 에러 반복(2025) — 불안정, 폴백 권장.
- *   기존 foreignCrop.ts(GBIF 분류 + 위키 설명, 키불필요)에 '재배 상세'를 더하는 보강 seam. 영어 데이터 위주.
- *   ⚠ 확신도: 두 API 모두 base/키/JSON = HIGH · 정확한 응답 필드 매핑은 실샘플 검증 후(추측 금지).
+ *   사실(리서치 2026-06-05 · 라이브 실측 2026-06-12):
+ *     · Perenual: base https://perenual.com/api/v2 · key · JSON. ⚠ **무료 티어는 species-list(분류·이미지)만** 가능.
+ *       재배상세(watering/sunlight/hardiness 등 species/details·species-care-guide-list)는 **유료 플랜 전용**(무료 키는 429 "Upgrade Plan").
+ *       care-guide는 **v1 경로**(/api/…)이고 v2엔 없음(실측). → 재배상세 통합 = **새 HUMAN GATE(유료 Perenual)**.
+ *     · Trefle:   base https://trefle.io/api/v1 · token · JSON · 120/분 · ⚠ /search 500 반복(2025) — 불안정, 폴백 권장.
+ *   기존 foreignCrop.ts(GBIF 분류 + 위키, 키불필요)에 '재배상세'를 더하는 보강 seam. 무료로는 분류만 가능한데 GBIF가 이미 더 정확 →
+ *   유료 승격 전까지 parsePlantDetail는 ShapeUnverifiedError 유지가 정답(미검증을 실데이터로 위장 금지·추측 금지).
  */
 import { fetchJsonSafe } from "../geo/fetchSafe";
 import { hasEnv, ShapeUnverifiedError } from "./types";
@@ -23,9 +25,9 @@ export function plantDetailConfigured(): boolean { return perenualConfigured() |
 export function perenualSpeciesListUrl(key: string, q: string): string {
   return `${PERENUAL}/species-list?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}`;
 }
-/** Perenual 케어가이드(관수·일조 등) — species_id 기준. */
+/** Perenual 케어가이드(관수·일조 등) — species_id 기준. ⚠ 유료 플랜 전용(무료 키는 429). care-guide는 v1 경로(v2엔 없음·실측). */
 export function perenualCareGuideUrl(key: string, speciesId: number): string {
-  return `${PERENUAL}/species-care-guide-list?key=${encodeURIComponent(key)}&species_id=${encodeURIComponent(String(speciesId))}`;
+  return `https://perenual.com/api/species-care-guide-list?key=${encodeURIComponent(key)}&species_id=${encodeURIComponent(String(speciesId))}`;
 }
 /** Trefle 검색(폴백·불안정). */
 export function trefleSearchUrl(token: string, q: string): string {

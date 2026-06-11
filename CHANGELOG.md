@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.61.0 — 2026-06-12 · 지역(도)별 실 RDA 소득 + 외래식물 seam 정직 교정
+> 지역별 소득조사 2024(도별) → 66개 도 실값. 같은 작물도 지역따라 다른 소득. tsc·vitest **484**·arch 0.
+- **지역 오버라이드**(`getRdaBase(cropId, region)`) — 지역별 농산물소득조사 2024 도별 상세표 → 10작물 **66개 도** 실값 적재(`rda:build`에 `<전국>.regional.csv` 자동탐지). 해당 도 실자료가 있으면 절대수준을 그 도 값으로, 없으면 전국 폴백. 프론트 전체 시도명(전라남도)→2자 코드(전남) 정규화. **블루베리 전남 수량 630·경영비 860만 → 소득 2,533만 vs 전국 2,131만**
+- **스키마**: `RdaRegionalTable`·`parseRdaRegionalCsv`(검증·폭 유도·인용/컬럼 시프트 가드)·`RDA_REAL_REGION`·`normalizeRegion`(17시도). 연차/판로 상대구조 보강은 지역값에도 동일. **데이터 검증**: 체크섬(총수입−경영비=소득) **100%** · 전국값이 지역 min~max 내(9/10·barley만 단일도)
+- **외래식물 Perenual seam 정직 교정** — 라이브 실측(2026-06-12): **무료 티어는 species-list(분류)만**, 재배상세(관수·일조·내한성)는 **유료 전용**(429). care-guide는 v1 경로(v2엔 없음). `parsePlantDetail`는 ShapeUnverifiedError 유지(추측 금지)·재배상세=**새 HUMAN GATE(유료 Perenual)** 문서화·URL 교정
+- **검증** — 회귀 +2(지역 오버라이드·시도명 정규화·미수록 폴백) · tsc·vitest **484**·arch 0
+
 ## 0.60.0 — 2026-06-11 · 실 RDA 단가 우선 — mock 시세가 실데이터를 덮어쓰던 소득 음수 오류 수정
 > 라이브 배포 검증에서 발견. v0.59가 비용을·v0.60이 단가를 바로잡아 실 소득 현실화. tsc·vitest **482**·arch 0.
 - **단가 소스 우선순위 수정**(`parcelSimulator.runParcelSimulationWithProviders`) — 미검증 작물(apple 외 9종)은 KAMIS가 null→**mock 단가**(블루베리 8,200원/kg)로 폴백하는데, 이 mock이 **실 RDA 농가수취가(23,706원/kg)를 덮어써** 매출 1/3·소득 음수(블루베리 전남 P50 −381만). provider 단가를 무조건 주입하던 것을 **source가 'mock-…'이 아닌 실 시세만 주입**하도록 수정 → 실 refPrice 사용
