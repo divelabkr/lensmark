@@ -18,6 +18,15 @@ describe("parcel adjustment engine", () => {
     expect(r.factors.every((f) => f.reason.length > 0)).toBe(true);
   });
 
+  it("소득 P10 >= 현실 손실 하한(-cost.p90) — 불가능 손실 차단(가드레일·현재 휴면이어도 계약 유지)", () => {
+    for (const cropId of ["blueberry", "apple", "corn", "potato", "strawberry"]) {
+      const r = runParcelSimulation(base({ cropId, context: { terrain: { slopeDegree: 5, aspect: "S", altitudeM: 100 } } }));
+      expect(r.incomeKrw.p10).toBeGreaterThanOrEqual(-r.costKrw.p90); // 매출 0 − 최악 경영비보다 더 음수일 수 없음
+      expect(r.incomeKrw.p10).toBeLessThanOrEqual(r.incomeKrw.p50);    // 단조성
+      expect(r.incomeKrw.p50).toBeLessThanOrEqual(r.incomeKrw.p90);
+    }
+  });
+
   it("CORE: same crop, different terrain → different income", () => {
     const good = runParcelSimulation(base({ context: { terrain: { slopeDegree: 3, aspect: "S", altitudeM: 100 } } }));
     const poor = runParcelSimulation(base({ context: { terrain: { slopeDegree: 28, aspect: "N", altitudeM: 500 } } }));

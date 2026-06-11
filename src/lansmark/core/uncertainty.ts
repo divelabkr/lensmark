@@ -53,3 +53,15 @@ export function subtractIndependent(a: SigmaRange, b: SigmaRange): SigmaRange {
     p90: Math.round(mean + Z * sigma),
   };
 }
+
+/**
+ * 소득(매출−비용) 범위에 '현실 손실 하한'을 적용 — 물리적으로 불가능한 손실만 차단(가드레일·불변식 #5).
+ *   한 해 최대 손실 = 매출 0(multiplyIndependent가 0으로 클램프) − 최악 경영비(cost.p90). 그보다 더 음수일 수 없다.
+ *   고가·범위 넓은 작물의 P10이 정규근사(mean − Z·σ)로 -∞ 팽창하는 것만 잘라낸다 — 범위·단조성 유지·인위적 축소 아님.
+ *   p10만 올린다: p50/p90은 매출≥0이라 구조적으로 ≥ -cost.p90(p50 ≥ -cost.p50 ≥ -cost.p90)이므로 무변·단조성 보존.
+ *   ⚠ 현재 '데모 base'는 비용이 비현실적으로 커서 어느 작물도 P10이 -cost.p90 아래로 가지 않음 → 이 하한은 '비활성(휴면)'.
+ *     실 RDA(현실 비용) 적재 시 자동 활성화되는 미래 가드레일. (알람 magnitude 자체 해결은 데이터 몫이지 이 하한이 아님.)
+ */
+export function floorIncomeLoss(income: SigmaRange, costP90: number): SigmaRange {
+  return { ...income, p10: Math.max(income.p10, -Math.max(0, costP90)) };
+}

@@ -1,5 +1,5 @@
 import type { ConfidenceGrade, SigmaRange, SimulationInput } from "../types";
-import { multiplyIndependent, subtractIndependent } from "./uncertainty";
+import { multiplyIndependent, subtractIndependent, floorIncomeLoss } from "./uncertainty";
 import { getRdaBase } from "../data/rdaIncome";
 import { getCropProfile } from "../data/crops.seed";
 import { collectFactors, type FactorContext } from "./factors";
@@ -78,7 +78,9 @@ export function runParcelSimulation(input: ParcelInput): ParcelResult {
   yieldKg = widenClimateVariability(yieldKg, input.cropId, deltaC);
 
   const revenueKrw = multiplyIndependent(yieldKg, priceKrwPerKg);
-  const incomeKrw = subtractIndependent(revenueKrw, costKrw);
+  // 소득 현실 손실 하한(가드레일·#5) — 물리적 불가능 손실(매출 0 − cost.p90 초과)만 차단. cal·기후 widening은 위에서
+  //   이미 yield/cost에 반영됐으므로 여기가 최종단계. ⚠ 현재 데모 비용엔 비활성(휴면) — 근거는 uncertainty.floorIncomeLoss 주석.
+  const incomeKrw = floorIncomeLoss(subtractIndependent(revenueKrw, costKrw), costKrw.p90);
   const breakEvenPriceKrwPerKg = yieldKg.p50 > 0 ? Math.round(costKrw.p50 / yieldKg.p50) : 0;
 
   let confidence = getSoilConfidence(input.land.soilEvidence);

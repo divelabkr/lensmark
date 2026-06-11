@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.58.0",
+    date: "2026-06-11",
+    title: "소득 P10 현실 손실 하한 가드레일(휴면·미래 활성) — floorIncomeLoss",
+    items: [
+      "소득(매출−비용) P10에 '현실 손실 하한' 추가(uncertainty.floorIncomeLoss, parcelSimulator 최종단계) — 한 해 최대 손실 = 매출 0(매출은 0으로 클램프) − 최악 경영비(cost.p90). 그보다 더 음수인 '물리적 불가능 손실'(고σ 작물 P10이 정규근사로 -∞ 팽창)만 차단. p10만 올림(p50/p90 구조적 보존)·단조성 유지·범위 인위적 축소 아님",
+      "⚠ 정직 고지(중요) — 현재 '데모 base'는 비용이 비현실적으로 커서 전 작물 휴면: 17작물×3시나리오 51건 중 binding 0. 즉 이 하한은 마케팅 실증에서 본 알람(블루베리 1,000평 '나쁠 때 −5,694만')을 '지금' 고치지 않는다. 그 magnitude의 원인은 데모 비용(median 6,237만·p90 1.1억 = 현실의 3~5배)이라 실 RDA(현실 비용) 적재로 해결됨. 이 하한은 실데이터 적재 시 자동 활성화되는 '재작업 0'의 미래 가드레일",
+      "검증: 회귀 +4(floorIncomeLoss binding/비활성/단조성 + 5작물 계약 income.p10≥−cost.p90). 휴면이라 기존 스냅샷·계약 숫자 0 변경(479=475+4). 진단 실증: 51건 재현으로 '제안된 단순 floor는 현재 no-op이며 원인은 데모 데이터'임을 확인 후 가드레일로만 채택. tsc·vitest 479·arch 0",
+    ],
+  },
+  {
     version: "0.57.0",
     date: "2026-06-11",
     title: "Tier 1 ops watcher(읽기·진단) — 품질·트리거를 평문 진단·권고로",
