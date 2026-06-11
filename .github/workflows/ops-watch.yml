@@ -1,0 +1,31 @@
+# LENSMARK Tier 1 ops watcher — 항상-켜짐(클라우드 cron). 라이브 서버를 정기 점검(읽기 전용).
+#   클로드 코드 로컬 루틴(앱 열림 의존)에서 이관 — GitHub Action은 앱과 무관하게 24/7 실행.
+#   ⚠ HUMAN GATE: 리포 Settings → Secrets에 LANSMARK_BASE(라이브 URL)·LANSMARK_ADMIN_TOKEN(관리자 토큰) 등록해야 활성.
+#   동작: ops:watch exit 0=정상 / 1=findings(=이 잡 실패 → GitHub가 소유자에 알림) / 2=접근오류.
+#   행동권 0 — 읽기·진단만. (Slack/이슈 자동생성 등 알림 채널 확장은 후속 step으로.)
+name: ops-watch
+on:
+  schedule:
+    - cron: "0 0 * * *" # 매일 00:00 UTC(=09:00 KST) — 저트래픽 베타는 1일 1회로 충분(필요 시 상향)
+  workflow_dispatch: {} # 수동 실행(Run workflow)
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: ops watch (read-only)
+        env:
+          LANSMARK_BASE: ${{ secrets.LANSMARK_BASE }}
+          LANSMARK_ADMIN_TOKEN: ${{ secrets.LANSMARK_ADMIN_TOKEN }}
+        run: |
+          if [ -z "$LANSMARK_BASE" ] || [ -z "$LANSMARK_ADMIN_TOKEN" ]; then
+            echo "::notice::LANSMARK_BASE / LANSMARK_ADMIN_TOKEN secrets 미설정 — ops-watch 건너뜀(설정 후 활성화)"
+            exit 0
+          fi
+          npm run ops:watch
