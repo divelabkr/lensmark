@@ -3,6 +3,10 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.69.0 — 2026-06-12 · 농사로 재배 e-book 링크아웃
+> cropEbook=전자책 파일이라 심층연동 대신 정직한 외부 링크. tsc·vitest 507·arch 0.
+- **농사로 링크** — 재배 가이드 패널에 '📚 농사로 재배 e-book(농진청 ↗)' 외부 링크. cropEbook OpenAPI 라이브 실증(resultCode 00) 결과 구조화 데이터가 아닌 전자책 파일 반환 확인 → 매칭 모호·http 혼합콘텐츠 회피 위해 링크아웃(추측 금지 준수·URL 도달성 200 검증)
+
 ## 0.68.0 — 2026-06-12 · 외래작물 AI 재배요약(Perplexity Sonar) live
 > 외래작물 한정 AI 보강. tsc·vitest **507**(+6)·arch 0.
 - **AI 재배요약** — `/api/foreign`에 Perplexity Sonar 요약(관수·일조·내한성·토양 3~4문장 + citations). foreignCrop(GBIF·위키)과 병렬·키 없으면 null 무중단. 라이브: 망고→시설재배·생육적온 24~27℃ + 한국어 출처 5종(RDA·한경 등)

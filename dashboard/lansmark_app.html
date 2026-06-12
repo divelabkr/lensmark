@@ -1206,6 +1206,7 @@ async function renderGuide(st){
     <div id="region-fit"><div class="src">불러오는 중…</div></div>
     <div class="upsell" style="margin-top:10px;flex-wrap:wrap;gap:6px"><span style="flex:1 1 100%">🌍 목록에 없는 작물(외래종 포함) 직접 조회 — 국내+해외 정보 <b>${FREEBETA?'(무료 베타)':'(유료)'}</b></span><input type="text" id="fg-name" placeholder="예: 망고 / Olea europaea" style="flex:1;min-width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px"><button class="btn" id="fg-go" style="font-size:12px;padding:6px 10px">조회</button></div>
     <div id="fg-result" style="margin-top:8px"></div>
+    <div class="src" style="margin-top:9px;padding-top:8px;border-top:1px solid var(--line)">📚 더 알아보기 — <a href="https://www.nongsaro.go.kr/portal/ps/psb/psbx/cropEbookLst.ps?menuId=PS65290" target="_blank" rel="noopener noreferrer" style="color:var(--green-mid);font-weight:700">농사로 재배 e-book(농진청 ↗)</a> · 작물별 영농기술 전자책(외부 자료)</div>
     <div class="src" style="margin-top:7px">${esc(G.disclaimer||'')}</div>`;
   renderRegionList(st.crop); // 🗺 적합 지역(시도 기후) — 무료 /api/region-fit
   const fgBtn=document.getElementById("fg-go");

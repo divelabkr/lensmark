@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.69.0",
+    date: "2026-06-12",
+    title: "농사로 재배 e-book 링크아웃 — 심층연동 대신 정직한 외부 링크",
+    items: [
+      "농사로(농진청) 영농기술 e-book 링크 추가 — 재배 가이드 패널 하단에 '📚 농사로 재배 e-book(농진청 ↗)' 외부 링크(작물별 영농기술 전자책). cropEbook OpenAPI를 라이브로 끝까지 호출(mainCategoryList→middleCategoryList(VC)→ebookList·resultCode 00)한 결과 구조화 데이터가 아니라 전자책 파일(PDF류)을 반환함을 확인 → 작물명 매칭 모호·http 혼합콘텐츠 회피 위해 심층 파싱 대신 공개 포털 링크아웃이 정직·저비용(추측 금지 준수). 링크 URL은 도달성 검증(200)",
+    ],
+  },
+  {
     version: "0.68.0",
     date: "2026-06-12",
     title: "외래작물 AI 재배요약(Perplexity Sonar) live — 외래 한정·정량 금지·출처 동반",
