@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.64.0",
+    date: "2026-06-12",
+    title: "클라이언트 에러 텔레메트리 + 실시간 경보 — 사용자 화면 에러를 사장님께",
+    items: [
+      "사용자 브라우저의 uncaught JS 에러·promise 거부를 POST /api/client-error로 수집(이전엔 0 — 사용자 화면 에러가 사장님께 전혀 안 보였음). 프론트 리포터(window.onerror/unhandledrejection): 세션 상한 8·디듀프·keepalive(이탈 중 전송)·경로만(쿼리 PII 제외)·자기 실패 무시",
+      "실시간 경보 — '새 distinct 에러'만 활동로그 + 웹훅(LANSMARK_ALERT_WEBHOOK · Slack/Discord {text,content} 둘 다 호환) 즉시 푸시. 같은 에러 반복은 카운트만(스팸 0). 웹훅 미설정이면 조용히 기록만(채널은 사장님 설정=URL 붙이면 즉시 작동)",
+      "가시화 — ClientErrorStore(디듀프·집계·최근 링버퍼·PII 0·distinct 상한 100 FIFO) · /api/ops/stats.clientErrors → OPS '서버' 탭 '🐞 클라이언트 에러'(×n·메시지·KST) + watch 종합판정(opsWatch distinct≥1 warn·≥5 crit '프론트 회귀 의심')",
+      "보안·바운드 — sensitive 레이트리밋(공개 엔드포인트 플러드 차단)·바디 상한·204 반사 0·메시지/소스 절단. featureMap 등록(client-error-telemetry). 회귀 +5(디듀프·절단·FIFO·204·빈보고 무시) · tsc·vitest 492·arch 0",
+    ],
+  },
+  {
     version: "0.63.0",
     date: "2026-06-12",
     title: "디테일 5종 — 이어보기·실측 변화 체감·오프라인·운영 추세/예측·권고 SSOT",

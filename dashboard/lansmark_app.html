@@ -1550,6 +1550,13 @@ function maybeShowResume(){
 init().then(handlePaymentReturn).then(()=>{const fromHash=restoreFromHash();if(!fromHash)maybeShowResume();}); // 결제복귀→해시복원, 둘 다 없으면 '이어보기' 칩
 /* ESC로 모달 닫기(접근성 최소) — 계정·알림·버전/웰컴 모달. ⚠ 결제목업(paymask)은 제외: 취소 버튼·배경 클릭이 프라미스 reject까지 처리(ESC 단순 제거 시 버튼이 '처리 중'에 멈춤). */
 document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;const m=document.getElementById("acct-modal")||document.getElementById("alarm-modal")||document.getElementById("vmodal");if(m)m.remove();});
+/* 클라이언트 에러 텔레메트리 — 사용자 화면 uncaught JS 에러/거부를 서버로(사장님 가시화·이전엔 안 보임).
+   루프·스팸 방지: 세션 상한 8 · 디듀프 · keepalive(이탈 중 전송) · 경로만(쿼리 PII 제외) · 자기 실패 무시. */
+(function(){var sent=0,SENT_MAX=8,seen={};
+  function report(message,source){if(!message||sent>=SENT_MAX)return;var key=String(message).slice(0,120)+"|"+String(source||"").slice(0,80);if(seen[key])return;seen[key]=1;sent++;
+    try{fetch("/api/client-error",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:String(message).slice(0,300),source:String(source||"").slice(0,180),url:location.pathname}),keepalive:true}).catch(function(){});}catch(_){}}
+  window.addEventListener("error",function(e){report((e&&e.message)||(e&&e.error&&e.error.message)||"error",((e&&e.filename)||"")+":"+((e&&e.lineno)||""));});
+  window.addEventListener("unhandledrejection",function(e){var r=e&&e.reason;report((r&&r.message)||String(r||"")||"unhandledrejection","promise");});})();
 /* 오프라인 배너 — 시골 모바일 회선 직결. navigator.onLine + online/offline 이벤트로 상단 띠 표시(연결되면 자동 사라짐). */
 (function(){var b=document.createElement("div");b.id="offbar";b.style.cssText="position:fixed;left:0;right:0;top:0;z-index:4000;background:#b5321c;color:#fff;font-size:12px;font-weight:800;text-align:center;padding:6px 10px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.25)";b.textContent="📡 오프라인 — 인터넷 연결을 확인해 주세요(연결되면 자동 복구)";document.body.appendChild(b);
   var upd=function(){b.style.display=navigator.onLine?"none":"block";};window.addEventListener("online",upd);window.addEventListener("offline",upd);upd();})();

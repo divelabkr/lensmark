@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.64.0 — 2026-06-12 · 클라이언트 에러 텔레메트리 + 실시간 경보
+> 사용자 화면 JS 에러가 사장님께 전혀 안 보이던 갭 해소. tsc·vitest **492**(+5)·arch 0.
+- **수집** — 브라우저 uncaught 에러·promise 거부 → `POST /api/client-error`. 프론트 리포터(window.onerror): 세션 상한 8·디듀프·keepalive·경로만(PII 0)
+- **실시간 경보** — '새 distinct'만 활동로그 + `LANSMARK_ALERT_WEBHOOK`(Slack/Discord 호환) 즉시 푸시. 반복은 카운트만(스팸 0)·미설정이면 기록만
+- **가시화** — `ClientErrorStore`(디듀프·링버퍼·상한 100 FIFO) · `stats.clientErrors` → OPS '서버' 탭 🐞 + watch 판정(distinct≥1 warn·≥5 crit)
+- **보안** — sensitive 레이트리밋·바디 상한·204 반사 0·절단 · featureMap 등록 · 회귀 +5
+
 ## 0.63.0 — 2026-06-12 · 디테일 5종 — 이어보기·실측 변화 체감·오프라인·운영 추세/예측·권고 SSOT
 > 감사에서 나온 '추가 디테일 추천' 5건 구현. tsc·vitest **487**(+1)·arch 0.
 - **이어보기** — 새로고침·뒤로가기 분석 소실(최대 갭) → 시뮬 완료 시 자동저장 + 시작화면 '↩ 지난 분석 이어보기 · 상주시 사과' 칩(opts 포함·같은 숫자 재현·✕ 삭제). 자동 강제복원은 안 함

@@ -130,11 +130,13 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     errors: ctx.metrics.errCount,
   };
   const storeDegraded = ctx.entitlement.isDegraded?.() ?? false;
-  const watch = evaluateOps({ stats: { storeDegraded, usage, quality, optimization } });
+  const clientErrors = { total: ctx.clientErrors.total(), distinct: ctx.clientErrors.distinct(), recent: ctx.clientErrors.recent(8) }; // 브라우저 에러 가시화(이전엔 안 보임)
+  const watch = evaluateOps({ stats: { storeDegraded, usage, quality, optimization, clientErrors: { total: clientErrors.total, distinct: clientErrors.distinct } } });
 
   json(res, 200, {
     authConfigured: !!ctx.config.adminToken,
     watch: { level: watch.level, summary: watch.summary, findings: watch.findings.slice(0, 3) }, // findings는 warn/crit만 생성됨 — 상위 3건(콘솔 띠)
+    clientErrors, // 클라이언트(브라우저) 에러 — 총·distinct·최근(서버탭 노출 + watch 판정)
     flywheel: { records: rows.length, withActuals, byCrop, validatedBuckets },
     analytics: an, // 익명 수요·퍼널·시계열·신규/재방문·가입(PII 0) — 무료 베타에서 '무엇을 얻는가'
     members: { accounts: ctx.accounts.size(), sessions: ctx.sessions.size() }, // 회원 — 가입 총원·활성 세션(방법별 가입은 analytics.signups)

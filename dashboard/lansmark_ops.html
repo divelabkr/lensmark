@@ -193,6 +193,7 @@
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--blue-s)">🔌</span>통합 준비도<span class="meta" id="int-c">—</span></div><div style="display:flex;gap:18px;align-items:center"><div id="intg-gauge" style="flex:0 0 auto"></div><div id="intg-list" style="flex:1;min-width:0"></div></div><div class="w-foot" id="intg-foot"></div></section>
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--amber-s)">⚙️</span>시스템 · 건전성</div><div style="display:flex;gap:16px;align-items:center;margin-bottom:12px"><div id="sys-gauge" style="flex:0 0 auto"></div><div id="sys-kpi" style="flex:1"></div></div><div id="sys-stat" class="stat-row"></div><div class="w-foot" id="sys-foot"></div></section>
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--line2)">🧾</span>최근 활동</div><div id="recent"><div class="empty">활동 없음</div></div><div class="w-foot">결제 · 웹훅 · 게이트 · 실효</div></section>
+        <section class="w"><div class="w-h"><span class="ico" style="background:var(--red-s)">🐞</span>클라이언트 에러<span class="meta" id="ce-c">—</span></div><div id="clienterr"><div class="empty">없음</div></div><div class="w-foot">브라우저(사용자 화면) JS 에러 · 새 종류 발생 시 경보(LANSMARK_ALERT_WEBHOOK)</div></section>
       </div>
     </section>
 
@@ -382,6 +383,11 @@ async function load(){
   // ── 최근 활동 ──
   const rec=s.recent||[];
   $("recent").innerHTML=rec.length?rec.slice(0,12).map(e=>`<div class="rec"><span class="rt">${esc(e.type)}</span><span class="rd">${esc(e.detail)}</span><span class="rti">${esc(ktime(e.at))}</span></div>`).join(""):`<div class="empty">활동 없음</div>`; // KST 표시(O5)
+
+  // ── 클라이언트(브라우저) 에러 — 사용자 화면 JS 에러 가시화(이전엔 안 보임) ──
+  const ce=s.clientErrors||{total:0,distinct:0,recent:[]};
+  $("ce-c").textContent=ce.distinct?`${ce.distinct}종 · ${ce.total}건`:"0";
+  $("clienterr").innerHTML=(ce.recent&&ce.recent.length)?ce.recent.map(e=>`<div class="rec"><span class="rt" style="color:var(--red);background:var(--red-s)">×${esc(e.n)}</span><span class="rd" title="${esc((e.src||'')+' · '+(e.uaSample||''))}">${esc(e.msg)}${e.src?' <span style="color:var(--ink3)">@ '+esc(e.src)+'</span>':''}</span><span class="rti">${esc(ktime(e.lastAt))}</span></div>`).join(""):`<div class="empty">없음 — 사용자 브라우저에서 에러가 나면 여기 + (웹훅 설정 시) 즉시 경보</div>`;
 
   // ── 시계열 파생(종합·회원·추세) — analytics.days/signups + members ──
   const days=an.days||[], signups=an.signups||{}, mem=s.members||{accounts:0,sessions:0};

@@ -17,6 +17,7 @@ export interface StatsLite {
   usage?: { errors?: number };
   quality?: { grade: string; dataTrust: string; sources: { label: string; status: string; note: string; action?: string }[] };
   optimization?: { payload?: { gzipKB: number }; headroom?: Record<string, { n: number; cap: number }> };
+  clientErrors?: { total: number; distinct: number }; // 브라우저 에러 텔레메트리 — 사용자 화면 에러 가시화
 }
 
 /** /api/ops/stats를 읽어 진단 — 순수(테스트 용이). 읽기만, 어떤 행동도 제안하지 않는 '조언'. */
@@ -28,6 +29,9 @@ export function evaluateOps(inp: { stats: StatsLite }): WatchReport {
   // 5xx
   const errs = s.usage?.errors ?? 0;
   if (errs > 0) F.push({ severity: errs >= ERRORS_CRIT ? "crit" : "warn", area: "에러", msg: `5xx ${errs}건`, recommend: "최근 활동·로그에서 원인 엔드포인트 확인" });
+  // 클라이언트(브라우저) 에러 — 사용자 화면에서 난 JS 에러(서버 5xx와 별개). distinct(에러 종류) 기준.
+  const ce = s.clientErrors;
+  if (ce && ce.distinct > 0) F.push({ severity: ce.distinct >= 5 ? "crit" : "warn", area: "클라이언트", msg: `브라우저 에러 ${ce.distinct}종(${ce.total}건)`, recommend: "콘솔 '서버' 탭 최근 클라이언트 에러 확인 — 프론트 회귀 의심" });
   // 데이터 품질(신뢰 피쉬본) — '운영 녹색 ≠ 데이터 정확'
   const q = s.quality;
   if (q) {

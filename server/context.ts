@@ -21,6 +21,7 @@ import { createEmailSender } from "../src/lansmark/notify/emailSender";
 import type { AccountStore } from "../src/lansmark/account/accountStore";
 import type { SessionStore } from "../src/lansmark/account/sessionStore";
 import { createPushSender, InMemoryPushSubscriptionStore, type PushSender, type PushSubscriptionStore } from "../src/lansmark/integrations/push";
+import { ClientErrorStore } from "../src/lansmark/ops/clientErrors";
 import type { Config } from "./config";
 
 /** 운영 대시보드 카운터(가변). */
@@ -70,6 +71,8 @@ export interface Ctx {
   pushSubs: PushSubscriptionStore;
   /** 웹푸시 발신자 seam — 지금은 ConsolePushSender(미전송 정직 폴백). VAPID+LiveWebPushSender 승격=HUMAN GATE. */
   pushSender: PushSender;
+  /** 클라이언트(브라우저) 에러 텔레메트리 — 사용자 화면 에러를 ops에 가시화 + 웹훅 실시간 경보(LANSMARK_ALERT_WEBHOOK). 메모리(휘발). */
+  clientErrors: ClientErrorStore;
 }
 
 /** 라우트 핸들러 시그니처. 반환 true = 이 핸들러가 응답을 종료함(라우터가 중단). false = 다음 핸들러로. */
@@ -143,5 +146,6 @@ export function createContext(config: Config): Ctx {
     // 웹푸시: 구독 저장(memory) + 발신자 seam. SMS 과금 회피 → 앱 푸시 채널(사용자 선택). 실발송은 VAPID 키 설정 후.
     pushSubs: new InMemoryPushSubscriptionStore(),
     pushSender: createPushSender(),
+    clientErrors: new ClientErrorStore(), // 브라우저 에러 가시화(이전엔 안 보임) — 새 distinct만 경보
   };
 }

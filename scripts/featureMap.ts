@@ -337,6 +337,15 @@ export const FEATURES: Feature[] = [
     notes: "CLI=scripts/opsWatch.ts(npm run ops:watch · env LANSMARK_BASE·LANSMARK_ADMIN_TOKEN). exit 0=ok/1=findings/2=접근오류. Tier 2(좁은 가역 자동행동·킬스위치)는 신뢰 검증 후·별 슬라이스.",
   },
   {
+    id: "client-error-telemetry", name: "클라이언트 에러 텔레메트리 + 실시간 경보", stage: "ops",
+    flow: "사용자 브라우저의 uncaught JS 에러/거부를 POST /api/client-error로 수집(이전엔 0=사장님이 못 봄). 집계·디듀프·최근 링버퍼·PII 0·distinct 상한. '새 distinct' 에러만 활동로그 + 웹훅(LANSMARK_ALERT_WEBHOOK · Slack/Discord) 실시간 경보. /api/ops/stats.clientErrors로 콘솔 '서버' 탭 + watch 종합판정에 노출. opsWatch가 distinct≥1 warn·≥5 crit.",
+    endpoints: ["/api/client-error"],
+    files: ["src/lansmark/ops/clientErrors.ts", "server/routes/telemetry.ts"],
+    tests: ["src/lansmark/tests/clientErrors.spec.ts"],
+    guardrails: ["PII 0(메시지/소스만·절단)", "sensitive 레이트리밋·바디 상한", "204 반사 0", "새 distinct만 경보(스팸 차단)", "웹훅 URL은 사장님 설정(SSRF 무관)"], status: "live",
+    notes: "웹훅 미설정이면 조용히(기록은 됨). 메모리 보관(재시작 휘발 — 텔레메트리엔 충분). 프론트 리포터=dashboard/lansmark_app.html(세션 상한 8·디듀프·keepalive).",
+  },
+  {
     id: "user-account", name: "계정·세션(가입 + 익명→계정 이관)", stage: "platform",
     flow: "익명(기기)→가입(휴대폰 OTP 또는 이메일 매직링크 병행)→계정(acct:Z)·세션. CompositeVerifier가 method로 라우팅. 로그인 시 일지를 계정 신원으로 귀속, link-anon이 기존 익명 일지를 계정으로 이관(재시작 보존). 이메일 매직링크는 /app?lm_login=challengeId~token 착지→자동 verify. 실발송(SMS/이메일)은 제공자 키=HUMAN GATE(키 있으면 발송·dev는 코드/링크 노출·운영+키없음 fail-closed). 카카오는 같은 인터페이스로 추후 드롭인",
     endpoints: ["/api/account/auth/start", "/api/account/auth/verify", "/api/account/me", "/api/account/logout", "/api/account/link-anon", "/api/account/link-entitlement"],
