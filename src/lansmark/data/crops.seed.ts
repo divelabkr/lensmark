@@ -288,3 +288,30 @@ export function getCropProfile(cropId: string): CropProfile {
   if (!crop) throw new Error(`Unknown cropId: ${cropId}`);
   return crop;
 }
+
+/**
+ * 코어 한국작물 이름 집합 — LLM 가드레일 게이트용(외래 한정).
+ *   왜: Perplexity AI 재배요약은 '외래·특수 작물'에만 허용한다(1원칙: 실 RDA/KAMIS 소득엔진이 있는
+ *   코어작물엔 LLM 추정을 절대 노출하지 않음). /api/foreign에 코어작물명이 들어와도 LLM이 새지 않도록
+ *   *엔드포인트 신뢰가 아니라 코드*로 닫는다(설계감사 P0). 한글 정식·괄호前 기본형·괄호內 이형(대두·쌀·건고추 등)·영문 모두 수록.
+ */
+const CORE_CROP_NAMES: Set<string> = (() => {
+  const norm = (x: string) => x.replace(/\s+/g, "").toLowerCase();
+  const set = new Set<string>();
+  for (const c of CROP_PROFILES) {
+    const ko = c.cropNameKo;
+    set.add(norm(ko)); // "콩(대두)" 전체
+    set.add(norm(ko.replace(/\(.*\)/, ""))); // 괄호前 기본형 "콩"
+    const m = ko.match(/\(([^)]+)\)/); // 괄호內 이형 "대두"·"쌀"·"건고추"·"단옥수수"
+    if (m) for (const t of m[1].split(/[/·,]/)) { const tt = norm(t); if (tt) set.add(tt); }
+    if (c.cropNameEn) set.add(norm(c.cropNameEn)); // "Soybean"
+  }
+  set.delete("");
+  return set;
+})();
+
+/** 입력명이 코어 한국작물(실 RDA/KAMIS 소득엔진 대상)인지 — true면 외래 전용 LLM 요약을 적용하면 안 된다(1원칙·코드 게이트). 정규화 후 정확일치. */
+export function isCoreCropName(name: string): boolean {
+  const n = name.replace(/\s+/g, "").toLowerCase();
+  return n.length > 0 && CORE_CROP_NAMES.has(n);
+}

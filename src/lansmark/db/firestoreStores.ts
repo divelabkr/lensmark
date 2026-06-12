@@ -10,7 +10,7 @@
  */
 import { FirestoreLite } from "./firestoreLite";
 import { sealAtRest, openAtRest } from "./atRest"; // G1 보강 — firestore 문서도 file과 동일 키로 at-rest 암호화(PII: 전화·일지 좌표/매출)
-import { MemoryEntitlementStore, type FeedbackStoreEx, type Stores } from "./stores";
+import { MemoryEntitlementStore, loadUseEntries, type UseEntry, type FeedbackStoreEx, type Stores } from "./stores";
 import { type OutcomeRecord } from "../core/feedbackStore";
 import { type IdempotencyStore } from "../payment/pgWebhook";
 import { InMemoryJournalStore } from "../journal/journalStore";
@@ -34,6 +34,7 @@ export class FsDoc {
   private inflight = false;
   private pending: string | null = null;
   private draining: Promise<void> = Promise.resolve(); // 현재 드레인 완료 추적(종료 시 await — H3)
+  private lastErr: unknown = null; // 직전 drain 사이클의 최종 실패 — saveNow 내구 확인(P1#4)
   sealed = false;
   constructor(private readonly fs: FirestoreLite, private readonly id: string) {}
 
@@ -68,14 +69,21 @@ export class FsDoc {
   /** 진행 중인 쓰기 완료 대기 — 종료 훅(SIGTERM)이 in-flight 유실을 막으려 await(H3). */
   async whenDrained(): Promise<void> { await this.draining.catch(() => {}); }
 
-  /** 동기 저장 + 내구 확인(await 가능) — 실효 등 보안 쓰기가 '원격 반영 후' 응답하기 위함(H3). 실패는 throw. */
+  /**
+   * 동기 저장 + 내구 확인(await 가능) — 실효 등 보안 쓰기가 '원격 반영 후' 응답하기 위함(H3). 실패는 throw.
+   *   P1#4: 별도 직접 PATCH 경로를 두지 않고 save()의 단일 drain 큐로 합류한다. 두 경로(save·saveNow)가
+   *   같은 문서에 동시 PATCH해 옛 스냅샷이 새 스냅샷을 덮어쓰던 lost-update(실효 부활)를 제거. 최신 pending을
+   *   적재하고 drain 완료까지 대기한 뒤, 그 사이클의 최종 실패면 throw(내구 확인 실패 → 호출부가 durable:false 전파).
+   */
   async saveNow(json: string): Promise<void> {
     if (this.sealed) throw new Error(`${this.id} sealed — 저장 불가`);
     const stored = sealAtRest(json); // 암호화 경로 동일(G1)
     if (stored.length > MAX_BLOB) throw new Error(`${this.id} ${stored.length}B > ${MAX_BLOB}B(per-record 승격 필요)`);
-    let last: unknown;
-    for (let i = 0; i < 3; i++) { try { await this.fs.setJson(COLLECTION, this.id, stored); return; } catch (e) { last = e; if (i < 2) await new Promise((r) => setTimeout(r, 300 * (i + 1))); } }
-    throw last;
+    this.pending = stored;
+    this.lastErr = null;
+    if (!this.inflight) this.draining = this.drain();
+    await this.draining;
+    if (this.lastErr) throw this.lastErr; // 이 사이클이 최종 실패 → 내구 미확인
   }
 
   private async drain(): Promise<void> {
@@ -85,8 +93,9 @@ export class FsDoc {
         const j = this.pending; this.pending = null; // 최신만 전송(중간 상태 스킵)
         let ok = false;
         for (let i = 0; i < 3 && !ok; i++) {
-          try { await this.fs.setJson(COLLECTION, this.id, j); ok = true; }
+          try { await this.fs.setJson(COLLECTION, this.id, j); ok = true; this.lastErr = null; }
           catch (e) {
+            this.lastErr = e; // saveNow 내구 확인용(P1#4) — 성공 시 위에서 null로 갱신
             if (i === 2) console.error(`[firestore] ${this.id} 저장 실패(3회) — 다음 변경 때 재시도. 원인:`, (e as Error)?.message);
             else await new Promise((r) => setTimeout(r, 300 * (i + 1)));
           }
@@ -103,7 +112,7 @@ export class FirestoreEntitlementStore extends MemoryEntitlementStore {
   constructor(private readonly useDoc: FsDoc, private readonly revDoc: FsDoc) { super(); }
   async warm(): Promise<void> {
     const [u, r] = await Promise.all([this.useDoc.load(), this.revDoc.load()]);
-    if (u) this.use = new Map(JSON.parse(u) as [string, number][]);
+    if (u) this.use = loadUseEntries(JSON.parse(u) as ([string, number] | [string, UseEntry])[]); // 레거시/신형 호환(P1#5)
     if (r) this.revoked = new Set(JSON.parse(r) as string[]);
   }
   protected persist(): void {

@@ -110,7 +110,7 @@ export const budgetRoutes: RouteFn = async (ctx, req, res, url) => {
   } else {
     try {
       const ent = await assertPaidAccess(ctx, req);
-      if (ctx.entitlement.consume(ent.jti, ctx.config.entitlementQuota)) paid = true; // 유료 경로만 quota 소진
+      if (ctx.entitlement.consume(ent.jti, ctx.config.entitlementQuota, ent.exp)) paid = true; // 유료 경로만 quota 소진
     } catch { /* 토큰 없음/무효 → teaser */ }
   }
 

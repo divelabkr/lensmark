@@ -49,11 +49,29 @@ describe("integrations/perplexity (Sonar 재배요약)", () => {
   });
 
   it("캐시: 동일 작물 2회 호출 시 fetch는 1회(비용·일관성)", async () => {
-    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse("캐시 테스트 요약.", []) as any);
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse("캐시 테스트 요약.", ["https://cache.example"]) as any);
     const a = await fetchPerplexityCultivation("아보카도-cache");
     const b = await fetchPerplexityCultivation("아보카도-cache");
     expect(spy).toHaveBeenCalledTimes(1); // 2번째는 캐시 적중
+    expect(a).not.toBeNull(); // 값(출처 동반)이 캐시됨
     expect(b).toEqual(a);
+  });
+
+  it("출처(citations) 0개면 summary 있어도 null (P1#2 — 검증수단 없는 LLM 텍스트 금지)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse("그럴듯한 요약이지만 출처가 없다.", []) as any);
+    expect(await fetchPerplexityCultivation("람부탄-nosrc")).toBeNull();
+  });
+
+  it("정량수치(소득·수확량) 포함 시 폐기 (P1#3 경성가드)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse("10a당 2톤 수확하고 소득 300만원이 기대된다.", ["https://x.example"]) as any);
+    expect(await fetchPerplexityCultivation("구아바-quant")).toBeNull();
+  });
+
+  it("온도(℃)·pH 등 정성맥락은 허용 (P1#3 false-positive 방지)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse("생육적온은 24~27℃이며 pH 6 내외, 물빠짐 좋은 토양이 유리하다.", ["https://x.example"]) as any);
+    const r = await fetchPerplexityCultivation("리치-qual");
+    expect(r).not.toBeNull(); // 온도·pH는 금액·수율 단위가 아니므로 통과
+    expect(r!.summary).toContain("24~27℃");
   });
 
   it("비정상(non-ok) 응답 → null(무중단)", async () => {

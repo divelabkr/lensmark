@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.70.0",
+    date: "2026-06-13",
+    title: "설계감사 후속 — 가드레일 P0(외래 LLM 게이트) + 영속·훅 P1 보강",
+    items: [
+      "P0(가드레일·라이브): 외래작물 AI 재배요약(Perplexity)이 '엔드포인트 신뢰'에만 의존해 /api/foreign?name=사과 등 코어 한국작물(실 RDA/KAMIS)에도 LLM 요약이 새던 1원칙 위반을 코드로 차단. crops.seed.isCoreCropName(한글 정식·괄호前 기본형·괄호內 이형·영문)으로 라우트에서 게이트 — 라이브 실증: 사과·마늘→cultivationAI null, 망고→유지(5출처). 회귀 spec(coreCropGate) 고정",
+      "P1(LLM 가드레일 이중화): ② 출처(citations) 0개면 요약 폐기(검증수단 없는 LLM 텍스트 금지) ③ 정량수치(수확량·소득·단가) 경성 후처리 필터(hasQuantClaim) — 프롬프트(연성) 우회·인젝션 대비, 온도(℃)·pH 등 정성맥락은 허용(false-positive 방지)",
+      "P1(영속 정합): ④ FsDoc.saveNow를 save()의 단일 drain 큐로 합류 — 두 경로 동시 PATCH로 옛 스냅샷이 새 스냅샷을 덮어 실효가 부활하던 lost-update 제거(동시 PATCH 0 실증). ⑤ entitlement use 축출을 FIFO→만료(exp) 우선으로 — 활성 토큰 quota 재부여 차단(consume에 토큰 exp 전달·하위호환 직렬화)",
+      "P1(훅 차단망): guardrail-scan 범위에 server·concept 추가(이전 사각) + GUARDRAIL_STRICT 차단모드(exit 2)를 Stop·CI에 편입 — '보장·매입추천·흙토람' 위험어 신규 유입의 자동 차단망(부정/면책 제외어 보강). 라이브: 현재 코드 위반 0",
+      "검증: tsc·vitest 519(+12: coreCropGate +5·perplexity +3·use축출 +2·saveNow +2) · arch 0 · guardrail STRICT 0. 설계감사 6영역 중 P0 1·P1 5 종결(잔여 P2는 유료 정식 전 처리)",
+    ],
+  },
+  {
     version: "0.69.0",
     date: "2026-06-12",
     title: "농사로 재배 e-book 링크아웃 — 심층연동 대신 정직한 외부 링크",

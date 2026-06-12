@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.70.0 — 2026-06-13 · 설계감사 후속 — 가드레일 P0 + 영속·훅 P1
+> 6영역 병렬 감사(아키텍처+코드)에서 검출한 P0 1·P1 5 종결. tsc·vitest **519**(+12)·arch 0·guardrail STRICT 0.
+- **P0(가드레일·라이브)** — 외래 AI 요약(Perplexity)이 코어 한국작물(실 RDA/KAMIS)에도 새던 1원칙 위반을 코드 게이트로 차단(`isCoreCropName`). 라이브: 사과·마늘→null, 망고→유지(5출처)
+- **P1(LLM 이중화)** — 출처 0개 요약 폐기 + 정량수치(수확량·소득·단가) 경성 후처리 필터(온도·pH 등 정성맥락 허용)
+- **P1(영속)** — FsDoc.saveNow를 단일 drain 큐로 합류(실효 부활 lost-update 제거) · entitlement use 축출 FIFO→만료 우선(활성 토큰 quota 재부여 차단)
+- **P1(훅)** — guardrail-scan 범위에 server·concept 추가 + STRICT 차단모드(exit 2)를 Stop·CI 편입(위험어 신규 유입 자동 차단망)
+
 ## 0.69.0 — 2026-06-12 · 농사로 재배 e-book 링크아웃
 > cropEbook=전자책 파일이라 심층연동 대신 정직한 외부 링크. tsc·vitest 507·arch 0.
 - **농사로 링크** — 재배 가이드 패널에 '📚 농사로 재배 e-book(농진청 ↗)' 외부 링크. cropEbook OpenAPI 라이브 실증(resultCode 00) 결과 구조화 데이터가 아닌 전자책 파일 반환 확인 → 매칭 모호·http 혼합콘텐츠 회피 위해 링크아웃(추측 금지 준수·URL 도달성 200 검증)

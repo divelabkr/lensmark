@@ -158,7 +158,7 @@ export const FEATURES: Feature[] = [
     flow: "작물 → 품종 후보 + 재배 환경 요구조건(pH·배수·물·일조·내한·서리·경사) + 재배 적기·리스크 · 무료=대표작물/유료=전체",
     endpoints: ["/api/guide", "/api/foreign"],
     files: ["src/lansmark/guide/cultivationGuide.ts", "server/routes/guide.ts", "src/lansmark/foreign/foreignCrop.ts", "server/routes/foreign.ts", "src/lansmark/integrations/perplexity.ts"],
-    tests: ["src/lansmark/tests/cultivationGuide.spec.ts", "src/lansmark/tests/guideRoutes.spec.ts", "src/lansmark/tests/foreignCrop.spec.ts", "src/lansmark/tests/foreignRoutes.spec.ts", "src/lansmark/tests/perplexity.spec.ts"],
+    tests: ["src/lansmark/tests/cultivationGuide.spec.ts", "src/lansmark/tests/guideRoutes.spec.ts", "src/lansmark/tests/foreignCrop.spec.ts", "src/lansmark/tests/foreignRoutes.spec.ts", "src/lansmark/tests/perplexity.spec.ts", "src/lansmark/tests/coreCropGate.spec.ts"],
     guardrails: ["추측 금지(실응답 검증·룰북·seam)", "수익보장 금지", "면책", "무료=대표작물/유료=전체·외래는 유료", "AI 요약=외래 한정·정량 금지·출처 동반·보장 아님"], status: "live",
     notes: "Phase A(국내): 룰북 품종·요구조건·캘린더 + **농사로 e-book 링크아웃**(cropEbook 라이브 실증 결과 구조화 데이터가 아닌 전자책 파일 반환 → 심층연동 대신 농진청 공개 포털로 외부 링크가 정직·저비용) · 무료 STAPLE_FREE/유료 전체. Phase B(외래·임의 착수): /api/foreign = GBIF 분류 + 위키백과(ko) 설명 실연동(키 불필요·유료·⚠소득시뮬 비활성) · 기후적합성 매칭 · **Perplexity Sonar AI 재배요약 live**(perplexity.ts: 외래작물 한정·정량수치 프롬프트 차단·citations 동반·하드라벨 '검증필요/보장아님'·24h 캐시·키없으면 null 무중단) · Trefle/Perenual·OpenFarm은 추가 seam · 벼·보리 시드 미수록(후속)",
   },

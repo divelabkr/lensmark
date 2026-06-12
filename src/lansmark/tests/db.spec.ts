@@ -87,3 +87,23 @@ describe("영속 스토어 (file 어댑터 재시작 보존)", () => {
     expect(createStores({ mode: "file", dir: join(DIR, "sub") }).feedback.all().length).toBe(1); // 새 인스턴스가 로드
   });
 });
+
+describe("Entitlement use 축출 — 만료 우선(설계감사 P1#5)", () => {
+  it("상한 초과 시 만료(exp<now) 토큰만 축출 — 활성 토큰 quota 재부여 안 됨", () => {
+    const s = new MemoryEntitlementStore(2); // capUse=2(테스트 주입)
+    const past = Date.now() - 1000, future = Date.now() + 3_600_000;
+    expect(s.consume("expired", 5, past)).toBe(true);   // size 1(만료)
+    expect(s.consume("active", 5, future)).toBe(true);  // size 2(활성, n=1)
+    expect(s.consume("active", 5, future)).toBe(true);  // active n=2(같은 키 → size 유지)
+    expect(s.consume("newone", 5, future)).toBe(true);  // size 3>2 → 만료분(expired) 우선 축출 → size 2
+    expect(s.hasUsage!("expired")).toBe(false);         // 만료분 축출됨
+    expect(s.hasUsage!("active")).toBe(true);           // 활성 보존
+    expect(s.consume("active", 2, future)).toBe(false); // active n=2 유지 → quota 2 초과(재부여 없음)
+  });
+  it("만료분이 없으면 FIFO 백스톱(바운드 유지)", () => {
+    const s = new MemoryEntitlementStore(2);
+    const future = Date.now() + 3_600_000;
+    for (const k of ["a", "b", "c"]) expect(s.consume(k, 5, future)).toBe(true); // 전부 활성
+    expect(["a", "b", "c"].filter((k) => s.hasUsage!(k)).length).toBe(2);        // 상한 2로 바운드(FIFO 1개 축출)
+  });
+});

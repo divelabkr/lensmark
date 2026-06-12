@@ -3,10 +3,10 @@
 input=$(cat 2>/dev/null || true)
 printf '%s' "$input" | grep -q '"stop_hook_active"[[:space:]]*:[[:space:]]*true' && exit 0
 cd "${CLAUDE_PROJECT_DIR:-.}"
-if npx tsc --noEmit >/tmp/lm_tsc.log 2>&1 && npx vitest run >/tmp/lm_test.log 2>&1 && npx tsx scripts/archCheck.ts >/tmp/lm_arch.log 2>&1; then
+if npx tsc --noEmit >/tmp/lm_tsc.log 2>&1 && npx vitest run >/tmp/lm_test.log 2>&1 && npx tsx scripts/archCheck.ts >/tmp/lm_arch.log 2>&1 && GUARDRAIL_STRICT=1 bash scripts/guardrail-scan.sh >/tmp/lm_guard.log 2>&1; then
   exit 0
 else
-  echo "⛔ 그린 아님(tsc/vitest/arch 실패) — 완료 전 복구 필요:" >&2
-  tail -n 6 /tmp/lm_tsc.log /tmp/lm_test.log /tmp/lm_arch.log 2>/dev/null >&2
+  echo "⛔ 그린 아님(tsc/vitest/arch/guardrail 실패) — 완료 전 복구 필요:" >&2
+  tail -n 6 /tmp/lm_tsc.log /tmp/lm_test.log /tmp/lm_arch.log /tmp/lm_guard.log 2>/dev/null >&2
   exit 2
 fi

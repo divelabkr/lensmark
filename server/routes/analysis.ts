@@ -68,7 +68,7 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
     try { input = buildParcelInput(JSON.parse((await readBody(req)) || "{}")); }
     catch (e) { badInput(res, e); return true; }
     // 3) 검증 통과 후 소진형 quota + 실효 검증 — 1회 결제 무한사용·환불 후 사용 차단(레드팀 H4)
-    if (ent && !ctx.entitlement.consume(ent.jti, ctx.config.entitlementQuota)) {
+    if (ent && !ctx.entitlement.consume(ent.jti, ctx.config.entitlementQuota, ent.exp)) {
       json(res, 402, { error: "이 권한의 사용 한도를 초과했거나 실효되었습니다. 다시 결제해 주세요.", code: "ENTITLEMENT_EXHAUSTED" }); return true;
     }
     // 3) 지형 컨텍스트 확보(버킷 산정용) → 플라이휠 보정 조회 → 엔진 주입(실측 누적 시 예측이 현실로 이동)
@@ -106,7 +106,7 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
     try { b = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
     if (!isObject(b) || typeof b.cropId !== "string" || !b.cropId) { json(res, 400, { error: "cropId가 필요합니다." }); return true; }
     // 검증 통과 후 quota 소진 + 실효 — 깨진/cropId없는 본문에 quota 낭비 방지(레드팀 P2) · 단일토큰 대량제출 유한화(FLYWHEEL-POISON)
-    if (ent && !ctx.entitlement.consume(ent.jti, ctx.config.entitlementQuota)) {
+    if (ent && !ctx.entitlement.consume(ent.jti, ctx.config.entitlementQuota, ent.exp)) {
       json(res, 402, { error: "이 권한의 사용 한도를 초과했거나 실효되었습니다.", code: "ENTITLEMENT_EXHAUSTED" }); return true;
     }
     const cropId = b.cropId;

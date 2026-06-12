@@ -86,7 +86,7 @@ describe("FirestoreEntitlementStore — quota·revoked 영속(§3-1 핵심·M2 2
     s.consume("jti-1", 50); s.revoke("jti-2");
     await s.persistRevokedNow(); // 내구 확인(await) — revoked 문서가 원격 반영
     await tick();
-    expect(JSON.parse(g.docs.get("lm_state/entitlement_use")!)).toContainEqual(["jti-1", 1]);
+    expect(JSON.parse(g.docs.get("lm_state/entitlement_use")!)).toContainEqual(["jti-1", { n: 1 }]); // 신형 직렬화(소진 카운터+만료, P1#5)
     expect(JSON.parse(g.docs.get("lm_state/entitlement_revoked")!)).toContain("jti-2");
   });
 });
@@ -227,5 +227,42 @@ describe("createFirestoreStores — 일괄 생성·ready·auditSink", () => {
     st.auditSink!({ at: "2026-01-01T00:00:00Z", type: "테스트", detail: "감사" });
     await tick();
     expect(g.log.adds[0]?.type).toBe("테스트");
+  });
+});
+
+// FsDoc saveNow 단일 직렬 합류(설계감사 P1#4) — save(drain)와 saveNow가 같은 문서에 동시 PATCH해 옛 스냅샷이
+//   새 스냅샷을 덮어쓰던 lost-update(실효 부활)를 제거했는지 고정. PATCH 동시성·실패 전파를 직접 관측.
+describe("FsDoc.saveNow — 단일 직렬 합류(P1#4)", () => {
+  function makeLite(opts: { failPatch?: boolean } = {}) {
+    const state = { sets: [] as string[], inFlight: 0, maxConcurrent: 0 };
+    const fetchFn = (async (url: any, init?: any) => {
+      const u = String(url);
+      if (u.includes("/token")) return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
+      if (u.includes("/project-id")) return new Response("p", { status: 200 });
+      if (init?.method === "PATCH") {
+        state.inFlight++; state.maxConcurrent = Math.max(state.maxConcurrent, state.inFlight);
+        await Promise.resolve(); // 마이크로태스크 양보 — 두 경로가 겹치면 동시성으로 노출
+        state.inFlight--;
+        if (opts.failPatch) return new Response("boom", { status: 500 });
+        state.sets.push(JSON.parse(init.body).fields.j.stringValue);
+        return new Response("{}", { status: 200 });
+      }
+      return new Response("{}", { status: 404 });
+    }) as typeof fetch;
+    return { lite: new FirestoreLite({ fetchFn, project: "p" }), state };
+  }
+
+  it("save→saveNow: 최신 상태 원격 반영 + 동시 PATCH 0(경합 제거)", async () => {
+    const h = makeLite();
+    const d = new FsDoc(h.lite, "doc");
+    d.save("A");            // drain 시작(PATCH A in-flight)
+    await d.saveNow("B");   // 같은 큐로 합류 → A 다음에 순차 전송, 완료 대기
+    expect(h.state.sets[h.state.sets.length - 1]).toBe("B"); // 최신(B) 반영
+    expect(h.state.maxConcurrent).toBe(1);                   // 동시 PATCH 없음(구버전이면 2)
+  });
+  it("saveNow: PATCH 영구 실패 → reject(내구 미확인 → durable:false 전파)", async () => {
+    const h = makeLite({ failPatch: true });
+    const d = new FsDoc(h.lite, "doc");
+    await expect(d.saveNow("X")).rejects.toBeTruthy();
   });
 });
