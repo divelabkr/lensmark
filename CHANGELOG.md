@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.68.0 — 2026-06-12 · 외래작물 AI 재배요약(Perplexity Sonar) live
+> 외래작물 한정 AI 보강. tsc·vitest **507**(+6)·arch 0.
+- **AI 재배요약** — `/api/foreign`에 Perplexity Sonar 요약(관수·일조·내한성·토양 3~4문장 + citations). foreignCrop(GBIF·위키)과 병렬·키 없으면 null 무중단. 라이브: 망고→시설재배·생육적온 24~27℃ + 한국어 출처 5종(RDA·한경 등)
+- **가드레일**(LLM 날조 금지) — ① 외래 한정(코어 한국작물 RDA/KAMIS 엔진엔 미적용) ② 정량(수확량·소득·단가) 프롬프트 차단 ③ citations 상시 노출 ④ 하드라벨 '🤖 AI 요약·출처 확인 필요·보장 아님' + 24h 캐시·상한 500
+- **검증** — 회귀 +6(perplexity.spec: 파서·https citations·정량금지 프롬프트·캐시·null 폴백) · arch 0(perplexity→cultivation-guide). ⚠ 운영 PERPLEXITY_API_KEY Secret Manager 주입(없으면 AI만 생략·나머지 정상)
+
 ## 0.67.0 — 2026-06-12 · 실DEM(Open-Meteo 무키) + NCPMS 병해충 live — mock 2종 제거
 > 표고·경사·병해충 mock→실데이터. tsc·vitest **501**(+4)·arch 0.
 - **DEM** — `fetchDem` = Open-Meteo Elevation(무료·무키·~90m). bbox 격자 batch→terrainFromDem(Horn). 라이브: 평창 28.4°(669m)·김제평야 5.4°(23m). auto가 키 없이 live(실패만 mock). ⚠ 무료=비상업→유료 전환 시 Google Elevation

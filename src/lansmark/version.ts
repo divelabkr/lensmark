@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.68.0",
+    date: "2026-06-12",
+    title: "외래작물 AI 재배요약(Perplexity Sonar) live — 외래 한정·정량 금지·출처 동반",
+    items: [
+      "외래·특수 작물(/api/foreign)에 'AI 재배 요약' 보강 — Perplexity Sonar(검색 그라운딩 LLM)로 관수·일조·내한성·토양 핵심을 한국 맥락 3~4문장으로 요약 + citations(출처 URL). foreignCrop(GBIF·위키)과 병렬 호출, 키 없으면 null(무중단). 라이브 실증: 망고→시설재배·생육적온 24~27℃·물빠짐 토양 요약 + 한국어 출처 5종(RDA 웹진·한경 등)",
+      "⚠ 가드레일(LENSMARK 1원칙=LLM 도메인사실 날조 금지) 강제: ① 외래작물 한정 — 코어 한국작물(실 RDA/KAMIS 소득엔진)엔 절대 미적용 ② 정량수치(수확량·소득·단가) 프롬프트로 차단 — 정성 텍스트만(온도 등 농학 맥락은 허용) ③ citations 항상 노출(그라운딩≠사실, 사용자 검증) ④ 하드라벨 '🤖 AI 요약·출처 확인 필요·보장 아님·영문/타지역 자료 기반' + 24h 캐시(비용·일관성)·FIFO 상한 500",
+      "검증: 회귀 +6(perplexity.spec — 파서 정리·https citations만·정량금지 프롬프트·캐시 1회·non-ok null·빈content null) · tsc·vitest 507·arch 0(perplexity→cultivation-guide 등록). ⚠ 운영 배포 시 PERPLEXITY_API_KEY는 Secret Manager 주입 필요(없으면 AI 요약만 생략·나머지 정상)",
+    ],
+  },
+  {
     version: "0.67.0",
     date: "2026-06-12",
     title: "실DEM(Open-Meteo 무키) + NCPMS 병해충 live — mock 2종 제거",

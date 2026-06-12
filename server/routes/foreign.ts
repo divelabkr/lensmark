@@ -5,6 +5,7 @@
  */
 import { json } from "../respond";
 import { fetchForeignCrop } from "../../src/lansmark/foreign/foreignCrop";
+import { perplexityConfigured, fetchPerplexityCultivation } from "../../src/lansmark/integrations/perplexity";
 import { assertPaidAccess } from "../paidAccess";
 import type { RouteFn } from "../context";
 
@@ -33,10 +34,14 @@ export const foreignRoutes: RouteFn = async (ctx, req, res, url) => {
     try { if (lng != null) { const c = await ctx.providers.land.climate({ lat, lng }); minWinterTempC = c?.minWinterTempC ?? undefined; } } catch { /* 폴백 */ }
     parcel = { lat, lng: lng ?? undefined, minWinterTempC };
   }
-  const foreign = await fetchForeignCrop(name, parcel); // GBIF 분류+위키+(필지 시)관측분포·기후대 — 실패는 null 폴백
+  // 분류·기후대(GBIF·위키) + AI 재배요약(Perplexity·키 있을 때만) 병렬. AI는 외래작물에만·정량 금지·출처 동반(가드레일).
+  const [foreign, cultivationAI] = await Promise.all([
+    fetchForeignCrop(name, parcel),                                    // 실패는 null 폴백
+    perplexityConfigured() ? fetchPerplexityCultivation(name).catch(() => null) : Promise.resolve(null),
+  ]);
   ctx.analytics.funnel("foreign"); // 관여(외래 조회)
   // 데이터갭은 GBIF가 '실제 종'으로 해석한 정규명(canonicalName)만 기록 — 원입력 free-text는 미기록 → PII 0 보장(레드팀 M-2)
   if (foreign?.resolved && foreign.taxon?.canonicalName) ctx.analytics.dataGap("foreign:" + foreign.taxon.canonicalName);
-  json(res, 200, { ok: true, foreign });
+  json(res, 200, { ok: true, foreign, cultivationAI }); // cultivationAI={summary,sources,model}|null (외래 한정·AI 요약·검증 필요)
   return true;
 };

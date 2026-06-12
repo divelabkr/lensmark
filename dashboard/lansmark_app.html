@@ -1163,7 +1163,7 @@ async function renderRegionList(cropId){
 }
 
 /* 외래·임의 작물 조회 결과 카드(/api/foreign) — GBIF 분류 + 위키 설명. 모든 데이터 esc. 소득시뮬 비활성 명시. */
-function foreignResultHtml(F){
+function foreignResultHtml(F,ai){
   if(!F)return '<div class="src">조회 결과 없음</div>';
   const t=F.taxon||{},d=F.description||{};
   const tax=F.resolved
@@ -1172,7 +1172,13 @@ function foreignResultHtml(F){
   const desc=d.extract?`<div class="creg" style="margin-top:6px">${esc(d.extract)} <span style="color:var(--ink3)">(${esc(d.source||'')})</span></div>`:'';
   const cf=F.climateFit;
   const cfHtml=cf?`<div class="frow" style="margin-top:6px;background:${cf.signal==='caution'?'#FFF6EE':cf.signal==='similar'?'#F1F8EE':'transparent'};border-radius:8px;padding:4px 6px"><span class="fax" style="background:${cf.signal==='caution'?'#DA5237':cf.signal==='similar'?'#10B95C':'#9aa19a'};color:#fff;border:none">기후대</span><span class="freason">${esc(cf.note)}</span></div>`:'';
-  return `<div class="card" style="background:#F7FAF5"><div class="ch"><span class="cname">🌍 ${esc(F.query)} (해외 참고)</span><span class="badge b-paid">소득시뮬 비활성</span></div>${tax}${desc}${cfHtml}<div class="src" style="margin-top:7px">${esc(F.disclaimer||'')}</div></div>`;
+  // AI 재배요약(Perplexity·외래작물 한정) — 하드 라벨 + 출처(검증 가능). 정량 수치는 서버 프롬프트로 차단. 보장 아님.
+  const src=(ai&&Array.isArray(ai.sources))?ai.sources.slice(0,4):[];
+  const aiHtml=(ai&&ai.summary)?`<div style="margin-top:9px;border:1px dashed #c9b8e6;background:#faf7ff;border-radius:9px;padding:9px 11px">
+    <div class="src" style="font-weight:800;color:#6f4fb0">🤖 AI 재배 요약 <span style="font-weight:600;color:var(--ink3)">· 출처 확인 필요 · 보장 아님 · 영문/타지역 자료 기반</span></div>
+    <div class="creg" style="margin-top:5px">${esc(ai.summary)}</div>
+    ${src.length?`<div class="src" style="margin-top:6px">출처: ${src.map((u,i)=>`<a href="${esc(u)}" target="_blank" rel="noopener nofollow" style="color:var(--green-mid);font-weight:700">[${i+1}]</a>`).join(" ")}</div>`:''}</div>`:'';
+  return `<div class="card" style="background:#F7FAF5"><div class="ch"><span class="cname">🌍 ${esc(F.query)} (해외 참고)</span><span class="badge b-paid">소득시뮬 비활성</span></div>${tax}${desc}${cfHtml}${aiHtml}<div class="src" style="margin-top:7px">${esc(F.disclaimer||'')}</div></div>`;
 }
 
 /* ===== 품종·재배 가이드(cultivation-guide) — 무료=대표작물 / 유료=전체 =====
@@ -1206,12 +1212,12 @@ async function renderGuide(st){
   if(fgBtn)fgBtn.addEventListener("click",async()=>{
     const name=(document.getElementById("fg-name").value||"").trim(),out=document.getElementById("fg-result");
     if(!name){out.innerHTML='<div class="src">작물명을 입력하세요.</div>';return;}
-    fgBtn.disabled=true;fgBtn.textContent="조회 중…";let F,err;
+    fgBtn.disabled=true;fgBtn.textContent="조회 중…";let F,AI,err;
     const c=coordOf(st)||[],qc=(c[0]!=null&&c[1]!=null)?("&lat="+c[0]+"&lng="+c[1]):""; // 필지 좌표 → 기후대 적합성
-    try{F=(await jget("/api/foreign?name="+encodeURIComponent(name)+qc)).foreign;}catch(e){err=(e&&e.message)||"";}
+    try{const R=await jget("/api/foreign?name="+encodeURIComponent(name)+qc);F=R.foreign;AI=R.cultivationAI;}catch(e){err=(e&&e.message)||"";} // AI=Perplexity 재배요약(외래 한정·검증필요)
     fgBtn.disabled=false;fgBtn.textContent="조회";
     if(err){out.innerHTML=/유료|FOREIGN_PAID|402/.test(err)?'<div class="creg">🔒 직접 작물 추가(외래종)는 <b>유료</b> 기능입니다. 결제 후 이용하세요.</div>':'<div class="src">조회 실패 — 잠시 후 다시 시도</div>';return;}
-    out.innerHTML=foreignResultHtml(F);
+    out.innerHTML=foreignResultHtml(F,AI);
   });
 }
 
