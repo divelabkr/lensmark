@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.66.1",
+    date: "2026-06-12",
+    title: "health rdaIncome 정직 표시 — 실 RDA 적재를 빌드 메타와 동기",
+    items: [
+      "integrationReadiness().rdaIncome이 v0.59 실 RDA 적재 후에도 하드코딩 '데모(live:false)'로 남아 있던 낡은 표시 교정(반대방향 정직성 오류 — 실데이터인데 데모로 보임). RDA_REAL_META 기반 동적 표시: '실 농산물소득조사 2024 · 10작물 · 지역행 66(미수록 작물은 데모 폴백)'. 콘솔 통합 도넛·health 소비처 즉시 정상화",
+      "운영 점검 실증(2026-06-12) — 서버: deploy.sh verify 통과(버전 일치·firestore·시뮬 200)·/ops 200·5xx 0·클라이언트 에러 0. 피쉬본: 라이브 quality(B·estimated·7소스)로 헤드리스 렌더 6/6(머리 등급·신뢰 라벨·폰 1열 fbgrid·뼈 7점·행동 권고 3건 표시·'운영 녹색≠데이터 정확' 고지)",
+    ],
+  },
+  {
     version: "0.66.0",
     date: "2026-06-12",
     title: "at-rest 보안 보강 — firestore PII 암호화(G1) + 세션 토큰 해시(G2)",

@@ -1,6 +1,7 @@
 import type { ProviderBundle } from "./types";
 import { mockProviders } from "./mock";
 import { liveProviders } from "./live";
+import { RDA_REAL_META } from "../rdaIncome.real"; // 실 RDA 적재 메타 — health rdaIncome 표시를 빌드 사실과 동기(낡은 하드코딩 금지)
 
 /**
  * Drop-in provider — "API만 붙이면 바로 운영".
@@ -59,7 +60,10 @@ export function integrationReadiness() {
       kamisPrice: { keyed: k("KAMIS_API_KEY") && k("KAMIS_API_ID"), live: k("KAMIS_API_KEY") && k("KAMIS_API_ID"), note: "원/kg(convert_kg_yn=Y) · 검증 품목(apple 등)만 live, 그 외 base 단가 폴백" },
       tossPayment: { keyed: k("TOSS_CLIENT_KEY") && k("TOSS_SECRET_KEY"), live: k("TOSS_CLIENT_KEY") && k("TOSS_SECRET_KEY"), note: "confirm+webhook 실구현(키 필요)" },
       pgWebhook: { keyed: k("PG_WEBHOOK_SECRET"), live: k("PG_WEBHOOK_SECRET"), note: "HMAC 서명검증" },
-      rdaIncome: { keyed: false, live: false, note: "base는 구조 데모(verified:false) — 실 RDA 소득자료 로더 연결 시 정상화" },
+      // 실 RDA 적재 여부를 빌드 메타에서 동적으로 — v0.59 적재 후에도 '데모'로 표기되던 낡은 하드코딩 교정(반대방향 정직성 오류).
+      rdaIncome: RDA_REAL_META
+        ? { keyed: true, live: true, note: `실 농산물소득조사 ${RDA_REAL_META.baseYears.join(",")} · ${RDA_REAL_META.rows}작물${RDA_REAL_META.regions ? ` · 지역행 ${RDA_REAL_META.regions}` : ""}(미수록 작물은 데모 폴백)` }
+        : { keyed: false, live: false, note: "base는 구조 데모(verified:false) — 실 RDA 소득자료 로더 연결 시 정상화" },
     },
   };
 }

@@ -3,6 +3,11 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.66.1 — 2026-06-12 · health rdaIncome 정직 표시(실 RDA 동기) + 운영 점검 실증
+> 실 RDA 적재 후에도 '데모'로 보이던 낡은 하드코딩 교정. tsc·vitest **497**·arch 0.
+- `integrationReadiness().rdaIncome`을 `RDA_REAL_META` 동적 표시로 — "실 농산물소득조사 2024 · 10작물 · 지역행 66"
+- 점검 실증 — 서버: verify 통과·/ops 200·5xx 0·클라 에러 0 / 피쉬본: 라이브 데이터 헤드리스 렌더 6/6(행동 권고 3건 표시)
+
 ## 0.66.0 — 2026-06-12 · at-rest 보안 보강 — firestore PII 암호화(G1) + 세션 토큰 해시(G2)
 > 보안 점검 갭 2종 보강 + 운영 경보 가동. tsc·vitest **497**(+5)·arch 0.
 - **G1 firestore at-rest 암호화** — file 전용이던 AES-256-GCM을 공용 모듈 [`db/atRest.ts`](src/lansmark/db/atRest.ts)로 추출, `FsDoc`(save/saveNow/load)에 적용 → 운영의 전화번호·일지 좌표/매출이 **앱레벨 암호문**(이미 주입된 `LANSMARK_DATA_KEY` 즉시 활성). legacy 평문 로드 허용+업그레이드-온-라이트 · 복호 불가=**sealed**(원본 덮어쓰기 금지)
