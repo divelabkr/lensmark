@@ -37,7 +37,7 @@ export const autoProviders: ProviderBundle = {
     geocode: (q) => pick(has("VWORLD_API_KEY"), () => liveProviders.land.geocode(q), () => mockProviders.land.geocode(q)),
     climate: (loc) => pick(has("KMA_API_KEY"), () => liveProviders.land.climate(loc), () => mockProviders.land.climate(loc), okClimate),
     parcel: (loc) => pick(has("VWORLD_API_KEY"), () => liveProviders.land.parcel(loc), () => mockProviders.land.parcel(loc), (v) => v != null),
-    terrain: (loc) => pick(has("VWORLD_API_KEY"), () => liveProviders.land.terrain(loc), () => mockProviders.land.terrain(loc), okTerrain),
+    terrain: (loc) => pick(true, () => liveProviders.land.terrain(loc), () => mockProviders.land.terrain(loc), okTerrain), // Open-Meteo 무키 — 항상 live 시도(실패·형태불일치만 mock 폴백)
   },
   price: {
     recentWholesale: (cropId) => pick(has("KAMIS_API_KEY", "KAMIS_API_ID"), () => liveProviders.price.recentWholesale(cropId), () => mockProviders.price.recentWholesale(cropId), okPrice),
@@ -55,7 +55,7 @@ export function integrationReadiness() {
       vworldTiles: { keyed: vworld, live: vworld, note: "WMTS 타일(키 있으면 live)" },
       vworldGeocode: { keyed: vworld, live: vworld, note: "주소→좌표/PNU(실구현)" },
       vworldParcel: { keyed: vworld, live: vworld, note: "필지경계 WFS(실구현)" },
-      vworldDem: { keyed: vworld, live: false, note: "VWorld·국토지리정보원 모두 좌표→표고 REST 미제공(조사 완료) → mock 경사면. 정밀 표고는 외부 API(Google Elevation 등) 필요·무료베타는 mock 유지" },
+      vworldDem: { keyed: true, live: true, note: "표고·경사 = Open-Meteo Elevation(무료·무키·Copernicus ~90m) 실데이터 — 실패 시 mock 폴백. 정밀(~30m)은 유료 Google Elevation으로 seam 교체" },
       kmaClimate: { keyed: k("KMA_API_KEY"), live: k("KMA_API_KEY"), note: "ASOS 일자료 1년 집계(겨울최저·연강수·일조) — 실응답 형식 검증" },
       kamisPrice: { keyed: k("KAMIS_API_KEY") && k("KAMIS_API_ID"), live: k("KAMIS_API_KEY") && k("KAMIS_API_ID"), note: "원/kg(convert_kg_yn=Y) · 검증 품목(apple 등)만 live, 그 외 base 단가 폴백" },
       tossPayment: { keyed: k("TOSS_CLIENT_KEY") && k("TOSS_SECRET_KEY"), live: k("TOSS_CLIENT_KEY") && k("TOSS_SECRET_KEY"), note: "confirm+webhook 실구현(키 필요)" },

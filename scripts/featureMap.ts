@@ -184,10 +184,10 @@ export const FEATURES: Feature[] = [
     id: "agri-alerts", name: "병충해·재난 알람", stage: "operate",
     flow: "작물·월 → 병해충(룰북)+기상/재해(계절 농학) 주의 + 현재월 매칭 · region 주면 KMA 실시간 기상특보 합류(live)",
     endpoints: ["/api/alerts"],
-    files: ["src/lansmark/alerts/agriAlerts.ts", "server/routes/alerts.ts", "src/lansmark/integrations/kmaWarning.ts"],
+    files: ["src/lansmark/alerts/agriAlerts.ts", "server/routes/alerts.ts", "src/lansmark/integrations/kmaWarning.ts", "src/lansmark/integrations/ncpms.ts"],
     tests: ["src/lansmark/tests/agriAlerts.spec.ts", "src/lansmark/tests/alertsRoutes.spec.ts", "src/lansmark/tests/kmaWarning.spec.ts"],
     guardrails: ["추측 금지(룰북·특보 값 패스스루)", "예보 단정 금지(참고)", "면책", "무료(안전정보)"], status: "live",
-    notes: "작물·월 병해충(cropPests.seed)+기상/재해(룰북) · **KMA 기상특보 live 승격**(kmaWarning: EUC-KR·typ01 공백분리·help=1 범례 검증·값 패스스루·60초 캐시·region 부분매칭·키없으면 [] 폴백) — ⚠ 캡처 시점 발효 0건이라 컬럼·행포맷만 검증(활성표시 발효 시) · ⚠ NCPMS 예찰·푸시는 Phase B seam",
+    notes: "작물·월 병해충(cropPests.seed)+기상/재해(룰북) · **KMA 기상특보 live**(kmaWarning: EUC-KR·typ01·60초 캐시·키없으면 []) · **NCPMS 주요 병해충 live**(ncpms SVC01 작물명 검색→JSON 이름 칩·중복제거·작물명 미매칭 시 [] 무중단·이미지는 http라 제외) · 푸시는 Phase B",
   },
   {
     id: "alert-subscribe", name: "알림 구독(opt-in 핸드폰)", stage: "operate",

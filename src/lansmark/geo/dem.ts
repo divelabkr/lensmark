@@ -1,13 +1,31 @@
 import type { BBox, DemGrid, LatLng } from "./types";
 import { distanceM } from "./crs";
+import { fetchJsonSafe } from "./fetchSafe";
 
-/** 필지 주변 DEM 격자(부분요청). ⚠ 전체 다운로드 불가 — 필지 주변만. */
-export async function fetchDem(_bbox: BBox, _key: string, _level = 15): Promise<DemGrid> {
-  // 소스 조사 완료(2026-06): VWorld는 geocoder/data API만 제공 — 좌표→표고 REST가 없다.
-  //   국토지리정보원 DEM도 '대용량 파일 다운로드'(오프라인)뿐, 점 표고 조회 API 미제공 → 무료 정밀 REST 부재.
-  //   소스 옵션(확정 시 여기 구현): Google Elevation(유료키)·Open-Elevation(SRTM 30m 무료·거침)·자체 raster-dem 호스팅.
-  //   무료베타 결정(사용자): mock 유지 — terrain은 mockDem→terrainFromDem로 좌표 기반 추정(정직 라벨 source:"mock").
-  throw new Error("fetchDem 미구현 — 정밀 표고 소스 미확정(VWorld·국토지리정보원 REST 미제공). mock 폴백 사용 중.");
+/**
+ * 필지 주변 DEM 격자 — Open-Meteo Elevation API(무료·무키·Copernicus DEM ~90m)로 실표고 조회(2026-06 mock→실데이터).
+ *   bbox에 NxN 격자점을 깔아 1회 batch 조회 → terrainFromDem(Horn)이 경사/향/표고 산출.
+ *   ⚠ 해상도 ~90m: 셀 간격을 그보다 작게 잡으면 인접점이 같은 값 → '의미있는 국소 경사'를 위해 셀≈100m로 격자 크기 적응(호출측이 넓게 bbox).
+ *   ⚠ Open-Meteo 무료티어=비상업 — 유료 전환 시 Google Elevation 등으로 교체(반환형 동일·seam). _key/_level은 인터페이스 호환용(미사용).
+ */
+export async function fetchDem(bbox: BBox, _key?: string, _level = 15): Promise<DemGrid> {
+  const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+  const wM = distanceM({ lat: bbox.minLat, lng: bbox.minLng }, { lat: bbox.minLat, lng: bbox.maxLng });
+  const hM = distanceM({ lat: bbox.minLat, lng: bbox.minLng }, { lat: bbox.maxLat, lng: bbox.minLng });
+  const cols = clamp(Math.round(wM / 100) + 1, 3, 6); // 목표 셀 ~100m(DEM 해상도 근사) · 3~6점
+  const rows = clamp(Math.round(hM / 100) + 1, 3, 6);
+  const lats: number[] = [], lngs: number[] = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    lats.push(bbox.maxLat - (bbox.maxLat - bbox.minLat) * (r / (rows - 1))); // 원점 NW · r↑=남(lat↓)
+    lngs.push(bbox.minLng + (bbox.maxLng - bbox.minLng) * (c / (cols - 1))); // c↑=동(lng↑)
+  }
+  const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats.join(",")}&longitude=${lngs.join(",")}`;
+  const j = (await fetchJsonSafe(url)) as { elevation?: unknown } | null; // 타임아웃·비JSON·실패 → null
+  const el = j?.elevation;
+  if (!Array.isArray(el) || el.length !== cols * rows || el.some((v) => typeof v !== "number" || !Number.isFinite(v))) {
+    throw new Error("Open-Meteo elevation 응답 형식 불일치 — mock 폴백"); // auto provider가 catch → mock
+  }
+  return { cols, rows, cellSizeM: Math.max(1, wM / (cols - 1)), origin: { lat: bbox.maxLat, lng: bbox.minLng } as LatLng, heights: el as number[] };
 }
 
 /** 키 없이 동작하는 결정적 mock DEM (좌표 해시 기반 경사면) */

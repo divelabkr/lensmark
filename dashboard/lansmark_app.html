@@ -797,10 +797,14 @@ async function renderAlerts(st){
   const sevC={warn:"#DA5237",watch:"#D98E1B",info:"#8a938a"},sevT={warn:"경계",watch:"주의",info:"정보"},kic={pest:"🐛",weather:"🌦",disaster:"🌊"};
   const lvlC=w=>/경보/.test(w.level||"")?"#DA5237":/주의보/.test(w.level||"")?"#D98E1B":"#8a938a";
   const wwHtml=WW.length?`<div class="src" style="margin:4px 0 3px;font-weight:800;color:var(--ink2)">🌦 실시간 기상특보 <span class="badge b-paid" style="font-size:8px">KMA LIVE</span></div><div style="display:flex;flex-direction:column;gap:5px">${WW.slice(0,8).map(w=>`<div class="frow" style="background:#FFF6EE;border-radius:8px;padding:4px 6px"><span class="fax" style="background:${lvlC(w)};color:#fff;border:none">🌦 ${esc(w.level||'')}</span><span class="freason"><b>${esc(w.regKo||'')}</b> ${esc(w.kind||'')} ${esc(w.level||'')}</span></div>`).join("")}</div>`:"";
+  // 작물 주요 병해충(농진청 NCPMS 실데이터) — 이름 칩. 작물명 매칭 실패 시 빈 배열(미표시).
+  const PESTS=Array.isArray(R.pests)?R.pests:[];
+  const pestHtml=PESTS.length?`<div class="src" style="margin:9px 0 3px;font-weight:800;color:var(--ink2)">🐛 이 작물 주요 병해충 <span class="badge b-val" style="font-size:8px">농진청 NCPMS</span></div><div class="tagrow">${PESTS.map(p=>`<span class="grk" title="${esc((p.cropName||'')+' '+(p.cropCode||''))}">${esc(p.nameKor)}</span>`).join("")}</div>`:"";
   const rows=A.alerts.slice(0,12).map(a=>`<div class="frow"${a.active?' style="background:#FFF6EE;border-radius:8px;padding:4px 6px"':''}><span class="fax" style="background:${sevC[a.severity]||sevC.info};color:#fff;border:none">${kic[a.kind]||"•"} ${sevT[a.severity]||""}</span><span class="freason">${a.active?'<b>지금 · </b>':''}${esc(a.title)} · ${esc(a.detail)}</span></div>`).join("")||`<div class="src">등록된 주의 항목 없음</div>`;
   panel.innerHTML=`<div class="ch"><span class="cname">🐛 병충해·재해 주의</span><span class="badge ${(A.activeCount+WW.length)>0?'b-paid':'b-free'}">${A.month}월 · 지금 ${A.activeCount+WW.length}건</span></div>
     ${wwHtml}
     <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${rows}</div>
+    ${pestHtml}
     <div style="margin-top:9px"><button class="btn" id="alarm-open" style="font-size:12px;padding:6px 11px">🔔 알림 신청(문자)</button></div>
     <div class="src" style="margin-top:7px">${esc(A.disclaimer||'')}${WW.length?' · 기상특보는 KMA 실시간(발효 시 표시).':''}</div>`;
   const ab=document.getElementById("alarm-open");if(ab)ab.addEventListener("click",()=>openAlarmModal()); // opt-in 알림 팝업(일반)

@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { terrainFromDem } from "../geo/terrainFromDem";
-import { mockDem } from "../geo/dem";
+import { mockDem, fetchDem } from "../geo/dem";
 import type { DemGrid } from "../geo/types";
 
 function grid(cols: number, rows: number, cellSizeM: number, fn: (c: number, r: number) => number): DemGrid {
@@ -37,5 +37,27 @@ describe("geo/terrainFromDem (Stage2 DEM→경사/향/표고)", () => {
     expect(t.source).toBe("dem");
     expect(["flat","N","NE","E","SE","S","SW","W","NW"]).toContain(t.aspect);
     expect(t.altitudeM).toBeGreaterThanOrEqual(20);
+  });
+});
+
+// fetchDem(Open-Meteo) — 격자 batch 조회 + 폴백 가드(라이브는 실호출로 별도 실증)
+describe("fetchDem — Open-Meteo 격자", () => {
+  const bbox = { minLat: 37.5, minLng: 128.5, maxLat: 37.503, maxLng: 128.503 };
+  afterEach(() => vi.restoreAllMocks());
+
+  it("정상 응답 → DemGrid(heights 길이=cols*rows·격자점 수만큼 요청)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((u: any) => {
+      const n = String(u).match(/latitude=([^&]+)/)![1].split(",").length; // 요청 격자점 수
+      return Promise.resolve(new Response(JSON.stringify({ elevation: Array(n).fill(150) })) as any);
+    });
+    const g = await fetchDem(bbox);
+    expect(g.heights.length).toBe(g.cols * g.rows);
+    expect(g.cellSizeM).toBeGreaterThan(0);
+    expect(terrainFromDem(g).source).toBe("dem"); // 체인 동작
+  });
+
+  it("형식 불일치(길이/비숫자) → throw = auto provider가 mock 폴백(조용한 오염 차단)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ elevation: [1, 2] })) as any);
+    await expect(fetchDem(bbox)).rejects.toThrow();
   });
 });

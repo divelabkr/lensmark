@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { hasEnv, ShapeUnverifiedError } from "../integrations/types";
-import { ncpmsUrl, SERVICE_CODE, ncpmsConfigured, fetchNcpmsSample, parseNcpms } from "../integrations/ncpms";
+import { ncpmsUrl, SERVICE_CODE, ncpmsConfigured, fetchNcpmsSample, parseNcpms, parseNcpmsPestList } from "../integrations/ncpms";
 import { ngsUrl, nongsaroConfigured, fetchNongsaroSample, parseNongsaro } from "../integrations/nongsaro";
 import { perenualSpeciesListUrl, trefleSearchUrl, plantDetailConfigured, fetchPerenualSample, parsePlantDetail } from "../integrations/plantDetail";
 import { withServiceKey, publicSupportConfigured, fetchSupportSample, parsePublicSupport } from "../integrations/publicSupport";
@@ -181,5 +181,25 @@ describe("준비 현황 집계", () => {
     const kma = listIntegrations().find((x) => x.id === "kma-warning")!;
     expect(JSON.stringify(kma)).not.toContain('"x"');
     expect(kma.envVars).toContain("KMA_API_KEY");
+  });
+});
+
+// NCPMS SVC01(병해충 검색·JSON) 파서 — 라이브 실증 형태 고정(이름 추출·중복제거·상한·형태가드)
+describe("parseNcpmsPestList — NCPMS 병해충 목록 파서", () => {
+  it("service.list[]에서 sickNameKor 추출 + 중복제거 + 상한", () => {
+    const json = { service: { totalCount: "3", list: [
+      { sickNameKor: "갈색무늬병", cropName: "사과", cropCode: "FT01" },
+      { sickNameKor: "갈색무늬병", cropName: "사과" },   // 중복
+      { sickNameKor: "검은별무늬병", cropName: "사과" },
+    ] } };
+    const r = parseNcpmsPestList(json, 8);
+    expect(r.map((p) => p.nameKor)).toEqual(["갈색무늬병", "검은별무늬병"]); // 중복 1건
+    expect(r[0].cropCode).toBe("FT01");
+    expect(parseNcpmsPestList(json, 1).length).toBe(1); // 상한
+  });
+  it("형태 불일치(list 없음/null) → [](무중단)", () => {
+    expect(parseNcpmsPestList(null)).toEqual([]);
+    expect(parseNcpmsPestList({ service: {} })).toEqual([]);
+    expect(parseNcpmsPestList({ service: { list: "nope" } })).toEqual([]);
   });
 });

@@ -30,8 +30,8 @@ export const liveProviders: ProviderBundle = {
       return fetchParcel(loc.lat, loc.lng, key);
     },
     async terrain(loc) {
-      const key = reqEnv("VWORLD_API_KEY");
-      const grid = await fetchDem(bboxAround({ lat: loc.lat, lng: loc.lng }, 80), key);
+      // 표고·경사 = Open-Meteo Elevation(무료·무키 — VWORLD 키 불필요). 넓게(150m≈300m폭) 떠서 ~90m DEM에서도 의미있는 국소 경사.
+      const grid = await fetchDem(bboxAround({ lat: loc.lat, lng: loc.lng }, 150));
       return terrainFromDem(grid);
     },
   },

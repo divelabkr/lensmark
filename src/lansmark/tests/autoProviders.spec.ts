@@ -32,7 +32,7 @@ describe("autoProviders — drop-in (키만 붙이면 운영)", () => {
     process.env.VWORLD_API_KEY = "x";
     r = integrationReadiness();
     expect(r.integrations.vworldTiles.keyed).toBe(true);
-    expect(r.integrations.vworldDem.live).toBe(false); // 미구현 → mock 폴백
+    expect(r.integrations.vworldDem.live).toBe(true); // 표고·경사 = Open-Meteo(무키) 실데이터로 승격(v0.67) — VWORLD 키와 무관하게 live
   });
 });
 

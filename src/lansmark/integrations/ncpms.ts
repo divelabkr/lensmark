@@ -7,13 +7,40 @@
  *   ⚠ 확신도: base·apiKey·XML·무료·SVC05(병해충 상세) = HIGH · 발생/예찰 전용 serviceCode(SVC01/08 등) = UNCERTAIN
  *           → NCPMS OpenAPI 안내(JS 렌더링)에서 코드표 확인 후 확정. http 예시이므로 운영 https 가능 여부도 확인.
  */
-import { fetchTextSafe } from "../geo/fetchSafe";
+import { fetchTextSafe, fetchJsonSafe } from "../geo/fetchSafe";
 import { hasEnv, ShapeUnverifiedError } from "./types";
 
 const BASE = "http://ncpms.rda.go.kr/npmsAPI/service"; // ⚠ 비암호화 http 예시 — 운영 https 확인 권장
 
-/** 검증된 serviceCode(개발 사례 일치). 발생/예찰 전용 코드는 NCPMS 안내에서 확정(UNCERTAIN). */
-export const SERVICE_CODE = { PEST_DETAIL: "SVC05" } as const; // 병해충 상세정보(HIGH)
+/** 검증된 serviceCode(라이브 실증 2026-06). SVC01=작물명 병해충 검색(목록·JSON). SVC05=상세(XML). */
+export const SERVICE_CODE = { PEST_LIST: "SVC01", PEST_DETAIL: "SVC05" } as const;
+
+/** 작물 1종의 병해충 1건(검색 목록). 이미지(thumbImg)는 http라 https 페이지에서 mixed-content 차단 → 이름 위주. */
+export interface NcpmsPest { nameKor: string; cropName?: string; cropCode?: string; }
+
+/** SVC01 JSON({service:{list:[...]}}) → 병해충 이름 목록. 순수(테스트). 형태 불일치는 [](무중단). */
+export function parseNcpmsPestList(json: unknown, limit = 10): NcpmsPest[] {
+  const list = (json as { service?: { list?: unknown } } | null)?.service?.list;
+  if (!Array.isArray(list)) return [];
+  const seen = new Set<string>();
+  const out: NcpmsPest[] = [];
+  for (const it of list as Record<string, unknown>[]) {
+    const nameKor = String(it.sickNameKor ?? "").trim().slice(0, 60);
+    if (!nameKor || seen.has(nameKor)) continue; // 중복 병해충명 제거
+    seen.add(nameKor);
+    out.push({ nameKor, cropName: it.cropName ? String(it.cropName).slice(0, 30) : undefined, cropCode: it.cropCode ? String(it.cropCode).slice(0, 20) : undefined });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/** 작물(한글명) → 주요 병해충 목록(농진청 NCPMS SVC01·실데이터). 키 없거나 미매칭 작물은 [](무중단). */
+export async function fetchNcpmsPests(cropNameKo: string, limit = 10): Promise<NcpmsPest[]> {
+  const key = process.env.NCPMS_API_KEY || "";
+  if (!key || !cropNameKo) return [];
+  const j = await fetchJsonSafe(ncpmsUrl(key, SERVICE_CODE.PEST_LIST, { cropName: cropNameKo, displayCount: String(Math.min(limit, 30)) }));
+  return parseNcpmsPestList(j, limit);
+}
 
 export function ncpmsConfigured(): boolean { return hasEnv("NCPMS_API_KEY"); }
 

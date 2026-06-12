@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.67.0",
+    date: "2026-06-12",
+    title: "실DEM(Open-Meteo 무키) + NCPMS 병해충 live — mock 2종 제거",
+    items: [
+      "표고·경사 mock→실데이터 — fetchDem을 Open-Meteo Elevation(무료·무키·Copernicus DEM ~90m)으로 구현. bbox에 ~100m 격자(3~6점)를 깔아 1회 batch 조회 → 기존 terrainFromDem(Horn)이 경사/향/표고 산출. auto provider가 키 없이 항상 live 시도(실패·형태불일치만 mock 폴백). 라이브 실증: 평창 산간 28.4°(669m) vs 김제평야 5.4°(23m)·태백 305m. ⚠ Open-Meteo 무료=비상업 → 유료 전환 시 Google Elevation으로 seam 교체(반환형 동일)",
+      "병해충 mock→실데이터 — NCPMS SVC01(작물명 검색·JSON) 파서(parseNcpmsPestList: sickNameKor 추출·중복제거·상한·형태가드) + fetchNcpmsPests(작물 한글명 매칭). /api/alerts가 KMA 기상특보와 병렬로 합류 → 앱 병충해 패널에 '🐛 주요 병해충(농진청 NCPMS)' 이름 칩. 라이브 실증: 사과 5종(갈색무늬병·검은별무늬병·겹무늬썩음병…). 작물명 미매칭은 [] 무중단, 이미지(http)는 mixed-content 회피로 제외",
+      "검증: 회귀 +4(fetchDem 격자/폴백 가드 +2 · NCPMS 파서 추출·중복·상한·형태 +2) · health vworldDem=live(Open-Meteo) · tsc·vitest 501·arch 0(ncpms→agri-alerts 등록). ⚠ 운영 배포 시 NCPMS_API_KEY는 Secret Manager 주입 필요(DEM은 무키라 불필요)",
+    ],
+  },
+  {
     version: "0.66.1",
     date: "2026-06-12",
     title: "health rdaIncome 정직 표시 — 실 RDA 적재를 빌드 메타와 동기",

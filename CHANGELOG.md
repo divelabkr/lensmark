@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.67.0 — 2026-06-12 · 실DEM(Open-Meteo 무키) + NCPMS 병해충 live — mock 2종 제거
+> 표고·경사·병해충 mock→실데이터. tsc·vitest **501**(+4)·arch 0.
+- **DEM** — `fetchDem` = Open-Meteo Elevation(무료·무키·~90m). bbox 격자 batch→terrainFromDem(Horn). 라이브: 평창 28.4°(669m)·김제평야 5.4°(23m). auto가 키 없이 live(실패만 mock). ⚠ 무료=비상업→유료 전환 시 Google Elevation
+- **NCPMS 병해충** — SVC01 작물명 검색 파서 + `/api/alerts` 합류 → 앱 병충해 패널 '🐛 주요 병해충(농진청)' 칩. 라이브: 사과 5종. 미매칭 [] 무중단·http 이미지 제외
+- **검증** — 회귀 +4 · health vworldDem=live · ⚠ 운영 NCPMS_API_KEY Secret Manager 주입 필요(DEM 무키)
+
 ## 0.66.1 — 2026-06-12 · health rdaIncome 정직 표시(실 RDA 동기) + 운영 점검 실증
 > 실 RDA 적재 후에도 '데모'로 보이던 낡은 하드코딩 교정. tsc·vitest **497**·arch 0.
 - `integrationReadiness().rdaIncome`을 `RDA_REAL_META` 동적 표시로 — "실 농산물소득조사 2024 · 10작물 · 지역행 66"
