@@ -1,5 +1,7 @@
 # DEPLOY.md — LENSMARK 배포 런북 (도메인: lensmark.kr)
 
+> ⚡ **실배포는 `npm run deploy`(= `scripts/deploy.sh`)가 SSOT** — 아래 A-3/A-7의 env·시크릿·플래그를 코드로 박제(검증·롤백 포함).
+>   배경: 2026-06-12 설정 없는 bare 배포가 bootSafety로 실패 — 산문 복붙은 드리프트로 깨진다. 이 문서는 '왜/무엇' 설명·1회 인프라(시크릿 생성 등)용.
 > **택1 아키텍처: [A] Firebase Hosting + Cloud Run (선택·권장)** · [B] VPS+nginx(대안).
 > 데이터 통합 키는 `RUN_GOLIVE.md`. ⚠ **HUMAN GATE(사장님 직접)**: 인증·콘솔·DNS·TLS·비밀값 생성·과금. 코드/AI는 설정·런북만.
 > ⚠ 철자: 도메인 `lensmark.kr`(lens-) ↔ 코드 식별자 `LANSMARK`(lans-) — 의도된 구분.

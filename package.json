@@ -1,6 +1,6 @@
 {
   "name": "lansmark-simulator",
-  "version": "0.64.0",
+  "version": "0.65.0",
   "private": true,
   "type": "commonjs",
   "description": "LANSMARK 작물·수확·소득 시뮬레이터 (drop-in module + standalone harness)",
@@ -14,7 +14,9 @@
     "arch": "tsx scripts/archCheck.ts",
     "arch:render": "tsx scripts/archRender.ts",
     "rda:build": "tsx scripts/buildRdaReal.ts",
-    "ops:watch": "tsx scripts/opsWatch.ts"
+    "ops:watch": "tsx scripts/opsWatch.ts",
+    "deploy": "bash scripts/deploy.sh",
+    "load": "tsx scripts/loadTest.ts"
   },
   "engines": {
     "node": ">=20"

@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.65.0 — 2026-06-12 · 배포가능 수준 — 배포 IaC·부하 실측·경보 설정·P0 체크리스트
+> 운영/인프라 갭(오늘 배포 실패 포함) 박제 해소. tsc·vitest **492**·arch 0.
+- **배포 IaC** — `npm run deploy`(scripts/deploy.sh): env·시크릿·플래그 SSOT(웹훅 시크릿 자동감지) + 배포 후 **자동 검증**(버전=레포·store=firestore·시뮬 200) + `rollback`(직전 정상 리비전 즉시) + `verify`. bare 배포 설정 누락 실패 재발 방지
+- **부하 실측** — `npm run load`(무의존 하니스·라이브 거부 안전핀): mock·동시50에서 엔진 **~17,800 RPS**(p50 1–3ms·5xx 0)·`/app` ~423 RPS(gzip 병목). 베타 대비 수천 배 여유
+- **경보 설정** — `scripts/setupMonitoring.sh`(1회·멱등): 업타임 1분 체크 + 다운 3분/5xx 10건 이메일 경보
+- **P0 체크리스트**(RUN_GOLIVE.md §6) — DNS 연결 단계·웹훅 시크릿 절차·모니터링·배포 규율·HUMAN GATE 현황
+
 ## 0.64.0 — 2026-06-12 · 클라이언트 에러 텔레메트리 + 실시간 경보
 > 사용자 화면 JS 에러가 사장님께 전혀 안 보이던 갭 해소. tsc·vitest **492**(+5)·arch 0.
 - **수집** — 브라우저 uncaught 에러·promise 거부 → `POST /api/client-error`. 프론트 리포터(window.onerror): 세션 상한 8·디듀프·keepalive·경로만(PII 0)

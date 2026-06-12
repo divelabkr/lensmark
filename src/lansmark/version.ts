@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.65.0",
+    date: "2026-06-12",
+    title: "배포가능 수준 — 배포 IaC·부하 실측·경보 설정·P0 오픈 체크리스트",
+    items: [
+      "배포 IaC(scripts/deploy.sh = npm run deploy) — 2026-06-12 bare 배포가 설정 누락(bootSafety 차단)으로 실패한 재발 방지: env 8종·시크릿 7종(+선택 웹훅 자동감지)·플래그(--no-cpu-throttling 등)를 코드로 박제(SSOT). 배포 후 자동 검증(라이브 버전=package.json·store=firestore·시뮬 스모크 200) + rollback 서브커맨드(직전 정상 리비전 즉시 복귀) + verify(점검만). DEPLOY.md는 설명·1회 인프라용으로 강등",
+      "부하 테스트 하니스(scripts/loadTest.ts = npm run load) — 무의존(fetch·k6/autocannon 불필요)·closed-loop 동시 워커·p50/95/99·코드 분포·5xx면 exit 1. 안전핀: 라이브(run.app·lensmark.kr) 대상이면 거부(쿼터·계측 오염 방지)·mock 권장 경고. 실측(mock·동시50): 엔진 /api/simulate ~17,800 RPS(p50 1–3ms·5xx 0)·/app HTML ~423 RPS(요청당 gzip 병목) — 베타 50명 대비 수천 배 여유, 실제 한계는 설계상 레이트리밋(IP 240/분)",
+      "Cloud Monitoring 경보(scripts/setupMonitoring.sh · 1회) — 업타임 체크(/api/health 1분) + '다운 3분'·'5xx 10건/5분' 이메일 경보 + 알림 채널 생성(멱등·무료 한도 내). '서버가 죽어도 모름' 갭 해소",
+      "P0 오픈 체크리스트(RUN_GOLIVE.md §6) — lensmark.kr DNS 연결 단계(현황: 미연결 — 접속 불가 원인)·경보 웹훅 시크릿 주입 절차(deploy.sh가 자동 포함)·모니터링 1줄·배포/롤백 규율·부하 실측·남은 HUMAN GATE. tsc·vitest 492·arch 0",
+    ],
+  },
+  {
     version: "0.64.0",
     date: "2026-06-12",
     title: "클라이언트 에러 텔레메트리 + 실시간 경보 — 사용자 화면 에러를 사장님께",
