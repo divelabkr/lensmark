@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.66.0",
+    date: "2026-06-12",
+    title: "at-rest 보안 보강 — firestore PII 암호화(G1) + 세션 토큰 해시(G2)",
+    items: [
+      "G1: firestore 문서 at-rest 암호화 — 보안 점검에서 발견된 갭(AES-256-GCM이 file 모드에만 구현 → 운영 firestore의 전화번호·일지 좌표/매출이 앱레벨 평문) 보강. 공용 모듈 db/atRest.ts(ENC1: 포맷·LANSMARK_DATA_KEY 동일 키)를 추출해 jsonFile과 FsDoc(save/saveNow/load)이 공유 — 운영에 이미 주입된 DATA_KEY가 즉시 활성. legacy 평문 문서는 로드 허용 + 다음 저장부터 암호화(업그레이드-온-라이트), 복호 불가(키 없음/불일치)=sealed(원본 덮어쓰기 금지 — jsonFile 철학 동일). 크기 한도는 실제 저장 페이로드(암호문) 기준",
+      "G2: 세션 토큰 at-rest 해시(SHA-256) — 저장소가 읽혀도(콘솔·백업·유출) 원토큰 미노출=세션 탈취 불가. 쿠키엔 원토큰·저장/조회 키와 레코드 token 필드는 해시(인터페이스 무변경 — 호출부 0 수정). 192bit 무작위 토큰이라 평문 SHA-256로 충분. ⚠ 기존 세션은 1회 무효화(재로그인) — 베타 수용",
+      "운영 경보 가동 — setupMonitoring.sh 실행 완료(divelab.kr@gmail.com): 업타임 체크(1분) + 'LENSMARK 다운(3분)'·'5xx 급증(10건/5분)' 경보 정책 생성(P0 #3 해소). gcloud 필터 문법 교정(값 인용)",
+      "검증: 회귀 +5(atRestSecurity — FsDoc 암호문에 평문 PII 0·왕복 복호·legacy 이행·키없음 sealed 덮어쓰기 0·세션 파일에 원토큰 0/원토큰 조회 정상) · tsc·vitest 497·arch 0(persistence 피처에 atRest 등록)",
+    ],
+  },
+  {
     version: "0.65.0",
     date: "2026-06-12",
     title: "배포가능 수준 — 배포 IaC·부하 실측·경보 설정·P0 오픈 체크리스트",

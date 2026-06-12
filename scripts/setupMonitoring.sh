@@ -11,7 +11,7 @@ EMAIL="${ALERT_EMAIL:-}"
 [ -n "$EMAIL" ] || { echo "사용: ALERT_EMAIL=you@example.com bash scripts/setupMonitoring.sh"; exit 1; }
 
 echo "── ① 알림 채널(이메일: ${EMAIL})"
-CH=$(gcloud beta monitoring channels list --project "$PROJECT" --filter="type=email AND labels.email_address=${EMAIL}" --format='value(name)' | head -1)
+CH=$(gcloud beta monitoring channels list --project "$PROJECT" --filter="type=\"email\" AND labels.email_address=\"${EMAIL}\"" --format='value(name)' | head -1)
 if [ -z "$CH" ]; then
   CH=$(gcloud beta monitoring channels create --project "$PROJECT" --display-name="LENSMARK 운영자" \
     --type=email --channel-labels="email_address=${EMAIL}" --format='value(name)')

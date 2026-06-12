@@ -9,6 +9,7 @@
  *   감사로그: auditSink가 lm_audit 컬렉션에 문서 추가(append-only) — /tmp audit.jsonl 휘발 보완.
  */
 import { FirestoreLite } from "./firestoreLite";
+import { sealAtRest, openAtRest } from "./atRest"; // G1 보강 — firestore 문서도 file과 동일 키로 at-rest 암호화(PII: 전화·일지 좌표/매출)
 import { MemoryEntitlementStore, type FeedbackStoreEx, type Stores } from "./stores";
 import { type OutcomeRecord } from "../core/feedbackStore";
 import { type IdempotencyStore } from "../payment/pgWebhook";
@@ -37,19 +38,30 @@ export class FsDoc {
   constructor(private readonly fs: FirestoreLite, private readonly id: string) {}
 
   async load(): Promise<string | null> {
-    try { return await this.fs.getJson(COLLECTION, this.id); }
+    let raw: string | null;
+    try { raw = await this.fs.getJson(COLLECTION, this.id); }
     catch (e) {
       this.sealed = true; // 읽기 실패 = 원격 상태 미상 → 쓰기 봉인(데이터 보호 우선)
       console.error(`[firestore] ${this.id} 로드 실패 — 쓰기 봉인(sealed). 원인:`, (e as Error)?.message);
       throw e;
     }
+    if (raw == null) return null;
+    // at-rest 복호(G1) — ENC1: 문서는 키로 복호, legacy 평문은 그대로(다음 저장에서 암호화 이행). 복호 불가=sealed(잘못된 키로 원본 덮어쓰기 방지 — jsonFile과 동일 철학).
+    const opened = openAtRest(raw);
+    if (!opened.ok) {
+      this.sealed = true;
+      console.error(`[firestore] ${this.id} 암호화 문서 ${opened.reason === "no-key" ? "복호 키 없음(LANSMARK_DATA_KEY 미설정)" : "복호 실패(키 불일치/손상)"} — 쓰기 봉인(sealed)`);
+      throw new Error(`${this.id} at-rest 복호 불가(${opened.reason})`);
+    }
+    return opened.plain;
   }
 
   /** 최신 상태 저장(논블로킹). 호출부는 sync — 실패는 재시도 후 경고(운영 연속성 우선). */
   save(json: string): void {
     if (this.sealed) return;
-    if (json.length > MAX_BLOB) { console.warn(`[firestore] ${this.id} 상태 ${json.length}B > ${MAX_BLOB}B — 쓰기 보류(per-record 어댑터 승격 필요·§3-1)`); return; }
-    this.pending = json;
+    const stored = sealAtRest(json); // 키 있으면 암호화(G1) — 크기 한도는 '실제 저장 페이로드' 기준(암호문이 ~1.37배)
+    if (stored.length > MAX_BLOB) { console.warn(`[firestore] ${this.id} 상태 ${stored.length}B > ${MAX_BLOB}B — 쓰기 보류(per-record 어댑터 승격 필요·§3-1)`); return; }
+    this.pending = stored;
     if (!this.inflight) this.draining = this.drain();
   }
 
@@ -59,9 +71,10 @@ export class FsDoc {
   /** 동기 저장 + 내구 확인(await 가능) — 실효 등 보안 쓰기가 '원격 반영 후' 응답하기 위함(H3). 실패는 throw. */
   async saveNow(json: string): Promise<void> {
     if (this.sealed) throw new Error(`${this.id} sealed — 저장 불가`);
-    if (json.length > MAX_BLOB) throw new Error(`${this.id} ${json.length}B > ${MAX_BLOB}B(per-record 승격 필요)`);
+    const stored = sealAtRest(json); // 암호화 경로 동일(G1)
+    if (stored.length > MAX_BLOB) throw new Error(`${this.id} ${stored.length}B > ${MAX_BLOB}B(per-record 승격 필요)`);
     let last: unknown;
-    for (let i = 0; i < 3; i++) { try { await this.fs.setJson(COLLECTION, this.id, json); return; } catch (e) { last = e; if (i < 2) await new Promise((r) => setTimeout(r, 300 * (i + 1))); } }
+    for (let i = 0; i < 3; i++) { try { await this.fs.setJson(COLLECTION, this.id, stored); return; } catch (e) { last = e; if (i < 2) await new Promise((r) => setTimeout(r, 300 * (i + 1))); } }
     throw last;
   }
 

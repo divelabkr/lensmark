@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.66.0 — 2026-06-12 · at-rest 보안 보강 — firestore PII 암호화(G1) + 세션 토큰 해시(G2)
+> 보안 점검 갭 2종 보강 + 운영 경보 가동. tsc·vitest **497**(+5)·arch 0.
+- **G1 firestore at-rest 암호화** — file 전용이던 AES-256-GCM을 공용 모듈 [`db/atRest.ts`](src/lansmark/db/atRest.ts)로 추출, `FsDoc`(save/saveNow/load)에 적용 → 운영의 전화번호·일지 좌표/매출이 **앱레벨 암호문**(이미 주입된 `LANSMARK_DATA_KEY` 즉시 활성). legacy 평문 로드 허용+업그레이드-온-라이트 · 복호 불가=**sealed**(원본 덮어쓰기 금지)
+- **G2 세션 토큰 해시(SHA-256)** — 저장소 유출 시 세션 탈취 불가(쿠키엔 원토큰·at-rest엔 해시만). 인터페이스 무변경·기존 세션 1회 무효화(재로그인)
+- **운영 경보 가동** — `setupMonitoring.sh` 실행(divelab.kr@gmail.com): 업타임 1분 + 다운 3분/5xx 10건 경보 생성(P0 #3)
+- **검증** — 회귀 +5(암호문에 평문 PII 0·왕복·legacy·sealed 덮어쓰기 0·세션 파일 원토큰 0) · 497·arch 0
+
 ## 0.65.0 — 2026-06-12 · 배포가능 수준 — 배포 IaC·부하 실측·경보 설정·P0 체크리스트
 > 운영/인프라 갭(오늘 배포 실패 포함) 박제 해소. tsc·vitest **492**·arch 0.
 - **배포 IaC** — `npm run deploy`(scripts/deploy.sh): env·시크릿·플래그 SSOT(웹훅 시크릿 자동감지) + 배포 후 **자동 검증**(버전=레포·store=firestore·시뮬 200) + `rollback`(직전 정상 리비전 즉시) + `verify`. bare 배포 설정 누락 실패 재발 방지

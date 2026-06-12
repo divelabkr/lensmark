@@ -6,27 +6,8 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, chmodSync } from "node:fs";
 import { dirname } from "node:path";
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
-
-/* ── 선택적 at-rest 암호화(AES-256-GCM) — LANSMARK_DATA_KEY(hex 64자=32B) 설정 시 활성, 미설정이면 평문(0600).
-   운영 PII(휴대폰·재배일지 좌표/매출)는 키 주입(HUMAN GATE)으로 암호화(법무 갭 ③). 키는 코드/AI가 만들지 않는다. */
-const ENC_PREFIX = "ENC1:";
-function dataKey(): Buffer | null {
-  const hex = process.env.LANSMARK_DATA_KEY;
-  return hex && /^[0-9a-fA-F]{64}$/.test(hex) ? Buffer.from(hex, "hex") : null;
-}
-function encrypt(plain: string, key: Buffer): string {
-  const iv = randomBytes(12);
-  const c = createCipheriv("aes-256-gcm", key, iv);
-  const ct = Buffer.concat([c.update(plain, "utf8"), c.final()]);
-  return ENC_PREFIX + Buffer.concat([iv, c.getAuthTag(), ct]).toString("base64"); // iv(12)|tag(16)|ct
-}
-function decrypt(blob: string, key: Buffer): string {
-  const buf = Buffer.from(blob.slice(ENC_PREFIX.length), "base64");
-  const d = createDecipheriv("aes-256-gcm", key, buf.subarray(0, 12));
-  d.setAuthTag(buf.subarray(12, 28));
-  return Buffer.concat([d.update(buf.subarray(28)), d.final()]).toString("utf8");
-}
+// at-rest 암호화는 공용 모듈(atRest.ts) — file·firestore가 같은 키(LANSMARK_DATA_KEY)·포맷(ENC1:)을 쓴다(보안갭 G1 보강).
+import { ENC_PREFIX, dataKey, encryptAtRest as encrypt, decryptAtRest as decrypt } from "./atRest";
 
 export class JsonFile<T> {
   data: T;

@@ -358,9 +358,9 @@ export const FEATURES: Feature[] = [
     id: "persistence", name: "영속성(memory↔file↔firestore)", stage: "platform",
     flow: "상태(플라이휠·멱등·토큰소진/실효·일지·계정·세션·구독·계측) memory|file|firestore 드롭인. firestore=Cloud Run 재배포 내구(§3-1): 무의존성 REST(메타데이터 토큰)·스토어당 문서 1개(lm_state)·write-through·부팅 warm·로드실패 sealed(덮어쓰기 방지)·감사로그 lm_audit",
     endpoints: [],
-    files: ["src/lansmark/db/jsonFile.ts", "src/lansmark/db/stores.ts", "src/lansmark/db/repository.ts", "src/lansmark/db/firestoreLite.ts", "src/lansmark/db/firestoreStores.ts"],
-    tests: ["src/lansmark/tests/db.spec.ts", "src/lansmark/tests/firestoreStores.spec.ts"],
-    guardrails: ["저장소 상한(DoS 방지)", "firestore 로드실패=sealed(빈 상태로 원격 덮어쓰기 금지)", "유료 게이트 ON + 워밍 실패 = 부팅 중단(fail-closed)", "revoked 영속(부활 방지)"], status: "platform",
+    files: ["src/lansmark/db/jsonFile.ts", "src/lansmark/db/atRest.ts", "src/lansmark/db/stores.ts", "src/lansmark/db/repository.ts", "src/lansmark/db/firestoreLite.ts", "src/lansmark/db/firestoreStores.ts"],
+    tests: ["src/lansmark/tests/db.spec.ts", "src/lansmark/tests/firestoreStores.spec.ts", "src/lansmark/tests/atRestSecurity.spec.ts"],
+    guardrails: ["저장소 상한(DoS 방지)", "firestore 로드실패=sealed(빈 상태로 원격 덮어쓰기 금지)", "유료 게이트 ON + 워밍 실패 = 부팅 중단(fail-closed)", "revoked 영속(부활 방지)", "at-rest AES-256-GCM(file·firestore 동일 키 — DATA_KEY 설정 시) · 세션 토큰 at-rest 해시"], status: "platform",
     notes: "firestore 어댑터=단일 인스턴스 '내구성'용(blob-per-store·1MiB 한도) — 다중 인스턴스 정합(유니크 제약·락)은 per-record 승격 시(§3-1 잔여). 키 파일 불필요(Cloud Run 메타데이터 토큰).",
   },
   {
