@@ -40,4 +40,10 @@ describe("floorIncomeLoss — 현실 손실 하한 가드레일(#5)", () => {
     expect(r.p50).toBeLessThanOrEqual(r.p90);
     expect(r.p10).toBeGreaterThanOrEqual(-30_000_000);
   });
+  it("경계: costP90=0·전음수 income도 단조성 보존(p10≤p50) — 분포역전 차단(P2)", () => {
+    const r = floorIncomeLoss({ p10: -100, p50: -50, p90: -10 }, 0); // 하한 -max(0,0)=0이지만 p50을 넘으면 안 됨
+    expect(r.p10).toBeLessThanOrEqual(r.p50); // 역전 없음
+    expect(r.p50).toBeLessThanOrEqual(r.p90);
+    expect(r.p10).toBe(-50); // min(max(-100,0), -50) = -50
+  });
 });

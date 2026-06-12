@@ -75,11 +75,18 @@ export class FirestoreLite {
   /** 단일 문서의 j(JSON 문자열) 읽기 — 404=null(최초 부팅), 그 외 오류는 throw(호출부가 sealed 처리). */
   async getJson(collection: string, id: string): Promise<string | null> {
     const url = await this.docUrl(collection, id);
-    const r = await this.call(url, { headers: { Authorization: `Bearer ${await this.token()}` } });
-    if (r.status === 404) return null;
-    if (!r.ok) throw new Error(`firestore get ${collection}/${id} HTTP ${r.status}`);
-    const d = (await r.json()) as { fields?: { j?: { stringValue?: string } } };
-    return d.fields?.j?.stringValue ?? null;
+    // 일시 장애(토큰·메타데이터·5xx) 재시도(P2 부팅 견고화) — 한 번의 transient가 스토어를 sealed로 만들지 않게. 404는 정상(최초)이라 즉시 null.
+    let last: unknown;
+    for (let i = 0; i < 3; i++) {
+      try {
+        const r = await this.call(url, { headers: { Authorization: `Bearer ${await this.token()}` } });
+        if (r.status === 404) return null;
+        if (!r.ok) throw new Error(`firestore get ${collection}/${id} HTTP ${r.status}`);
+        const d = (await r.json()) as { fields?: { j?: { stringValue?: string } } };
+        return d.fields?.j?.stringValue ?? null;
+      } catch (e) { last = e; if (i < 2) await new Promise((r) => setTimeout(r, 300 * (i + 1))); }
+    }
+    throw last;
   }
 
   /** 단일 문서 upsert(전체 교체) — {"j": json}. */

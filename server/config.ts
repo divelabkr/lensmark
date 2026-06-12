@@ -118,6 +118,14 @@ export function bootSafety(config: Config): void {
     //   그래도 비인증 단계(추측불가 격리 ≠ 암호학적 인증)이므로 운영 노출은 명시 동의(ALLOW_OPEN_PAID=1)를 요구 → 실수 차단.
     if (!config.requireEntitlement && process.env.LANSMARK_ALLOW_OPEN_PAID !== "1")
       fails.push("LANSMARK_REQUIRE_ENTITLEMENT=false (유료 게이트 우회·무료 베타) — 의도면 LANSMARK_ALLOW_OPEN_PAID=1, 아니면 제거");
+    // 라이브 결제 키 정합(P2 C#6) — 클라 키만 있고 서버 비밀/웹훅 시크릿이 없으면 결제·웹훅 검증이 런타임에야 깨진다(부팅서 차단).
+    if (process.env.TOSS_CLIENT_KEY && !process.env.TOSS_SECRET_KEY)
+      fails.push("TOSS_CLIENT_KEY 설정인데 TOSS_SECRET_KEY 미설정 — 결제 승인 서버검증 불가(라이브 결제면 비밀키 필수)");
+    if (process.env.TOSS_CLIENT_KEY && !process.env.PG_WEBHOOK_SECRET)
+      fails.push("TOSS_CLIENT_KEY 설정인데 PG_WEBHOOK_SECRET 미설정 — 웹훅 위조 검증 불가");
+    // at-rest 키(P2 C#5/#6) — 미설정 시 전화번호·일지좌표 등 PII가 평문 저장된다. 명시 동의 없으면 차단(deploy.sh는 DATA_KEY 주입).
+    if (!process.env.LANSMARK_DATA_KEY && process.env.LANSMARK_ALLOW_PLAINTEXT_PII !== "1")
+      fails.push("LANSMARK_DATA_KEY 미설정 — PII 평문 저장(at-rest 미암호화). 키 주입 또는 의도면 LANSMARK_ALLOW_PLAINTEXT_PII=1");
     if (fails.length) {
       console.error("[lansmark][SECURITY] 운영 부팅 차단:\n - " + fails.join("\n - "));
       process.exit(1);

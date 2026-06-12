@@ -3,6 +3,14 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.71.0 — 2026-06-13 · 설계감사 P2 일괄 — 방어·정합·부팅 하드닝
+> 저위험 P2 12건 수정. tsc·vitest **524**(+5)·arch 0·guardrail STRICT 0.
+- **입력·방어** — fetchSafe 본문 바이트 상한(스트림) · AI href 프론트 스킴가드 · injectNonce 속성 스크립트까지 · geocode 길이캡 · Perplexity 음성TTL/CAP 경계
+- **수치·가드레일** — floorIncomeLoss 단조성 가드(분포역전 차단) · 면책 횡단 회귀가드
+- **영속** — FsDoc 영구실패 스냅샷 보존+종료 재시도 · auditSink flushAll 대기 · firestoreLite getJson 재시도 · entitlement warm allSettled(모든 문서 sealed 보장)
+- **보안 부팅·전송** — NCPMS https(apiKey 평문전송 제거·33건 실증) · TOSS 키 정합 + DATA_KEY(PII 평문) 부팅 강제
+- **보류**(근거) — 토큰 httpOnly 이관(§3-1①②③·결제흐름)·revoked per-record·widen/year1 — 유료 정식 전/별 슬라이스
+
 ## 0.70.0 — 2026-06-13 · 설계감사 후속 — 가드레일 P0 + 영속·훅 P1
 > 6영역 병렬 감사(아키텍처+코드)에서 검출한 P0 1·P1 5 종결. tsc·vitest **519**(+12)·arch 0·guardrail STRICT 0.
 - **P0(가드레일·라이브)** — 외래 AI 요약(Perplexity)이 코어 한국작물(실 RDA/KAMIS)에도 새던 1원칙 위반을 코드 게이트로 차단(`isCoreCropName`). 라이브: 사과·마늘→null, 망고→유지(5출처)

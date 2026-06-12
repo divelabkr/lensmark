@@ -63,5 +63,6 @@ export function subtractIndependent(a: SigmaRange, b: SigmaRange): SigmaRange {
  *     실 RDA(현실 비용) 적재 시 자동 활성화되는 미래 가드레일. (알람 magnitude 자체 해결은 데이터 몫이지 이 하한이 아님.)
  */
 export function floorIncomeLoss(income: SigmaRange, costP90: number): SigmaRange {
-  return { ...income, p10: Math.max(income.p10, -Math.max(0, costP90)) };
+  // 하한 적용 후 단조성 가드(p10 ≤ p50) — costP90=0·전음수 income 등 경계에서 p10이 p50을 넘어 분포가 역전되지 않게(P2 잠재 가드레일 구멍 차단).
+  return { ...income, p10: Math.min(Math.max(income.p10, -Math.max(0, costP90)), income.p50) };
 }

@@ -197,7 +197,7 @@ describe("bootSafety: 운영 유료게이트 우회 차단(REQUIRE_ENTITLEMENT)"
     finally { process.exit = origExit; console.error = origErr; console.warn = origWarn; process.env = saved; }
     return exited;
   }
-  const strongSecret = { LANSMARK_ENTITLEMENT_SECRET: "x".repeat(40) };
+  const strongSecret = { LANSMARK_ENTITLEMENT_SECRET: "x".repeat(40), LANSMARK_DATA_KEY: "k".repeat(32) }; // 운영 부팅 통과용 기본 — DATA_KEY도 부팅 강제(P2 C#6)
   it("운영 + requireEntitlement=false + 우회없음 → 부팅 차단(exit 1)", () => {
     expect(bootExitCode(prodConfig({ requireEntitlement: false }), { ...strongSecret, LANSMARK_ALLOW_OPEN_PAID: undefined })).toBe(1);
   });
@@ -206,5 +206,11 @@ describe("bootSafety: 운영 유료게이트 우회 차단(REQUIRE_ENTITLEMENT)"
   });
   it("requireEntitlement=true(기본) → 통과(exit 0)", () => {
     expect(bootExitCode(prodConfig({ requireEntitlement: true }), { ...strongSecret, LANSMARK_ALLOW_OPEN_PAID: undefined })).toBe(0);
+  });
+  it("DATA_KEY 미설정 + 우회없음 → 부팅 차단(exit 1, PII 평문 방지·P2 C#6)", () => {
+    expect(bootExitCode(prodConfig({ requireEntitlement: true }), { LANSMARK_ENTITLEMENT_SECRET: "x".repeat(40), LANSMARK_DATA_KEY: undefined, LANSMARK_ALLOW_PLAINTEXT_PII: undefined })).toBe(1);
+  });
+  it("TOSS_CLIENT_KEY만 설정(서버 비밀키 없음) → 부팅 차단(exit 1·P2 C#6)", () => {
+    expect(bootExitCode(prodConfig({ requireEntitlement: true }), { ...strongSecret, TOSS_CLIENT_KEY: "live_ck", TOSS_SECRET_KEY: undefined })).toBe(1);
   });
 });

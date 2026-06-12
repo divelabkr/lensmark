@@ -66,8 +66,11 @@ export class FsDoc {
     if (!this.inflight) this.draining = this.drain();
   }
 
-  /** 진행 중인 쓰기 완료 대기 — 종료 훅(SIGTERM)이 in-flight 유실을 막으려 await(H3). */
-  async whenDrained(): Promise<void> { await this.draining.catch(() => {}); }
+  /** 진행 중인 쓰기 완료 대기 — 종료 훅(SIGTERM)이 in-flight 유실을 막으려 await(H3). 실패로 남은 잔여 pending은 종료 직전 1회 더 시도(P2). */
+  async whenDrained(): Promise<void> {
+    await this.draining.catch(() => {});
+    if (this.pending != null && !this.inflight) { this.draining = this.drain(); await this.draining.catch(() => {}); } // 잔여 미반영분 종료 직전 재시도
+  }
 
   /**
    * 동기 저장 + 내구 확인(await 가능) — 실효 등 보안 쓰기가 '원격 반영 후' 응답하기 위함(H3). 실패는 throw.
@@ -100,6 +103,7 @@ export class FsDoc {
             else await new Promise((r) => setTimeout(r, 300 * (i + 1)));
           }
         }
+        if (!ok) { if (this.pending == null) this.pending = j; break; } // 영구 실패 — 스냅샷 보존(다음 save/whenDrained가 재시도, P2: 조용한 유실 차단)
       }
     } finally { this.inflight = false; }
   }
@@ -111,9 +115,11 @@ export class FsDoc {
 export class FirestoreEntitlementStore extends MemoryEntitlementStore {
   constructor(private readonly useDoc: FsDoc, private readonly revDoc: FsDoc) { super(); }
   async warm(): Promise<void> {
-    const [u, r] = await Promise.all([this.useDoc.load(), this.revDoc.load()]);
-    if (u) this.use = loadUseEntries(JSON.parse(u) as ([string, number] | [string, UseEntry])[]); // 레거시/신형 호환(P1#5)
-    if (r) this.revoked = new Set(JSON.parse(r) as string[]);
+    // allSettled: 한 문서 로드가 실패해도 다른 문서가 끝까지 settle(=sealed)되도록 — Promise.all은 첫 실패에 반환해 일부 문서가 sealed 전일 수 있음(P2 race 차단).
+    const [u, r] = await Promise.allSettled([this.useDoc.load(), this.revDoc.load()]);
+    if (u.status === "fulfilled" && u.value) this.use = loadUseEntries(JSON.parse(u.value) as ([string, number] | [string, UseEntry])[]); // 레거시/신형 호환(P1#5)
+    if (r.status === "fulfilled" && r.value) this.revoked = new Set(JSON.parse(r.value) as string[]);
+    if (u.status === "rejected" || r.status === "rejected") throw (u.status === "rejected" ? u.reason : (r as PromiseRejectedResult).reason); // 하나라도 실패 → 둘 다 settle(sealed) 후 throw
   }
   protected persist(): void {
     this.revDoc.save(JSON.stringify([...this.revoked])); // 보안 상태 — 항상 작음, 한도 무관
@@ -236,13 +242,18 @@ export function createFirestoreStores(opts?: { fs?: FirestoreLite; feedbackMax?:
     feedback.warm(), idem.warm(), entitlement.warm(), journal.warm(),
     subscriptions.warm(), analytics.warm(), accounts.warm(), sessions.warm(),
   ]).then((rs) => { const f = rs.filter((r) => r.status === "rejected").length; if (f) throw new Error(`firestore 스토어 워밍 ${f}/${rs.length} 실패(sealed)`); });
+  // 감사로그 in-flight 추적 — 종료(flushAll) 시 대기해 보안 이벤트 유실 창을 축소(P2).
+  const auditInflight = new Set<Promise<unknown>>();
   return {
     feedback, idem, entitlement, journal, subscriptions, analytics, accounts, sessions,
     mode: "firestore",
     ready,
-    // 종료(SIGTERM) 시 모든 FsDoc의 in-flight 쓰기를 끝까지 대기(유실 방지·H3).
-    flushAll: async () => { try { analytics.flush(); } catch { /* */ } await Promise.allSettled(docs.map((x) => x.whenDrained())); },
-    // 감사로그 — 보안 이벤트 내구 저장(자동 ID·append-only). 소규모 재시도(M6) 후 실패는 무시(콘솔 링버퍼는 항상 동작).
-    auditSink: (entry) => { void (async () => { for (let i = 0; i < 2; i++) { try { await fs.addDoc(AUDIT_COLLECTION, { at: entry.at, type: entry.type, detail: entry.detail }); return; } catch { await new Promise((r) => setTimeout(r, 200)); } } })(); },
+    // 종료(SIGTERM) 시 모든 FsDoc in-flight 쓰기 + 감사로그 in-flight를 끝까지 대기(유실 방지·H3·P2).
+    flushAll: async () => { try { analytics.flush(); } catch { /* */ } await Promise.allSettled([...docs.map((x) => x.whenDrained()), ...auditInflight]); },
+    // 감사로그 — 보안 이벤트 내구 저장(자동 ID·append-only). 소규모 재시도(M6) 후 실패는 무시(콘솔 링버퍼는 항상 동작). 종료 시 flushAll이 대기.
+    auditSink: (entry) => {
+      const p = (async () => { for (let i = 0; i < 2; i++) { try { await fs.addDoc(AUDIT_COLLECTION, { at: entry.at, type: entry.type, detail: entry.detail }); return; } catch { await new Promise((r) => setTimeout(r, 200)); } } })();
+      auditInflight.add(p); void p.finally(() => auditInflight.delete(p));
+    },
   };
 }

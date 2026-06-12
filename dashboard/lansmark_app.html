@@ -1173,7 +1173,7 @@ function foreignResultHtml(F,ai){
   const cf=F.climateFit;
   const cfHtml=cf?`<div class="frow" style="margin-top:6px;background:${cf.signal==='caution'?'#FFF6EE':cf.signal==='similar'?'#F1F8EE':'transparent'};border-radius:8px;padding:4px 6px"><span class="fax" style="background:${cf.signal==='caution'?'#DA5237':cf.signal==='similar'?'#10B95C':'#9aa19a'};color:#fff;border:none">기후대</span><span class="freason">${esc(cf.note)}</span></div>`:'';
   // AI 재배요약(Perplexity·외래작물 한정) — 하드 라벨 + 출처(검증 가능). 정량 수치는 서버 프롬프트로 차단. 보장 아님.
-  const src=(ai&&Array.isArray(ai.sources))?ai.sources.slice(0,4):[];
+  const src=(ai&&Array.isArray(ai.sources))?ai.sources.filter(u=>typeof u==="string"&&/^https?:\/\//.test(u)).slice(0,4):[]; // 스킴가드(P2 심층방어: 서버 https 필터에 더해 클라에서도 javascript: 등 차단)
   const aiHtml=(ai&&ai.summary)?`<div style="margin-top:9px;border:1px dashed #c9b8e6;background:#faf7ff;border-radius:9px;padding:9px 11px">
     <div class="src" style="font-weight:800;color:#6f4fb0">🤖 AI 재배 요약 <span style="font-weight:600;color:var(--ink3)">· 출처 확인 필요 · 보장 아님 · 영문/타지역 자료 기반</span></div>
     <div class="creg" style="margin-top:5px">${esc(ai.summary)}</div>

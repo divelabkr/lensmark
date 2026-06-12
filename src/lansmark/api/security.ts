@@ -50,9 +50,9 @@ export function htmlCsp(nonce: string): string {
 /** API(JSON) 응답용 CSP — 리소스 로드 불필요 → 전면 차단. */
 export const API_CSP = "default-src 'none'; frame-ancestors 'none'";
 
-/** 인라인 `<script>`(속성 없는 것)에 nonce 부여. 외부 `<script src>`는 호스트 허용으로 통과. */
+/** 인라인 `<script>`(속성 유무 무관)에 nonce 부여. 외부 `<script src>`는 제외(호스트 허용). 속성 보존(P2: 정확매칭 가용성 함정 제거). */
 export function injectNonce(html: string, nonce: string): string {
-  return html.replace(/<script>/g, `<script nonce="${nonce}">`);
+  return html.replace(/<script(?![^>]*\bsrc=)([^>]*)>/gi, `<script nonce="${nonce}"$1>`);
 }
 
 /* ─────────────────── 공통 보안 헤더(helmet 상당) ─────────────────── */

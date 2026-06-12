@@ -10,7 +10,7 @@
 import { fetchTextSafe, fetchJsonSafe } from "../geo/fetchSafe";
 import { hasEnv, ShapeUnverifiedError } from "./types";
 
-const BASE = "http://ncpms.rda.go.kr/npmsAPI/service"; // ⚠ 비암호화 http 예시 — 운영 https 확인 권장
+const BASE = "https://ncpms.rda.go.kr/npmsAPI/service"; // https 실증(2026-06: 동일 JSON·사과 33건) — apiKey 평문 쿼리 전송 제거(P2 B#3)
 
 /** 검증된 serviceCode(라이브 실증 2026-06). SVC01=작물명 병해충 검색(목록·JSON). SVC05=상세(XML). */
 export const SERVICE_CODE = { PEST_LIST: "SVC01", PEST_DETAIL: "SVC05" } as const;

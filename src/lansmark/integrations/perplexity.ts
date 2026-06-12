@@ -13,9 +13,9 @@ export interface AiCultivation { summary: string; sources: string[]; model: stri
 
 export function perplexityConfigured(): boolean { return hasEnv("PERPLEXITY_API_KEY"); }
 
-// 작물별 캐시(비용·일관성) — 메모리·TTL 24h·상한 500(바운드).
+// 작물별 캐시(비용·일관성) — 메모리·상한 500(바운드). 성공은 24h, 실패(null)는 짧게(음성TTL 10분 — 일시 장애가 만 하루 고착되지 않게, P2).
 const CACHE = new Map<string, { at: number; v: AiCultivation | null }>();
-const TTL_MS = 24 * 3600 * 1000, CAP = 500;
+const TTL_MS = 24 * 3600 * 1000, NEG_TTL_MS = 10 * 60 * 1000, CAP = 500;
 
 /** 응답 본문에서 마크다운/인용마커 정리(esc 전 가독성) — 굵게(**)·각주([1]) 제거. */
 function tidy(s: string): string { return s.replace(/\*\*/g, "").replace(/\[\d+\]/g, "").replace(/\s+\n/g, "\n").trim().slice(0, 1200); }
@@ -42,7 +42,7 @@ export async function fetchPerplexityCultivation(cropName: string): Promise<AiCu
   if (!key || !cropName) return null;
   const ck = cropName.trim().toLowerCase();
   const hit = CACHE.get(ck);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.v; // 캐시 적중(비용 0)
+  if (hit && Date.now() - hit.at < (hit.v ? TTL_MS : NEG_TTL_MS)) return hit.v; // 캐시 적중(비용 0) — 실패(null)는 음성TTL로 짧게
 
   const body = {
     model: "sonar",
@@ -67,8 +67,8 @@ export async function fetchPerplexityCultivation(cropName: string): Promise<AiCu
       // 채택 조건(가드레일): ① 요약 존재 ② 출처(https citation) ≥1(P1#2 — 검증수단 없는 LLM 텍스트 금지) ③ 정량수치 미포함(P1#3·fail-closed).
       if (summary && sources.length > 0 && !hasQuantClaim(summary)) out = { summary, sources, model: "perplexity-sonar" };
     }
-    if (CACHE.size > CAP) { const k = CACHE.keys().next().value as string | undefined; if (k) CACHE.delete(k); } // FIFO 축출
     CACHE.set(ck, { at: Date.now(), v: out }); // 실패(null)도 캐시(연속 호출 비용 폭주 방지)
+    if (CACHE.size > CAP) { const k = CACHE.keys().next().value as string | undefined; if (k && k !== ck) CACHE.delete(k); } // FIFO 축출(set 後 — 상한 정확히 CAP, P2 경계오류 제거)
     return out;
   } catch { return null; }
 }

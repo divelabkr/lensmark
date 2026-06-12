@@ -18,7 +18,7 @@ export const geoRoutes: RouteFn = async (ctx, _req, res, url) => {
 
   if (p === "/api/geocode") {
     json(res, 200, await ctx.providers.land.geocode({
-      address: q.get("address") ?? undefined,
+      address: q.get("address")?.slice(0, 200) ?? undefined, // 길이캡(P2: live 지오코더 승격 대비 비신뢰 입력 상한)
       lat: num(q.get("lat")),
       lng: num(q.get("lng")),
     }));

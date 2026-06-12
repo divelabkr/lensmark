@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.71.0",
+    date: "2026-06-13",
+    title: "설계감사 P2 일괄 — 방어·정합·부팅 하드닝(12건)",
+    items: [
+      "입력·방어: fetchSafe 응답 본문 바이트 상한(거대/무한 업스트림 메모리 고갈 차단·스트림 증분) · AI 출처 href 프론트 스킴가드(서버 https 필터 + 클라 이중) · injectNonce를 속성 있는 인라인 스크립트까지(가용성 함정 제거) · geocode address 길이캡 · Perplexity 실패 캐시 음성TTL(10분) 분리 + FIFO 상한 경계 정정",
+      "수치·가드레일: floorIncomeLoss에 단조성 가드(p10≤p50) — costP90=0·전음수 income 경계의 분포역전 잠재 차단 · 면책 횡단 회귀가드(공유 프리미티브 비거나 paid 결과에서 면책 누락 시 실패)",
+      "영속 신뢰성: FsDoc 영구실패 시 스냅샷 보존 + whenDrained 종료 재시도(조용한 유실 차단) · 감사로그 in-flight를 flushAll이 대기(종료 유실창 축소) · firestoreLite getJson 재시도(부팅 일시장애로 불필요한 sealed 방지) · entitlement warm을 allSettled로(첫 실패에도 모든 문서 sealed 보장)",
+      "보안 부팅·전송: NCPMS BASE를 https로(apiKey 평문 쿼리 전송 제거·사과 33건 실증) · 운영 부팅 강제 추가 — TOSS_CLIENT_KEY만 있고 서버 비밀키/웹훅 시크릿 없으면 차단, LANSMARK_DATA_KEY 미설정(PII 평문)이면 차단(LANSMARK_ALLOW_PLAINTEXT_PII=1 명시 우회)",
+      "검증: tsc·vitest 524(+5) · arch 0 · guardrail STRICT 0 · NCPMS https·foreign 라이브 무손상. 보류(근거): 토큰 httpOnly 이관(§3-1①②③·유료 결제흐름 아키텍처)·revoked per-record(멀티인스턴스)·widen/year1(트레이드오프) — 유료 정식 전/별 슬라이스",
+    ],
+  },
+  {
     version: "0.70.0",
     date: "2026-06-13",
     title: "설계감사 후속 — 가드레일 P0(외래 LLM 게이트) + 영속·훅 P1 보강",
