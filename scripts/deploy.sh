@@ -31,8 +31,8 @@ SECRETS+=",VWORLD_API_KEY=lansmark-vworld-api-key:latest"
 SECRETS+=",KMA_API_KEY=lansmark-kma-api-key:latest"
 SECRETS+=",KAMIS_API_KEY=lansmark-kamis-api-key:latest"
 SECRETS+=",KAMIS_API_ID=lansmark-kamis-api-id:latest"
-# 선택 시크릿(만든 경우에만 자동 포함) — 실시간 경보 웹훅(v0.64) 등. 없는 시크릿을 참조하면 배포가 깨지므로 존재 확인 후 추가.
-for OPT in "LANSMARK_ALERT_WEBHOOK=lansmark-alert-webhook"; do
+# 선택 시크릿(만든 경우에만 자동 포함) — 실시간 경보 웹훅(v0.64)·병해충(NCPMS,v0.67)·외래 AI요약(Perplexity,v0.68). 없는 시크릿을 참조하면 배포가 깨지므로 존재 확인 후 추가. 미생성이면 해당 기능만 무중단 degrade(NCPMS=[]·AI=null·DEM은 무키라 무관).
+for OPT in "LANSMARK_ALERT_WEBHOOK=lansmark-alert-webhook" "NCPMS_API_KEY=lansmark-ncpms-api-key" "PERPLEXITY_API_KEY=lansmark-perplexity-api-key"; do
   NAME="${OPT##*=}"
   if gcloud secrets describe "$NAME" --project "$PROJECT" >/dev/null 2>&1; then SECRETS+=",${OPT}:latest"; fi
 done
