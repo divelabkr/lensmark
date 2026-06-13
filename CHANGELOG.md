@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.73.0 — 2026-06-13 · 토지선택 UI — 격자→실제 필지 경계 + 평/㎡ 합산
+> 고객 앱 토지선택을 실데이터 필지 경계로. (프런트 단일파일 — tsc·vitest 무관, arch 0 유지.)
+- **실필지 선택** — 격자(줌단계 셀)→VWorld 실필지 폴리곤. PNU 키잉으로 줌 안정(확대/축소 중복선택 버그 해소). 기본 모드='필지 선택'. 원 표기 제거(점선 사각형 폴백)
+- **평/㎡ 합산** — '구역: N평·M㎡', 다필지 합산. 라이브 이벤트 숨김 토글(👁)
+- **피드백** — 위성+일반 오버랩 차단·일반맵 기본 · 다중선택 스크롤 보존 · 대지(warn)도 작물 표시(경고 배너) · AI href 스킴가드
+- ⚠ 적합도 그라데이션 시각화(작물 아이콘·빨강~파랑)는 후속
+
 ## 0.72.0 — 2026-06-13 · ops 정직성 — provider 런타임 건강(거짓 녹색 차단)
 > 'live/녹색'을 '키 존재'→'실제 호출 성공'으로. tsc·vitest **531**(+7)·arch 0·guardrail STRICT 0.
 - **거짓 녹색 차단** — ops 연동 live가 '키 꽂힘'일 뿐이라, 키 있는데 API 다운→조용한 mock 폴백이면 거짓 녹색이었음. `runtimeHealth`가 `auto.pick()`의 실제 결과(live/폴백) 집계 → live를 런타임-인지로(degraded면 false). 4상태: off·pending(미검증)·live·degraded(실 다운). 라이브: parcel·DEM·KAMIS=🟢, 미트리거=⚪

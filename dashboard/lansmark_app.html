@@ -214,7 +214,7 @@
 <div class="wrap">
   <div class="bar">
     <div class="logo"><div class="m">🌿</div><div class="n">LENSMARK</div></div><span class="ver" id="ver" title="변경 이력 보기">v—</span>
-    <div class="seg" id="mode"><button data-m="pin" class="on">📍 핀</button><button data-m="select">▦ 토지선택</button></div>
+    <div class="seg" id="mode"><button data-m="pin">📍 핀</button><button data-m="select" class="on">▦ 토지선택</button></div>
     <div class="tier" id="tier"><span class="lv">전국</span> 대표작물</div>
     <div class="srch">
       <div class="smode" id="smode"><button data-s="addr" class="on" title="주소·지번으로 위치 찾기">📍</button><button data-s="crop" title="작물로 추천 지역 찾기">🌱</button></div>
@@ -238,7 +238,7 @@
   </div>
   <div class="body">
     <div class="mapcol"><div id="map"></div><div class="mapsw" id="mapsw"><button type="button" data-bm="sat">위성</button><button type="button" data-bm="base">일반</button><button type="button" data-bm="topo">지형</button></div><div class="hint" id="hint">① 지도에서 땅을 탭하면 ② 추천 작물이 뜨고 ③ 작물을 누르면 소득 시뮬</div>
-      <div class="livefeed" id="livefeed"><div class="lh"><span class="dot"></span>LIVE 이벤트<span class="seam">데모 트리거 · 실연동: KAMIS/KMA/위성</span><button class="pp" id="feedpp" title="일시정지/재생">⏸</button></div><div class="feed" id="feed"><div class="empty2">실시간 이벤트 수집 중…</div></div></div>
+      <div class="livefeed" id="livefeed"><div class="lh"><span class="dot"></span>LIVE 이벤트<span class="seam">데모 트리거 · 실연동: KAMIS/KMA/위성</span><button class="pp" id="feedhide" title="이벤트 숨김">👁</button><button class="pp" id="feedpp" title="일시정지/재생">⏸</button></div><div class="feed" id="feed"><div class="empty2">실시간 이벤트 수집 중…</div></div></div>
     </div>
     <aside class="panel">
       <div class="sheet-handle" id="sheetHandle" title="끌어올리기/내리기"></div>
@@ -399,6 +399,11 @@ async function apiFeedback(cropId,region,terr,pred,actual){return jpost("/api/fe
 async function apiLandClass(lat,lng){return jget(`/api/landclass?lat=${lat}&lng=${lng}`);} // {category,group,label,cultivable,action,reason,source}
 async function apiRetailPrice(cropId){try{const r=await jget(`/api/retail-price?cropId=${encodeURIComponent(cropId)}`);return (r&&r.retail)||null;}catch(_){return null;}} // 마트 소매가 주간 {min,avg,max,samples,source}|null (부가정보·실패 무시)
 function polygonAreaM2(poly){if(!Array.isArray(poly)||poly.length<3)return null;const R=6378137,d=Math.PI/180;let a=0;for(let i=0;i<poly.length;i++){const p1=poly[i],p2=poly[(i+1)%poly.length];a+=(p2.lng-p1.lng)*d*(2+Math.sin(p1.lat*d)+Math.sin(p2.lat*d));}const m2=Math.abs(a*R*R/2);return m2>10?Math.round(m2):null;} // 필지 폴리곤 실면적
+/* 면적 표기 — 농민은 '평'으로 사고(1평=3.3058㎡). 선택 필지 합산용. */
+const M2_PER_PYEONG=3.305785;
+const pyeong=m2=>Math.round((m2||0)/M2_PER_PYEONG);
+const areaText=m2=>`${fmt(pyeong(m2))}평 · ${fmt(Math.round(m2||0))}㎡`;
+function sumSelArea(){let s=0;for(const it of SEL.values())s+=(it.area||0);return s;} // 선택 필지 면적 합
 async function apiGeocode(address){return jget(`/api/geocode?address=${encodeURIComponent(address)}`);} // {address,pnu,lat,lng}
 async function gotoLoc(lat,lng){MAP.setView([lat,lng],15);await openAt(lat,lng);} // 필지단계로 진입 → 전체 분석
 /* 검색창: 주소(geocode) / 작물(→추천 지역) 2모드. 작물모드는 /api/crops 자동완성 → 선택 시 renderCropRegion.
@@ -461,7 +466,7 @@ async function recommend(lat,lng,tier){
 }
 
 /* ===== 상태/지도 ===== */
-let MAP,GRID=L.layerGroup(),SELLAYER=L.layerGroup(),PARCEL=L.layerGroup(),EVT=L.layerGroup(),REGION=L.layerGroup(),PIN=null,MODE="pin",VIEW="sep";
+let MAP,GRID=L.layerGroup(),SELLAYER=L.layerGroup(),PARCEL=L.layerGroup(),EVT=L.layerGroup(),REGION=L.layerGroup(),PIN=null,MODE="select",VIEW="sep"; // 기본 모드=필지 선택
 const SEL=new Map(); let FOCUS=null; const CHOSEN={};
 let pinState=null;
 let pinGen=0; // 핀 요청 세대 — 빠른 연속 탭/복원 시 stale await가 현재 상태를 오염시키지 않게(레드팀 M10·L5)
@@ -481,8 +486,7 @@ function reconfirmCard(st){const lc=st.lc;if(!lc)return"";if(lc.action!=="reconf
 function bindReconfirm(st,rerender){const go=document.getElementById("rc-go");if(!go)return;go.addEventListener("click",()=>{const sel=document.getElementById("rc-use");st.currentUse=sel?sel.value:"other";st.reconfirmed=true;rerender();});}
 function coordOf(st){return st.lat!=null?[st.lat,st.lng]:st.center;}
 function cellOf(lat,lng,tier){const s=TIER_META[tier].cell,r=Math.floor(lat/s),c=Math.floor(lng/s);return{key:`${tier}:${r}:${c}`,bounds:[[r*s,c*s],[(r+1)*s,(c+1)*s]],center:[(r+0.5)*s,(c+0.5)*s]};}
-function drawGrid(){GRID.clearLayers();if(MODE!=="select")return;const tier=tierOf(MAP.getZoom()),s=TIER_META[tier].cell,b=MAP.getBounds();let n=0;
-  for(let lat=Math.floor(b.getSouth()/s)*s;lat<b.getNorth()&&n<240;lat+=s)for(let lng=Math.floor(b.getWest()/s)*s;lng<b.getEast()&&n<240;lng+=s,n++)L.rectangle([[lat,lng],[lat+s,lng+s]],{color:"#10211A",weight:.5,opacity:.12,fill:false,interactive:false}).addTo(GRID);}
+function drawGrid(){GRID.clearLayers();} // 격자 폐기(실필지 선택으로 대체) — 호출부 호환 위해 clear만 유지
 function tierBadge(){const t=TIER_META[tierOf(MAP.getZoom())];document.getElementById("tier").innerHTML=`<span class="lv">${t.lv}</span> ${t.label}`;}
 function drawParcel(pc,lc){PARCEL.clearLayers();if(!pc||!pc.polygon||!pc.polygon.length)return;const c=lc?lcStyle(lc).c:"#10B95C";const latlngs=pc.polygon.map(p=>[p.lat,p.lng]);L.polygon(latlngs,{color:c,weight:2,fillColor:c,fillOpacity:.10,dashArray:"4 3"}).addTo(PARCEL);}
 async function init(){
@@ -501,15 +505,16 @@ async function init(){
     topo:{url:"https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",attr:"지형 © OpenTopoMap(SRTM·CC-BY-SA)",max:17}, // 지형(등고·음영)
   };
   let baseLayer=null;
-  const setBasemap=k=>{const b=BASEMAPS[k]||BASEMAPS.sat;if(baseLayer)MAP.removeLayer(baseLayer);
+  const setBasemap=k=>{const b=BASEMAPS[k]||BASEMAPS.base;
+    MAP.eachLayer(l=>{if(l instanceof L.TileLayer)MAP.removeLayer(l);}); // 기존 타일레이어 전부 제거(위성+일반 오버랩 원천 차단)
     baseLayer=L.tileLayer(b.url,{maxZoom:19,maxNativeZoom:b.max,attribution:b.attr});baseLayer.addTo(MAP);if(baseLayer.bringToBack)baseLayer.bringToBack();
     try{localStorage.setItem("lansmark_basemap",k);}catch(_){}
     document.querySelectorAll("#mapsw button").forEach(x=>x.classList.toggle("on",x.dataset.bm===k));};
-  let _bm="sat";try{_bm=localStorage.getItem("lansmark_basemap")||"sat";}catch(_){}if(!BASEMAPS[_bm])_bm="sat";
+  let _bm="base";try{_bm=localStorage.getItem("lansmark_basemap")||"base";}catch(_){}if(!BASEMAPS[_bm])_bm="base"; // 토지선택엔 경계·라벨 보이는 일반맵이 기본
   setBasemap(_bm);
   document.querySelectorAll("#mapsw button").forEach(b=>b.addEventListener("click",()=>setBasemap(b.dataset.bm)));
   GRID.addTo(MAP);SELLAYER.addTo(MAP);PARCEL.addTo(MAP);EVT.addTo(MAP);REGION.addTo(MAP);
-  MAP.on("zoomend moveend",()=>{tierBadge();drawGrid();});MAP.on("click",onClick);tierBadge();startEvents();bindSearch();checkVersion();
+  MAP.on("zoomend moveend",()=>{tierBadge();});MAP.on("click",onClick);tierBadge();startEvents();bindSearch();checkVersion();if(MODE==="select")renderSelect(); // 기본 필지선택 패널 초기 표시
 }
 
 async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
@@ -533,15 +538,22 @@ async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
       else{const rc=await recommend(lat,lng,tier);if(g!==pinGen)return;st.rec=rc;}
     }catch(err){if(g!==pinGen)return;st.error=err.message;}
     if(g!==pinGen)return;st.busy=false;renderDetailPin();return;}
-  const cell=cellOf(lat,lng,tier);
-  if(SEL.has(cell.key)){const it=SEL.get(cell.key);it.rect.remove();SEL.delete(cell.key);delete CHOSEN[cell.key];if(FOCUS===cell.key)FOCUS=[...SEL.keys()].pop()||null;renderSelect();return;}
-  const rect=L.rectangle(cell.bounds,{color:TIER_META[tier].color,weight:2,fillColor:TIER_META[tier].color,fillOpacity:.22}).addTo(SELLAYER);
-  const it={center:cell.center,tier,rect,rec:null,terr:null,lc:null,override:false,opts:defOpts(),key:cell.key,sim:null,busy:true};
-  SEL.set(cell.key,it);FOCUS=cell.key;renderSelect();
+  // 실필지 선택 — 격자(cellOf) 폐기. 클릭 점 → 그 필지 폴리곤. PNU로 키잉해 줌과 무관하게 안정(같은 필지=같은 키 → #6 중복 제거).
+  let pc=null;try{pc=await apiParcel(lat,lng);}catch(_){}
+  const key=pc&&pc.pnu?("pnu:"+pc.pnu):("pt:"+lat.toFixed(5)+","+lng.toFixed(5));
+  if(SEL.has(key)){const it=SEL.get(key);it.rect.remove();SEL.delete(key);delete CHOSEN[key];if(FOCUS===key)FOCUS=[...SEL.keys()].pop()||null;renderSelect();return;} // 같은 필지 재탭 → 해제
+  const center=pc&&pc.center?[pc.center.lat,pc.center.lng]:[lat,lng];
+  const lls=pc&&pc.polygon&&pc.polygon.length>=3?pc.polygon.map(p=>[p.lat,p.lng]):null;
+  const col=TIER_META.parcel.color;
+  const sq=[[center[0]-3e-4,center[1]-4e-4],[center[0]-3e-4,center[1]+4e-4],[center[0]+3e-4,center[1]+4e-4],[center[0]+3e-4,center[1]-4e-4]];
+  const rect=L.polygon(lls||sq,{color:col,weight:2,fillColor:col,fillOpacity:.20,dashArray:lls?null:"4 3"}); // 실폴리곤, 없으면 작은 사각형(원 금지·항상 경계형)
+  rect.addTo(SELLAYER);
+  const area=lls?polygonAreaM2(pc.polygon):null;
+  const it={center,tier:"parcel",rect,parcel:pc,area:area||3300,rec:null,terr:null,lc:null,override:false,opts:Object.assign(defOpts(),{area:area||3300}),key,sim:null,busy:true};
+  SEL.set(key,it);FOCUS=key;renderSelect();
   try{
-    if(tier==="parcel"){const lc=await apiLandClass(cell.center[0],cell.center[1]);it.lc=lc;it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});
-      if(lc.action!=="block"){const [rc,tr]=await Promise.all([recommend(cell.center[0],cell.center[1],tier),apiTerrain(cell.center[0],cell.center[1])]);it.rec=rc;it.terr=tr;}} // U2 병렬화(recommend·terrain 독립)
-    else{it.rec=await recommend(cell.center[0],cell.center[1],tier);}
+    const lc=await apiLandClass(center[0],center[1]);it.lc=lc;if(it.rect.setStyle)it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});
+    if(lc.action!=="block"){const [rc,tr]=await Promise.all([recommend(center[0],center[1],"parcel"),apiTerrain(center[0],center[1])]);it.rec=rc;it.terr=tr;} // recommend·terrain 독립 병렬
   }catch(err){it.error=err.message;}
   it.busy=false;renderSelect();}
 
@@ -1415,7 +1427,7 @@ function renderDetailPin(){const st=pinState;if(!st)return;
 function renderSelect(){const items=[...SEL.values()];document.getElementById("cnt").innerHTML=`선택 <b>${items.length}</b>`;const plist=document.getElementById("plist");
   if(items.length===0){plist.innerHTML=`<div class="empty"><span class="ic">▦</span>토지를 탭해 선택<br/>(여러 구역 다중 선택 → 비교)</div>`;document.getElementById("ptitle").textContent="🌱 땅을 선택하세요";document.getElementById("psub").textContent="토지선택 — 다중 비교";return;}
   if(items.length>=2){return renderCompare(items);}
-  const it=SEL.get(FOCUS)||items[0];document.getElementById("ptitle").textContent="▦ 토지 분석";document.getElementById("psub").textContent="토지 유형 → 추천 → 소득 시뮬";
+  const it=SEL.get(FOCUS)||items[0];document.getElementById("ptitle").textContent="▦ 토지 분석";document.getElementById("psub").textContent="구역: "+areaText(it.area)+" · 토지유형→추천→소득";
   if(it.busy&&it.tier==="parcel"&&!it.lc){plist.innerHTML=loading("토지 유형 확인 중…");return;}
   if(it.error){plist.innerHTML=errCard(it.error,"err-retry2");const er=document.getElementById("err-retry2");if(er)er.addEventListener("click",async()=>{ // 막다른 끝 금지 — 같은 셀 재조회(onClick과 동일 흐름)
     it.error=null;it.busy=true;renderSelect();
@@ -1424,7 +1436,7 @@ function renderSelect(){const items=[...SEL.values()];document.getElementById("c
     it.busy=false;renderSelect();});return;}
   if(it.tier==="parcel"&&it.lc){
     if(it.lc.action==="block"){plist.innerHTML=landBlockCard(it.lc);return;}
-    if(it.lc.action==="warn"&&!it.override){plist.innerHTML=landWarnCard(it.lc);const ob=document.getElementById("lc-override");if(ob)ob.addEventListener("click",()=>{it.override=true;renderSelect();});return;}
+    // warn(대지·농지 아님 등)는 차단하지 않고 경계 배너(lcB)로 경고 + 작물은 표시(클릭하면 작물 보이게 — 지목≠실이용 가능). 수면(block)만 차단.
   }
   const lcB=(it.tier==="parcel"&&it.lc)?reconfirmCard(it):"";
   if(it.busy&&!it.rec){plist.innerHTML=lcB+loading("추천 불러오는 중…");return;}
@@ -1437,7 +1449,7 @@ function renderSelect(){const items=[...SEL.values()];document.getElementById("c
   bindChips(plist,async(cropId)=>{CHOSEN[it.key]=cropId;it.crop=cropId;it.simBusy=true;renderSelect();await ensureSim(it,cropId);renderSelect();});
 }
 /* ===== 다중 비교 (따로/합쳐서) ===== */
-async function renderCompare(items){document.getElementById("ptitle").textContent=`📊 토지 비교 (${items.length})`;document.getElementById("psub").textContent=VIEW==="comb"?"합쳐서 — 최적 땅·작물 랭킹":"따로 — 구역별 추천+소득";const plist=document.getElementById("plist");
+async function renderCompare(items){document.getElementById("ptitle").textContent=`📊 토지 비교 (${items.length})`;document.getElementById("psub").textContent=(VIEW==="comb"?"합쳐서 — 최적 땅·작물 랭킹":"따로 — 구역별 추천+소득")+" · 합계 "+areaText(sumSelArea());const plist=document.getElementById("plist");const _psc=plist.scrollTop||0; // 재렌더 시 스크롤 위치 보존(추가 선택해도 위로 안 튐)
   if(!isPro()&&!FREEBETA){const z=items.map((it,i)=>`구역 ${i+1}: ${it.rec?esc((it.rec.crops||[]).slice(0,3).map(c=>c.ko).join("·")):(it.lc?esc(it.lc.label):"…")}`).join("<br>");plist.innerHTML=paywallCard()+`<div class="card"><div class="sectt" style="margin-bottom:6px">선택 구역 ${items.length}곳(무료 추천)</div><div class="creg" style="margin:0">${z}</div></div>`;bindPay(()=>renderSelect());return;}
   const pend=items.filter(it=>it.tier==="parcel"&&it.terr&&it.rec&&it.rec.crops[0]&&it.rec.crops[0].id).filter(it=>{const cid=CHOSEN[it.key]||it.rec.crops[0].id;return !(it.cmp&&it.cmp._cid===cid);});
   if(pend.length){plist.innerHTML=loading("구역별 소득 계산 중…");await Promise.all(pend.map(async it=>{const cid=CHOSEN[it.key]||it.rec.crops[0].id;try{const c=coordOf(it);const s=await apiSimulate(cid,c[0],c[1],it.opts,it.terr,it.rec.region);s._cid=cid;it.cmp=s;}catch(_){it.cmp=null;}}));}
@@ -1453,6 +1465,7 @@ async function renderCompare(items){document.getElementById("ptitle").textConten
       ${best?`<div class="creg" style="margin-top:9px">→ <b>구역 ${best.i+1} (${esc(best.sim.cropNameKo)})</b>가 최적: 보통 소득 ${fmt(best.sim.incomeKrw.p50)}원.</div>`:""}</div>`:"";
     const oth=others.length?`<div class="card"><div class="sectt" style="margin-bottom:7px">소득 비교 불가(비농지/미확대)</div><div class="creg" style="margin:0">${others.map(r=>`구역 ${r.i+1}: ${r.it.lc?esc(r.it.lc.label):esc(r.topText)}`).join(" / ")}</div></div>`:"";
     plist.innerHTML=table+oth+'<div class="card"><div class="src">※ 비교는 보통값(P50) 기준 정렬 — 각 필지의 신뢰도·면책·출처·손익분기는 단일 분석에서 확인하세요. 수익·매입 보장이 아니며 모든 수치는 범위(P10–P90)입니다.</div></div>'+`<div class="upsell">💡 여러 땅의 소득을 한눈에 비교 — <b>${FREEBETA?'다중 비교 — 무료 베타 제공 중':'다중 비교는 결제(Pro)'}</b> 핵심. 토양검정 추가 시 정밀도↑.</div>`;}
+  plist.scrollTop=_psc; // 보존한 스크롤 복원
   plist.querySelectorAll(".cx").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.key,it=SEL.get(k);if(it){it.rect.remove();SEL.delete(k);delete CHOSEN[k];if(FOCUS===k)FOCUS=[...SEL.keys()].pop()||null;renderSelect();}}));
 }
 
@@ -1496,6 +1509,10 @@ async function openAt(lat,lng){
 
 /* ===== 컨트롤 ===== */
 document.getElementById("feedpp").addEventListener("click",function(){evtPaused=!evtPaused;this.textContent=evtPaused?"▶":"⏸";this.title=evtPaused?"재생":"일시정지";});
+document.getElementById("feedhide").addEventListener("click",function(){ // 라이브 이벤트 숨김/표시 — 피드 본문 + 지도 이벤트 마커 토글
+  const fd=document.getElementById("feed"),hidden=document.getElementById("livefeed").classList.toggle("ev-hidden");
+  fd.style.display=hidden?"none":"";if(hidden){evtPaused=true;EVT.clearLayers();}else{evtPaused=false;}
+  this.textContent=hidden?"🙈":"👁";this.title=hidden?"이벤트 표시":"이벤트 숨김";});
 document.getElementById("acctbtn").addEventListener("click",openAcctModal); syncAcct(); // 로그인 · 내 계정(httpOnly 쿠키 세션 → /me로 상태 동기화 → 익명 일지 이관)
 consumeMagicLink(); // 이메일 매직링크로 들어온 경우 자동 로그인 처리
 /* 모바일 바텀시트: 핸들 탭으로 펼침/접힘 + 지도 탭 시 자동 펼침(결과 노출) */
