@@ -205,7 +205,8 @@ const $=id=>document.getElementById(id);
 const won=n=>"₩"+Number(n||0).toLocaleString("ko-KR");
 const fmt=n=>Number(n||0).toLocaleString("ko-KR"); // 숫자 콤마 공용(원화 외 카운트도 — O10)
 const ktime=iso=>{const d=new Date(iso||0);return isNaN(d)?String(iso||"").slice(11,19):d.toLocaleTimeString("ko-KR",{hour12:false});}; // UTC ISO → KST 표시(O5 — 한 화면 두 시간대 금지)
-function statusOf(it){ if(it.live)return["live","LIVE"]; if(it.keyed)return["fallback","폴백"]; return["off","키 필요"]; }
+// 런타임-인지 — '키=live' 거짓 녹색 차단. degraded(키 있으나 실 API 다운)는 폴백으로 강등, pending(실호출 검증 전)은 낙관이되 라벨로 정직.
+function statusOf(it){ const st=it.runtime&&it.runtime.state; if(st==="degraded")return["fallback","⚠폴백중"]; if(it.live)return["live",st==="pending"?"키있음·검증전":"LIVE"]; if(it.keyed)return["fallback","폴백"]; return["off","키 필요"]; }
 const LABEL={vworldTiles:"VWorld 타일",vworldGeocode:"주소→좌표",vworldParcel:"필지경계",vworldDem:"지형 DEM",kmaClimate:"기후(KMA)",kamisPrice:"도매가(KAMIS)",tossPayment:"결제(Toss)",pgWebhook:"PG 웹훅",rdaIncome:"소득 base(RDA)"};
 
 /* ===== SVG 시각화 헬퍼(무의존 — 외부 차트 라이브러리 0) ===== */
@@ -322,7 +323,9 @@ async function load(){
   $("int-c").textContent=`live ${liveN} / ${keys.length}`;
   $("intg-gauge").innerHTML=donut(liveN,keys.length||1,liveN>=keys.length*0.5?"var(--green)":"var(--amber)",liveN,"/ "+keys.length+" LIVE"); // 저조=amber(상태 stat과 색 일치 · O9)
   $("intg-list").innerHTML=keys.map(k=>{const it=ints[k],[c,t]=statusOf(it);return `<div class="ig"><span class="idot ${c}"></span><span class="inm">${esc(LABEL[k]||k)}</span><span class="ist ${c}">${t}</span></div>`;}).join("");
-  $("intg-foot").textContent=`${liveN}종 실데이터 가동 · ${keys.length-liveN}종 mock/대기`;
+  // 런타임 기준 정직 요약 — '키=live'가 아니라 '실제 호출 결과'로. 사용자가 지금 받는 게 실데이터인지 mock인지.
+  const RT=keys.filter(k=>ints[k].runtime),rc=st=>RT.filter(k=>ints[k].runtime.state===st).length;
+  $("intg-foot").innerHTML=`데이터 연동 런타임(사용자가 실제 받는 것): 🟢실데이터 <b>${rc("live")}</b> · ⚪검증전 ${rc("pending")} · 🔴폴백 <b>${rc("degraded")}</b> · ⚫키없음 ${rc("off")}`;
 
   // ── 플라이휠 · 해자(실측 포함률 게이지 + KPI + 작물바) ──
   const fw=s.flywheel||{}, recs=fw.records||0, acts=fw.withActuals||0;

@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.72.0",
+    date: "2026-06-13",
+    title: "ops 정직성 — provider 런타임 건강(거짓 녹색 차단) + 프런트 반영 안전장치",
+    items: [
+      "거짓 녹색 차단(정직성 1원칙): 기존 ops의 연동 'live/녹색'은 '키가 꽂힘'(설정)일 뿐 'API가 지금 동작'이 아니었다 — 키 있는데 API 다운→조용히 mock 폴백이면 ops가 거짓 녹색(false confidence). 신규 runtimeHealth가 auto.pick()의 *실제 호출 결과*(live 성공 vs mock 폴백)를 연동별 집계 → integrationReadiness의 live를 런타임-인지로(degraded=마지막 폴백이면 live=false). 상태 4분: off(키없음)·pending(미검증)·live(실 성공)·degraded(실 API 다운 추정). 라이브 실증: parcel·DEM·KAMIS=🟢실데이터, 미트리거 경로=⚪미검증(거짓 LIVE 아님)",
+      "ops 노출: 통합목록이 degraded를 '⚠폴백중'으로 강등·pending을 '키있음·검증전'으로 정직 표시 + 요약 '🟢실데이터 N·⚪검증전·🔴폴백·⚫키없음'(사용자가 실제 받는 게 라이브인지 mock인지). 신뢰 피쉬본(qualityGate)도 'mock(키없음)'과 '키 있으나 폴백 중(실 다운)'을 구분. ※ 서버 다운 시 연결실패 배너(O3)·'운영 녹색≠데이터 정확'은 기존대로 유지 — 사용자 노출 정확도(✓검증/추정)는 실 RDA·보정 기반이라 키-API 다운에 안 속음(보호 유지)",
+      "프런트 반영 안전장치(제도화): preview 서버가 좀비로 무응답인데 '반영됨' 보고→캐시 옛 페이지 혼선난 사건 재발 방지. scripts/preview-check.sh가 dashboard/*.html 편집 시 서버가 *실제 서빙 중인지* 자동 점검(무응답/0바이트=⛔, 정상=✓), PostToolUse 훅 등록 + CLAUDE.md 불변식 #9",
+      "검증: tsc·vitest 531(+7: runtimeHealth 5·readiness degraded/live 2) · arch 0(runtimeHealth→provider-seam 등록) · guardrail STRICT 0",
+    ],
+  },
+  {
     version: "0.71.0",
     date: "2026-06-13",
     title: "설계감사 P2 일괄 — 방어·정합·부팅 하드닝(12건)",

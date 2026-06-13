@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.72.0 — 2026-06-13 · ops 정직성 — provider 런타임 건강(거짓 녹색 차단)
+> 'live/녹색'을 '키 존재'→'실제 호출 성공'으로. tsc·vitest **531**(+7)·arch 0·guardrail STRICT 0.
+- **거짓 녹색 차단** — ops 연동 live가 '키 꽂힘'일 뿐이라, 키 있는데 API 다운→조용한 mock 폴백이면 거짓 녹색이었음. `runtimeHealth`가 `auto.pick()`의 실제 결과(live/폴백) 집계 → live를 런타임-인지로(degraded면 false). 4상태: off·pending(미검증)·live·degraded(실 다운). 라이브: parcel·DEM·KAMIS=🟢, 미트리거=⚪
+- **ops 노출** — degraded='⚠폴백중'·pending='검증전' + 요약 '🟢실데이터 N·⚪검증전·🔴폴백·⚫키없음' · 피쉬본도 'mock(키없음)'≠'폴백 중(다운)' 구분. ※ 서버다운 연결배너·'녹색≠정확'·사용자 ✓검증(실 RDA 기반) 보호는 유지
+- **프런트 반영 안전장치** — `preview-check.sh`(좀비 서버 무응답 감지) PostToolUse 훅 + CLAUDE.md #9 — '죽은 서버를 반영됨으로 보고' 재발 방지
+
 ## 0.71.0 — 2026-06-13 · 설계감사 P2 일괄 — 방어·정합·부팅 하드닝
 > 저위험 P2 12건 수정. tsc·vitest **524**(+5)·arch 0·guardrail STRICT 0.
 - **입력·방어** — fetchSafe 본문 바이트 상한(스트림) · AI href 프론트 스킴가드 · injectNonce 속성 스크립트까지 · geocode 길이캡 · Perplexity 음성TTL/CAP 경계

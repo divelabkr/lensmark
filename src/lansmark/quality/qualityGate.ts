@@ -27,7 +27,7 @@ export interface QualityAssessment {
   sources: QualitySource[];                              // 차원별 게이트(피쉬본 뼈)
 }
 
-interface IntegrationLive { keyed: boolean; live: boolean; note?: string }
+interface IntegrationLive { keyed: boolean; live: boolean; note?: string; runtime?: { state: string; live: number; fallback: number } } // runtime: 실제 호출 결과(off/pending/live/degraded) — '키=live' 거짓 녹색 차단
 export interface QualityInputs {
   integrations: Record<string, IntegrationLive>;                       // integrationReadiness().integrations
   rdaMeta: { rows: number; baseYears: number[] } | null;               // RDA_REAL_META — null=데모(미검증)
@@ -38,6 +38,10 @@ export interface QualityInputs {
 export function assessQuality(inp: QualityInputs): QualityAssessment {
   const ig = inp.integrations || {};
   const live = (k: string): IntegrationLive => ig[k] || { keyed: false, live: false };
+  // 런타임 상태 한 단어 — '키 있으나 폴백 중(degraded·실 API 다운)'을 '키 없음(off)'과 구분해 정직한 note/action 제공.
+  const st = (k: string): string => live(k).runtime?.state || (live(k).keyed ? "pending" : "off");
+  const rnote = (k: string, liveNote: string): string => { const s = st(k); return s === "live" ? liveNote : s === "degraded" ? "키 있으나 폴백 중 — 실 API 다운 추정" : s === "pending" ? "키 있음(실호출 검증 전)" : "mock(키 없음)"; };
+  const raction = (k: string, base: string): string => st(k) === "degraded" ? "실 API가 폴백 중 — 키 유효성·쿼터·네트워크 확인(거짓 녹색 아님)" : base;
   const baseVerified = !!(inp.rdaMeta && inp.rdaMeta.rows > 0);
   const fw = inp.flywheel || { records: 0, withActuals: 0, validatedBuckets: 0 };
   const calibOk = fw.validatedBuckets > 0;
@@ -48,15 +52,15 @@ export function assessQuality(inp: QualityInputs): QualityAssessment {
       note: baseVerified ? `실 RDA · ${inp.rdaMeta!.rows}행` : "데모·미검증(실 RDA 미적재)",
       action: baseVerified ? undefined : "실 RDA 소득자료 적재(npm run rda:build) — 그 전엔 앱이 '추정' 강제(정상)" },
     { key: "kamisPrice", label: "시세(KAMIS)", category: "source", status: live("kamisPrice").live ? "ok" : "warn",
-      note: live("kamisPrice").live ? "live(검증 품목)" : "mock/일부 폴백",
-      action: live("kamisPrice").live ? undefined : "KAMIS 품목코드 연결로 live 품목 확장(미검증 작물은 실 RDA 단가 사용)" },
+      note: rnote("kamisPrice", "live(검증 품목)"),
+      action: live("kamisPrice").live ? undefined : raction("kamisPrice", "KAMIS 품목코드 연결로 live 품목 확장(미검증 작물은 실 RDA 단가 사용)") },
     { key: "kmaClimate", label: "기후(KMA)", category: "source", status: live("kmaClimate").live ? "ok" : "warn",
-      note: live("kmaClimate").live ? "live" : "mock(키 없음)",
-      action: live("kmaClimate").live ? undefined : "KMA_API_KEY 설정 → 기후 live 전환" },
+      note: rnote("kmaClimate", "live"),
+      action: live("kmaClimate").live ? undefined : raction("kmaClimate", "KMA_API_KEY 설정 → 기후 live 전환") },
     { key: "vworld", label: "지도·필지(VWorld)", category: "source",
       status: live("vworldGeocode").live && live("vworldParcel").live ? "ok" : "warn",
-      note: live("vworldGeocode").live && live("vworldParcel").live ? "live" : "mock 폴백",
-      action: live("vworldGeocode").live && live("vworldParcel").live ? undefined : "VWORLD_API_KEY 설정 → 지도·필지 live 전환" },
+      note: rnote("vworldParcel", "live"),
+      action: (live("vworldGeocode").live && live("vworldParcel").live) ? undefined : raction("vworldParcel", "VWORLD_API_KEY 설정 → 지도·필지 live 전환") },
     // 입력 품질 — DEM은 REST 미제공(구조적)으로 항상 mock 경사 → warn.
     { key: "vworldDem", label: "표고·경사(DEM)", category: "input", status: "warn", note: "REST 미제공 → mock 경사(구조적)",
       action: "구조적 한계(REST 미제공) — 대안 DEM 소스 검토(즉시 조치 불필요)" },

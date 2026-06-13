@@ -2,6 +2,7 @@ import type { ProviderBundle } from "./types";
 import { mockProviders } from "./mock";
 import { liveProviders } from "./live";
 import { RDA_REAL_META } from "../rdaIncome.real"; // 실 RDA 적재 메타 — health rdaIncome 표시를 빌드 사실과 동기(낡은 하드코딩 금지)
+import { recordProvider, runtimeState, runtimeCounts } from "./runtimeHealth"; // 런타임 건강 — '키=live'가 아니라 '실제 호출 성공'을 집계(거짓 녹색 차단)
 
 /**
  * Drop-in provider — "API만 붙이면 바로 운영".
@@ -11,9 +12,10 @@ import { RDA_REAL_META } from "../rdaIncome.real"; // 실 RDA 적재 메타 — 
  */
 const has = (...names: string[]) => names.every((n) => !!process.env[n]);
 
-async function pick<T>(useLive: boolean, live: () => Promise<T>, mock: () => Promise<T>, ok?: (v: T) => boolean): Promise<T> {
+async function pick<T>(key: string, useLive: boolean, live: () => Promise<T>, mock: () => Promise<T>, ok?: (v: T) => boolean): Promise<T> {
   if (useLive) {
-    try { const v = await live(); if (!ok || ok(v)) return v; } catch { /* live 실패 → mock 폴백 */ }
+    try { const v = await live(); if (!ok || ok(v)) { recordProvider(key, "live"); return v; } } catch { /* throw → 폴백 */ }
+    recordProvider(key, "fallback"); // throw 또는 형태가드 실패 = 라이브 미채택 → mock. 조용한 폴백을 런타임 건강에 기록(거짓 녹색 차단).
   }
   return mock();
 }
@@ -34,14 +36,14 @@ export const okRetail = (v: any): boolean => !!v && fin(v.avg) && v.avg > 0;
 export const autoProviders: ProviderBundle = {
   land: {
     // geocode/parcel은 "찾지 못함"(null/주소만)도 정상 응답이므로 형태가드 없이(throw 시에만 폴백).
-    geocode: (q) => pick(has("VWORLD_API_KEY"), () => liveProviders.land.geocode(q), () => mockProviders.land.geocode(q)),
-    climate: (loc) => pick(has("KMA_API_KEY"), () => liveProviders.land.climate(loc), () => mockProviders.land.climate(loc), okClimate),
-    parcel: (loc) => pick(has("VWORLD_API_KEY"), () => liveProviders.land.parcel(loc), () => mockProviders.land.parcel(loc), (v) => v != null),
-    terrain: (loc) => pick(true, () => liveProviders.land.terrain(loc), () => mockProviders.land.terrain(loc), okTerrain), // Open-Meteo 무키 — 항상 live 시도(실패·형태불일치만 mock 폴백)
+    geocode: (q) => pick("vworldGeocode", has("VWORLD_API_KEY"), () => liveProviders.land.geocode(q), () => mockProviders.land.geocode(q)),
+    climate: (loc) => pick("kmaClimate", has("KMA_API_KEY"), () => liveProviders.land.climate(loc), () => mockProviders.land.climate(loc), okClimate),
+    parcel: (loc) => pick("vworldParcel", has("VWORLD_API_KEY"), () => liveProviders.land.parcel(loc), () => mockProviders.land.parcel(loc), (v) => v != null),
+    terrain: (loc) => pick("vworldDem", true, () => liveProviders.land.terrain(loc), () => mockProviders.land.terrain(loc), okTerrain), // Open-Meteo 무키 — 항상 live 시도(실패·형태불일치만 mock 폴백)
   },
   price: {
-    recentWholesale: (cropId) => pick(has("KAMIS_API_KEY", "KAMIS_API_ID"), () => liveProviders.price.recentWholesale(cropId), () => mockProviders.price.recentWholesale(cropId), okPrice),
-    retailWeekly: (cropId) => pick(has("KAMIS_API_KEY", "KAMIS_API_ID"), () => liveProviders.price.retailWeekly(cropId), () => mockProviders.price.retailWeekly(cropId), okRetail),
+    recentWholesale: (cropId) => pick("kamisPrice", has("KAMIS_API_KEY", "KAMIS_API_ID"), () => liveProviders.price.recentWholesale(cropId), () => mockProviders.price.recentWholesale(cropId), okPrice),
+    retailWeekly: (cropId) => pick("kamisPrice", has("KAMIS_API_KEY", "KAMIS_API_ID"), () => liveProviders.price.retailWeekly(cropId), () => mockProviders.price.retailWeekly(cropId), okRetail),
   },
 };
 
@@ -49,15 +51,25 @@ export const autoProviders: ProviderBundle = {
 export function integrationReadiness() {
   const k = (n: string) => !!process.env[n];
   const vworld = k("VWORLD_API_KEY");
+  const kamis = k("KAMIS_API_KEY") && k("KAMIS_API_ID");
+  // 런타임 건강 부착 — keyed(설정)와 별개로 '실제 호출 결과'. live = keyed AND 마지막 호출이 폴백 아님(degraded면 false·정직).
+  //   state: off(키없음)·pending(실호출 0=미검증)·live(마지막 성공)·degraded(마지막 폴백=실 API 다운 추정).
+  const rt = (key: string, keyed: boolean) => {
+    const st = !keyed ? "off" : runtimeState(key);
+    const c = runtimeCounts(key);
+    return { live: keyed && st !== "degraded", runtime: { state: st, live: c.live, fallback: c.fallback } };
+  };
+  const dn = (base: string, state: string) => state === "degraded" ? base + " · ⚠ 키 있으나 최근 폴백(실 API 다운 추정)" : base;
+  const G = rt("vworldGeocode", vworld), P = rt("vworldParcel", vworld), D = rt("vworldDem", true), C = rt("kmaClimate", k("KMA_API_KEY")), Km = rt("kamisPrice", kamis);
   return {
     mode: (process.env.LANSMARK_DATA_MODE ?? "auto").toLowerCase(),
     integrations: {
-      vworldTiles: { keyed: vworld, live: vworld, note: "WMTS 타일(키 있으면 live)" },
-      vworldGeocode: { keyed: vworld, live: vworld, note: "주소→좌표/PNU(실구현)" },
-      vworldParcel: { keyed: vworld, live: vworld, note: "필지경계 WFS(실구현)" },
-      vworldDem: { keyed: true, live: true, note: "표고·경사 = Open-Meteo Elevation(무료·무키·Copernicus ~90m) 실데이터 — 실패 시 mock 폴백. 정밀(~30m)은 유료 Google Elevation으로 seam 교체" },
-      kmaClimate: { keyed: k("KMA_API_KEY"), live: k("KMA_API_KEY"), note: "ASOS 일자료 1년 집계(겨울최저·연강수·일조) — 실응답 형식 검증" },
-      kamisPrice: { keyed: k("KAMIS_API_KEY") && k("KAMIS_API_ID"), live: k("KAMIS_API_KEY") && k("KAMIS_API_ID"), note: "원/kg(convert_kg_yn=Y) · 검증 품목(apple 등)만 live, 그 외 base 단가 폴백" },
+      vworldTiles: { keyed: vworld, live: vworld, note: "WMTS 타일(키 있으면 live·클라이언트 직접 — 서버 폴백추적 밖)" },
+      vworldGeocode: { keyed: vworld, live: G.live, runtime: G.runtime, note: dn("주소→좌표/PNU(실구현)", G.runtime.state) },
+      vworldParcel: { keyed: vworld, live: P.live, runtime: P.runtime, note: dn("필지경계 WFS(실구현)", P.runtime.state) },
+      vworldDem: { keyed: true, live: D.live, runtime: D.runtime, note: dn("표고·경사 = Open-Meteo Elevation(무료·무키·~90m) 실데이터", D.runtime.state) },
+      kmaClimate: { keyed: k("KMA_API_KEY"), live: C.live, runtime: C.runtime, note: dn("ASOS 일자료 1년 집계(겨울최저·연강수·일조)", C.runtime.state) },
+      kamisPrice: { keyed: kamis, live: Km.live, runtime: Km.runtime, note: dn("원/kg · 검증 품목(apple 등)만 live, 그 외 base 단가 폴백", Km.runtime.state) },
       tossPayment: { keyed: k("TOSS_CLIENT_KEY") && k("TOSS_SECRET_KEY"), live: k("TOSS_CLIENT_KEY") && k("TOSS_SECRET_KEY"), note: "confirm+webhook 실구현(키 필요)" },
       pgWebhook: { keyed: k("PG_WEBHOOK_SECRET"), live: k("PG_WEBHOOK_SECRET"), note: "HMAC 서명검증" },
       // 실 RDA 적재 여부를 빌드 메타에서 동적으로 — v0.59 적재 후에도 '데모'로 표기되던 낡은 하드코딩 교정(반대방향 정직성 오류).

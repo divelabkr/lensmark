@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { autoProviders, integrationReadiness, okClimate, okTerrain, okPrice } from "../data/providers/auto";
+import { recordProvider, _resetProviderHealth } from "../data/providers/runtimeHealth";
 
 const KEYS = ["VWORLD_API_KEY", "KMA_API_KEY", "KAMIS_API_KEY", "KAMIS_API_ID"];
-const clear = () => KEYS.forEach((k) => delete process.env[k]);
+const clear = () => { KEYS.forEach((k) => delete process.env[k]); _resetProviderHealth(); }; // 키 + 런타임 건강 둘 다 격리(모듈 전역 누적 차단)
 
 describe("autoProviders — drop-in (키만 붙이면 운영)", () => {
   beforeEach(clear);
@@ -32,7 +33,23 @@ describe("autoProviders — drop-in (키만 붙이면 운영)", () => {
     process.env.VWORLD_API_KEY = "x";
     r = integrationReadiness();
     expect(r.integrations.vworldTiles.keyed).toBe(true);
-    expect(r.integrations.vworldDem.live).toBe(true); // 표고·경사 = Open-Meteo(무키) 실데이터로 승격(v0.67) — VWORLD 키와 무관하게 live
+    expect(r.integrations.vworldDem.live).toBe(true); // 표고·경사 = Open-Meteo(무키) 실데이터로 승격(v0.67) — VWORLD 키와 무관하게 live(호출 전=pending)
+  });
+
+  it("런타임 폴백 시 live=false·degraded 표기 — '키=live' 거짓 녹색 차단(설계감사 정직성)", () => {
+    process.env.VWORLD_API_KEY = "x"; // 키는 있음
+    recordProvider("vworldParcel", "fallback"); // 그러나 실제 호출이 폴백(API 다운/형태깨짐)
+    const r = integrationReadiness();
+    expect(r.integrations.vworldParcel.keyed).toBe(true);
+    expect(r.integrations.vworldParcel.live).toBe(false);              // 키 있어도 live 아님(정직)
+    expect(r.integrations.vworldParcel.runtime.state).toBe("degraded");
+  });
+  it("런타임 live 성공 시 live=true·live 표기", () => {
+    process.env.KMA_API_KEY = "x";
+    recordProvider("kmaClimate", "live");
+    const r = integrationReadiness();
+    expect(r.integrations.kmaClimate.live).toBe(true);
+    expect(r.integrations.kmaClimate.runtime.state).toBe("live");
   });
 });
 

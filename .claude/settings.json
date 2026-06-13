@@ -12,7 +12,8 @@
       {
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/guardrail-scan.sh\"", "timeout": 20 }
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/guardrail-scan.sh\"", "timeout": 20 },
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/preview-check.sh\"", "timeout": 15 }
         ]
       }
     ],
