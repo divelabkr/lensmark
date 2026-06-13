@@ -1548,9 +1548,19 @@ async function restore(s){s=s||{};SELLAYER.clearLayers();SEL.clear();for(const k
     }catch(err){if(g!==pinGen)return;st.error=err.message;}
     if(g!==pinGen)return;st.busy=false;if(st.crop&&st.terr)await ensureSim(st,st.crop);renderDetailPin();return;}
   GRID.clearLayers();
-  if(Array.isArray(s.sels)&&s.sels.length){for(const sv of s.sels){if(!sv||!okN(sv.lat)||!okN(sv.lng))continue;const tier=fixTier(sv.tier);const cell=cellOf(sv.lat,sv.lng,tier);const rect=L.rectangle(cell.bounds,{color:TIER_META[tier].color,weight:2,fillColor:TIER_META[tier].color,fillOpacity:.22}).addTo(SELLAYER);const it={center:cell.center,tier,rect,rec:null,terr:null,lc:null,override:false,opts:(typeof sv.opts==="object"&&sv.opts)||defOpts(),key:cell.key,sim:null,busy:true};SEL.set(cell.key,it);FOCUS=cell.key;const cr=fixCrop(sv.crop);if(cr)CHOSEN[cell.key]=cr;
-      try{if(tier==="parcel"){const lc=await apiLandClass(cell.center[0],cell.center[1]);it.lc=lc;it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});if(lc.action!=="block"){it.rec=await recommend(cell.center[0],cell.center[1],tier);it.terr=await apiTerrain(cell.center[0],cell.center[1]);}}else{it.rec=await recommend(cell.center[0],cell.center[1],tier);}}catch(_){}it.busy=false;}
-    const last=[...SEL.values()].pop();if(last)MAP.setView(last.center,last.tier==="parcel"?14:last.tier==="sigungu"?10:7);drawGrid();renderSelect();}else renderSelect();}
+  if(Array.isArray(s.sels)&&s.sels.length){for(const sv of s.sels){if(!sv||!okN(sv.lat)||!okN(sv.lng))continue;
+      // 실필지 재구성(onClick과 동일) — 저장된 lat/lng로 apiParcel 재호출 → 실폴리곤·PNU 키. (옛 격자 cellOf 복원 버그 수정)
+      let pc=null;try{pc=await apiParcel(sv.lat,sv.lng);}catch(_){}
+      const key=pc&&pc.pnu?("pnu:"+pc.pnu):("pt:"+sv.lat.toFixed(5)+","+sv.lng.toFixed(5));if(SEL.has(key))continue;
+      const center=pc&&pc.center?[pc.center.lat,pc.center.lng]:[sv.lat,sv.lng];
+      const lls=pc&&pc.polygon&&pc.polygon.length>=3?pc.polygon.map(p=>[p.lat,p.lng]):null,col=TIER_META.parcel.color;
+      const sq=[[center[0]-3e-4,center[1]-4e-4],[center[0]-3e-4,center[1]+4e-4],[center[0]+3e-4,center[1]+4e-4],[center[0]+3e-4,center[1]-4e-4]];
+      const rect=L.polygon(lls||sq,{color:col,weight:2,fillColor:col,fillOpacity:.20,dashArray:lls?null:"4 3"}).addTo(SELLAYER);
+      const area=lls?polygonAreaM2(pc.polygon):null,baseOpts=(typeof sv.opts==="object"&&sv.opts)?sv.opts:defOpts();
+      const it={center,tier:"parcel",rect,parcel:pc,area:area||3300,rec:null,terr:null,lc:null,override:false,opts:Object.assign({},baseOpts,{area:area||baseOpts.area||3300}),key,sim:null,busy:true};
+      SEL.set(key,it);FOCUS=key;const cr=fixCrop(sv.crop);if(cr)CHOSEN[key]=cr;
+      try{const lc=await apiLandClass(center[0],center[1]);it.lc=lc;if(it.rect.setStyle)it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});if(lc.action!=="block"){it.rec=await recommend(center[0],center[1],"parcel");it.terr=await apiTerrain(center[0],center[1]);}}catch(_){}it.busy=false;}
+    const last=[...SEL.values()].pop();if(last)MAP.setView(last.center,16);renderSelect();}else renderSelect();}
 document.getElementById("save").addEventListener("click",()=>dl("lansmark-session.json",JSON.stringify(snapshot())));
 document.getElementById("load").addEventListener("click",()=>document.getElementById("loadfile").click());
 document.getElementById("loadfile").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{restore(JSON.parse(r.result));}catch(err){alert("불러오기 실패: "+err.message);}};r.readAsText(f);e.target.value="";});

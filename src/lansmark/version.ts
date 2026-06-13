@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.73.1",
+    date: "2026-06-13",
+    title: "토지선택 복원 버그 수정 — 저장/공유 선택도 실필지로",
+    items: [
+      "v0.73 회귀 수정: 저장된 선택 복원(새로고침 resume·공유링크 #s=)이 옛 격자(cellOf·L.rectangle)로 떠서 실제 필지와 모양·면적이 달랐다. restore가 저장 lat/lng로 apiParcel을 재호출해 실폴리곤·PNU·실면적으로 재구성(onClick과 동일). 면적은 실필지 기준으로 보정, 저장된 판로·연차 옵션은 보존.",
+    ],
+  },
+  {
     version: "0.73.0",
     date: "2026-06-13",
     title: "토지선택 UI — 격자→실제 필지 경계 + 평/㎡ 합산 + 라이브이벤트 숨김",
