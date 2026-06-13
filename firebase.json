@@ -5,7 +5,7 @@
     "rewrites": [
       {
         "source": "**",
-        "run": { "serviceId": "lensmark-api", "region": "asia-northeast3" }
+        "run": { "serviceId": "lansmark-api", "region": "asia-northeast3" }
       }
     ]
   }
