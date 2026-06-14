@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.75.0",
+    date: "2026-06-15",
+    title: "백업·복구 시스템 + ops '🛟 백업/복구' 탭(복구버튼) — blob 스냅샷(같은-DB) · Layer2(PITR)는 별도",
+    items: [
+      "백업/복구 추가(blob 계층 스냅샷): 각 스토어의 영속 blob(lm_state 문서/.data 파일, 키 있으면 ENC1 암호문)을 불투명 바이트로 그대로 복사 → 별도 위치(같은 DB lm_backups / .data/backups) 보관·목록·복구. 복호·재암호 0(키 불필요·PII 비노출·라운드트립 자명). 같은 모드만 복구(meta.storeMode).",
+      "복구 안전(비가역): 관리자 가드(blockedOpsMutation: prod토큰403·adminOk401·JSON415=CSRF) + 클라 'RESTORE' 타이핑 + 서버 confirm 이중 + 복구 전 현재 상태 자동 스냅샷(pre-restore=2단 되돌리기) + snapshot id 경로주입 방어. 복구 후 in-memory 스테일은 인스턴스 재시작으로 반영(in-process 리로드 race 회피).",
+      "ops 콘솔 '🛟 백업/복구' 탭 — 상태(마지막·스냅샷 수·대상 키)·'지금 백업'·스냅샷별 '복구'(타이핑 확인) + 정직 라벨('같은-DB는 재해복구 아님 — 진짜 DR=Layer2 PITR+스케줄'). /api/ops/backup·/status·/restore.",
+      "정직성: 같은-DB 스냅샷은 운영 실수·논리 손상 복구용(프로젝트/DB 전체 손실은 보호 안 함). 진짜 DR(GCP 관리형 PITR 7일+일일 스케줄 백업·gcloud)은 Layer2로 분리(HUMAN GATE·승인 후 실행). 검증: tsc·vitest(+18 backup)·arch(기능 38·엔드포인트 60).",
+    ],
+  },
+  {
     version: "0.74.6",
     date: "2026-06-15",
     title: "모바일 바텀시트 손가락 드래그 — 끌어서 작게/중간/전체 + 손 뗀 위치 가까운 단 스냅",

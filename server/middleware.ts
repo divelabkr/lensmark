@@ -49,3 +49,17 @@ export function adminOk(req: http.IncomingMessage, ctx: Ctx): boolean {
   const got = Buffer.from((req.headers["x-lansmark-admin"] as string) ?? ""), exp = Buffer.from(token);
   return got.length === exp.length && crypto.timingSafeEqual(got, exp);
 }
+
+/**
+ * ops '쓰기'(revoke·paid-gate·pg-preference·backup) 공통 가드(감사 M4) — 읽기(stats)와 분리. SSOT(ops·backup 라우트 공용).
+ *   ① 운영+토큰미설정이면 거부(ALLOW_OPEN_CONSOLE은 통계 공개일 뿐, 쓰기까지 열지 않는다)
+ *   ② 관리자 토큰 검증(adminOk) ③ Content-Type: application/json 요구(단순요청 cross-origin POST=CSRF 차단).
+ *   반환 true = 차단됨(응답 종료). false = 통과.
+ */
+export function blockedOpsMutation(req: http.IncomingMessage, res: http.ServerResponse, ctx: Ctx): boolean {
+  if (ctx.config.isProd && !ctx.config.adminToken) { json(res, 403, { error: "운영 쓰기는 관리자 토큰이 필요합니다(콘솔 공개로 열리지 않음).", code: "ADMIN_TOKEN_REQUIRED" }); return true; }
+  if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
+  const ct = String(req.headers["content-type"] || "");
+  if (!ct.includes("application/json")) { json(res, 415, { error: "Content-Type: application/json 이 필요합니다.", code: "BAD_CONTENT_TYPE" }); return true; } // CSRF(단순요청) 차단
+  return false;
+}

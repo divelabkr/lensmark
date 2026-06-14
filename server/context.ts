@@ -10,6 +10,10 @@ import { getProviders } from "../src/lansmark/data/providers";
 import type { IdempotencyStore } from "../src/lansmark/payment/pgWebhook";
 import { createStores, type FeedbackStoreEx, type EntitlementStore } from "../src/lansmark/db/stores";
 import { createFirestoreStores } from "../src/lansmark/db/firestoreStores";
+import { FirestoreLite } from "../src/lansmark/db/firestoreLite";
+import { FirestoreBlobBackend, FileBlobBackend, MemoryBlobBackend } from "../src/lansmark/backup/blobBackend";
+import { BackupManager } from "../src/lansmark/backup/backupManager";
+import { APP_VERSION } from "../src/lansmark/version";
 import type { JournalStore } from "../src/lansmark/journal/journalStore";
 import type { SubscriptionStore } from "../src/lansmark/notify/subscriptionStore";
 import type { AnalyticsStore } from "../src/lansmark/analytics/types";
@@ -73,6 +77,8 @@ export interface Ctx {
   pushSender: PushSender;
   /** 클라이언트(브라우저) 에러 텔레메트리 — 사용자 화면 에러를 ops에 가시화 + 웹훅 실시간 경보(LANSMARK_ALERT_WEBHOOK). 메모리(휘발). */
   clientErrors: ClientErrorStore;
+  /** 백업/복구(blob 계층 스냅샷) — ops에서 '지금 백업'·'복구'. file/firestore 실동작, memory는 휘발(비대상). */
+  backup: BackupManager;
 }
 
 /** 라우트 핸들러 시그니처. 반환 true = 이 핸들러가 응답을 종료함(라우터가 중단). false = 다음 핸들러로. */
@@ -106,6 +112,13 @@ export function createContext(config: Config): Ctx {
     ? Promise.allSettled([stores.ready ?? Promise.resolve(), runtimeFlags.warm()])
         .then((rs) => { if (rs.some((r) => r.status === "rejected")) throw new Error("firestore 워밍 실패(stores 또는 flags)"); })
     : undefined;
+  // 백업/복구 백엔드 — blob 계층(lm_state 문서/.data 파일을 불투명 바이트로 스냅샷). 모드별 주입(firestore=같은 DB lm_backups · file=.data/backups · memory=휘발 비대상).
+  const backupBackend = config.storeMode === "firestore"
+    ? new FirestoreBlobBackend(new FirestoreLite())
+    : config.storeMode === "file"
+      ? new FileBlobBackend(config.dataDir)
+      : new MemoryBlobBackend();
+  const backup = new BackupManager(backupBackend, APP_VERSION);
   return {
     config,
     providers: getProviders(),                 // auto: 키 있는 통합만 live, 나머지 mock 폴백
@@ -147,5 +160,6 @@ export function createContext(config: Config): Ctx {
     pushSubs: new InMemoryPushSubscriptionStore(),
     pushSender: createPushSender(),
     clientErrors: new ClientErrorStore(), // 브라우저 에러 가시화(이전엔 안 보임) — 새 distinct만 경보
+    backup, // 백업/복구 매니저(blob 계층 스냅샷)
   };
 }

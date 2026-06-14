@@ -399,4 +399,13 @@ export const FEATURES: Feature[] = [
     guardrails: ["SW는 /api 캐시 금지(동적)", "SW 루트 스코프(Service-Worker-Allowed)", "아이콘=placeholder(실디자인 HUMAN GATE)"], status: "platform",
     notes: "모바일 로드맵: PWA 쉘(완료) → 웹푸시 알람(VAPID·SMS 대체) → 이메일 매직링크 로그인. 네트워크-우선 쉘 캐시(오프라인 폴백).",
   },
+  {
+    id: "backup-restore", name: "백업·복구(blob 스냅샷)", stage: "ops",
+    flow: "관리자: lm_state 문서/.data 파일을 불투명 바이트(암호문 그대로)로 스냅샷 → 별도 위치(같은 DB lm_backups / .data/backups) 보관·목록·복구. 복구는 confirm 타이핑 + 복구 전 pre-restore 자동 스냅샷(2단 되돌리기) + 재시작 유도. ops '🛟 백업/복구' 탭",
+    endpoints: ["/api/ops/backup", "/api/ops/backup/status", "/api/ops/backup/restore"],
+    files: ["src/lansmark/backup/types.ts", "src/lansmark/backup/blobBackend.ts", "src/lansmark/backup/backupManager.ts", "server/routes/backup.ts", "dashboard/lansmark_ops.html"],
+    tests: ["src/lansmark/tests/backupManager.spec.ts", "src/lansmark/tests/backupRoutes.spec.ts"],
+    guardrails: ["관리자 인증(blockedOpsMutation: prod토큰403·adminOk401·JSON415=CSRF)", "복구 confirm 타이핑(단순 클릭 금지)", "복구 전 pre-restore 자동 스냅샷(되돌리기)", "암호문 그대로 복사(복호·키 불필요·PII 비노출)", "같은 모드만 복구(meta.storeMode)", "snapshot id 경로주입 방어(SNAP_ID_RE)", "복구 후 재시작 유도(in-process 리로드 race 회피)"], status: "live",
+    notes: "Layer1=앱레벨 같은-DB 스냅샷(운영 실수·논리 손상 복구·되돌리기). 같은 DB라 진짜 DR 아님 — 프로젝트/DB 전체 손실은 Layer2(GCP 관리형 PITR 7일+일일 스케줄 백업·gcloud·HUMAN GATE)가 담당. ops 백업 탭에 DR 한계 상시 라벨. 1MiB per-store 개별 문서.",
+  },
 ];

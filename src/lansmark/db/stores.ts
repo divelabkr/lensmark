@@ -220,20 +220,37 @@ export interface Stores {
   flushAll?: () => Promise<void>;
 }
 
+/**
+ * file 모드 파일명 매핑(SSOT) — 백업/복구가 재사용. 논리 키 → .data/<파일명>.
+ *   ⚠ firestore의 lm_state 문서 id와 다름: entitlement는 use/revoked 합본(entitlement.json), flags는 runtimeFlags.json.
+ *   같은 모드 복구만 지원(스냅샷 meta에 storeMode 기록).
+ */
+export const FILE_STORE_FILES = {
+  feedback: "feedback.json",
+  idempotency: "idempotency.json",
+  entitlement: "entitlement.json",
+  journal: "journal.json",
+  subscriptions: "subscriptions.json",
+  analytics: "analytics.json",
+  accounts: "accounts.json",
+  sessions: "sessions.json",
+  flags: "runtimeFlags.json", // runtimeFlags.ts가 생성(이 팩토리 밖) — 백업은 직접 접근
+} as const;
+
 /** 모드별 스토어 생성(memory|file). firestore는 순환 import 회피를 위해 db/firestoreStores.createFirestoreStores()를 context에서 직접 사용. file 모드인데 디렉터리 쓰기 불가면 메모리로 자동 폴백(무중단). */
 export function createStores(opts: { mode: "memory" | "file"; dir: string; feedbackMax?: number }): Stores {
   if (opts.mode === "file") {
     try {
       mkdirSync(opts.dir, { recursive: true }); // 쓰기 가능 확인
       return {
-        feedback: new FileFeedbackStore(join(opts.dir, "feedback.json"), opts.feedbackMax),
-        idem: new FileIdempotency(join(opts.dir, "idempotency.json")),
-        entitlement: new FileEntitlementStore(join(opts.dir, "entitlement.json")),
-        journal: new FileJournalStore(join(opts.dir, "journal.json")),
-        subscriptions: new FileSubscriptionStore(join(opts.dir, "subscriptions.json")),
-        analytics: new FileAnalyticsStore(join(opts.dir, "analytics.json")),
-        accounts: new FileAccountStore(join(opts.dir, "accounts.json")),
-        sessions: new FileSessionStore(join(opts.dir, "sessions.json")),
+        feedback: new FileFeedbackStore(join(opts.dir, FILE_STORE_FILES.feedback), opts.feedbackMax),
+        idem: new FileIdempotency(join(opts.dir, FILE_STORE_FILES.idempotency)),
+        entitlement: new FileEntitlementStore(join(opts.dir, FILE_STORE_FILES.entitlement)),
+        journal: new FileJournalStore(join(opts.dir, FILE_STORE_FILES.journal)),
+        subscriptions: new FileSubscriptionStore(join(opts.dir, FILE_STORE_FILES.subscriptions)),
+        analytics: new FileAnalyticsStore(join(opts.dir, FILE_STORE_FILES.analytics)),
+        accounts: new FileAccountStore(join(opts.dir, FILE_STORE_FILES.accounts)),
+        sessions: new FileSessionStore(join(opts.dir, FILE_STORE_FILES.sessions)),
         mode: "file",
       };
     } catch { /* 쓰기 불가 → 메모리 폴백 */ }

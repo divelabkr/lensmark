@@ -9,7 +9,8 @@
 import { join } from "node:path";
 import { JsonFile } from "../src/lansmark/db/jsonFile";
 import { FirestoreLite } from "../src/lansmark/db/firestoreLite";
-import { FsDoc } from "../src/lansmark/db/firestoreStores";
+import { FsDoc, STORE_DOC_IDS } from "../src/lansmark/db/firestoreStores";
+import { FILE_STORE_FILES } from "../src/lansmark/db/stores"; // 파일명 SSOT(백업과 동일 출처)
 
 interface Flags { requireEntitlement?: boolean; pgPreference?: "toss" | "paypal"; } // 미설정(undefined)=오버라이드 없음(config/.env 기본 사용)
 
@@ -18,8 +19,8 @@ export class RuntimeFlagsStore {
   private doc: FsDoc | null = null;              // firestore 모드(warm()로 비동기 로드)
   private mem: Flags = {};
   constructor(mode: "memory" | "file" | "firestore", dir: string, fs?: FirestoreLite) {
-    if (mode === "file") this.file = new JsonFile<Flags>(join(dir, "runtimeFlags.json"), {}); // 다른 영속 스토어와 같은 dataDir
-    else if (mode === "firestore") this.doc = new FsDoc(fs ?? new FirestoreLite(), "flags");
+    if (mode === "file") this.file = new JsonFile<Flags>(join(dir, FILE_STORE_FILES.flags), {}); // 다른 영속 스토어와 같은 dataDir
+    else if (mode === "firestore") this.doc = new FsDoc(fs ?? new FirestoreLite(), STORE_DOC_IDS.flags);
   }
 
   /** firestore 원격 로드(부팅 워밍) — file/memory는 즉시 resolve(생성자서 로드/휘발). devServer가 listen 前 await. */

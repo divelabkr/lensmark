@@ -27,6 +27,26 @@ const AUDIT_COLLECTION = "lm_audit"; // 감사로그(append-only · 자동 ID)
 const MAX_BLOB = 900_000;            // Firestore 문서 1MiB 한도 여유분 — 초과 시 경고 후 쓰기 보류(메모리는 유지)
 
 /**
+ * lm_state 문서 id의 SSOT(백업/복구가 재사용) — 이 목록·아래 팩토리의 d(...)·runtimeFlags("flags")가 한 출처.
+ *   ⚠ 새 스토어 문서를 추가하면 여기에도 반드시 등록(아니면 백업에서 조용히 누락). file 모드 파일명 매핑은 stores.ts FILE_STORE_FILES.
+ */
+export const STORE_DOC_IDS = {
+  feedback: "feedback",
+  idempotency: "idempotency",
+  entitlementUse: "entitlement_use",
+  entitlementRevoked: "entitlement_revoked",
+  journal: "journal",
+  subscriptions: "subscriptions",
+  analytics: "analytics",
+  accounts: "accounts",
+  sessions: "sessions",
+  flags: "flags", // runtimeFlags.ts가 생성(이 팩토리 밖) — 백업은 lm_state/flags로 직접 접근
+} as const;
+
+/** 백업 대상 lm_state 문서 id 전체(firestore 모드) — BlobBackend가 열거에 사용. */
+export const BACKUP_STORE_KEYS: readonly string[] = Object.values(STORE_DOC_IDS);
+
+/**
  * 문서 1개의 내구 저장 채널 — 즉시 쓰기 + in-flight 병합(최신 상태만) + 지수 재시도.
  *   sealed: 부팅 로드 실패 시 true → save 무력화(기존 원격 데이터를 빈 상태로 덮지 않음).
  */
@@ -228,14 +248,14 @@ export function createFirestoreStores(opts?: { fs?: FirestoreLite; feedbackMax?:
   const fs = opts?.fs ?? new FirestoreLite();
   const docs: FsDoc[] = [];
   const d = (id: string) => { const x = new FsDoc(fs, id); docs.push(x); return x; };
-  const feedback = new FirestoreFeedbackStore(d("feedback"), opts?.feedbackMax);
-  const idem = new FirestoreIdempotency(d("idempotency"));
-  const entitlement = new FirestoreEntitlementStore(d("entitlement_use"), d("entitlement_revoked")); // M2: use/revoked 분리
-  const journal = new FirestoreJournalStore(d("journal"));
-  const subscriptions = new FirestoreSubscriptionStore(d("subscriptions"));
-  const analytics = new FirestoreAnalyticsStore(d("analytics"), opts?.analyticsDebounceMs); // undefined면 기본 5s 디바운스
-  const accounts = new FirestoreAccountStore(d("accounts"));
-  const sessions = new FirestoreSessionStore(d("sessions"));
+  const feedback = new FirestoreFeedbackStore(d(STORE_DOC_IDS.feedback), opts?.feedbackMax);
+  const idem = new FirestoreIdempotency(d(STORE_DOC_IDS.idempotency));
+  const entitlement = new FirestoreEntitlementStore(d(STORE_DOC_IDS.entitlementUse), d(STORE_DOC_IDS.entitlementRevoked)); // M2: use/revoked 분리
+  const journal = new FirestoreJournalStore(d(STORE_DOC_IDS.journal));
+  const subscriptions = new FirestoreSubscriptionStore(d(STORE_DOC_IDS.subscriptions));
+  const analytics = new FirestoreAnalyticsStore(d(STORE_DOC_IDS.analytics), opts?.analyticsDebounceMs); // undefined면 기본 5s 디바운스
+  const accounts = new FirestoreAccountStore(d(STORE_DOC_IDS.accounts));
+  const sessions = new FirestoreSessionStore(d(STORE_DOC_IDS.sessions));
   // M1: allSettled로 '모든' 워밍이 끝난 뒤에만 listen(늦은 warm이 초기 요청 쓰기를 덮어쓰는 레이스 차단).
   //   하나라도 실패하면 throw → devServer가 유료 게이트 시 fail-closed. 실패 문서는 sealed라 덮어쓰기 없음.
   const ready = Promise.allSettled([

@@ -100,6 +100,33 @@ export class FirestoreLite {
     if (!r.ok) throw new Error(`firestore set ${collection}/${id} HTTP ${r.status}`);
   }
 
+  /** 컬렉션의 문서 id 전체 나열(페이지네이션) — 백업 스냅샷(lm_backups) 열거·prune용. 컬렉션 없으면 빈 배열. */
+  async listDocIds(collection: string): Promise<string[]> {
+    const base = await this.docUrl(collection); // 컬렉션 URL(문서 id 없음)
+    const ids: string[] = [];
+    let pageToken: string | undefined;
+    for (let guard = 0; guard < 200; guard++) { // 안전 상한(무한 페이지 루프 방지)
+      const u = new URL(base);
+      u.searchParams.set("pageSize", "300");
+      if (pageToken) u.searchParams.set("pageToken", pageToken);
+      const r = await this.call(u.toString(), { headers: { Authorization: `Bearer ${await this.token()}` } });
+      if (r.status === 404) break; // 컬렉션 미존재(스냅샷 0)
+      if (!r.ok) throw new Error(`firestore list ${collection} HTTP ${r.status}`);
+      const d = (await r.json()) as { documents?: { name?: string }[]; nextPageToken?: string };
+      for (const doc of d.documents ?? []) { const nm = doc.name ?? ""; const seg = nm.slice(nm.lastIndexOf("/") + 1); if (seg) ids.push(decodeURIComponent(seg)); }
+      if (!d.nextPageToken) break;
+      pageToken = d.nextPageToken;
+    }
+    return ids;
+  }
+
+  /** 단일 문서 삭제(백업 prune용) — 404(이미 없음)는 성공으로 간주. */
+  async deleteDoc(collection: string, id: string): Promise<void> {
+    const url = await this.docUrl(collection, id);
+    const r = await this.call(url, { method: "DELETE", headers: { Authorization: `Bearer ${await this.token()}` } });
+    if (!r.ok && r.status !== 404) throw new Error(`firestore delete ${collection}/${id} HTTP ${r.status}`);
+  }
+
   /** 자동 ID 문서 추가(감사로그 등 append-only) — 실패는 호출부에서 무시 가능(운영 연속성 우선). */
   async addDoc(collection: string, fields: Record<string, string>): Promise<void> {
     const url = await this.docUrl(collection);

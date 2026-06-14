@@ -5,10 +5,9 @@
  */
 import { json, readBody } from "../respond";
 import { isObject } from "../../src/lansmark/api/parcelRequest";
-import { adminOk } from "../middleware";
+import { adminOk, blockedOpsMutation } from "../middleware"; // blockedOpsMutation=ops 쓰기 가드 SSOT(middleware로 승격 — backup 라우트와 공용)
 import { VALIDATED_THRESHOLD } from "../../src/lansmark/core/calibration"; // 검증 판정 SSOT(임계) — ops도 동일 기준
-import type { Ctx, RouteFn } from "../context";
-import type * as http from "node:http";
+import type { RouteFn } from "../context";
 import { readFileSync, statSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { join } from "node:path";
@@ -30,20 +29,6 @@ function appPayloadKB(dir: string): { rawKB: number; gzipKB: number } {
     }
     return { rawKB: _payloadCache.rawKB, gzipKB: _payloadCache.gzipKB };
   } catch { return { rawKB: 0, gzipKB: 0 }; }
-}
-
-/**
- * ops '쓰기'(revoke·paid-gate) 공통 가드(감사 M4) — 읽기(stats)와 분리.
- *   ① 운영+토큰미설정이면 거부(ALLOW_OPEN_CONSOLE은 통계 공개일 뿐, 쓰기까지 열지 않는다)
- *   ② 관리자 토큰 검증(adminOk) ③ Content-Type: application/json 요구(단순요청 cross-origin POST=CSRF 차단)
- *   반환 true = 차단됨(응답 종료). false = 통과.
- */
-function blockedOpsMutation(req: http.IncomingMessage, res: any, ctx: Ctx): boolean {
-  if (ctx.config.isProd && !ctx.config.adminToken) { json(res, 403, { error: "운영 쓰기는 관리자 토큰이 필요합니다(콘솔 공개로 열리지 않음).", code: "ADMIN_TOKEN_REQUIRED" }); return true; }
-  if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
-  const ct = String(req.headers["content-type"] || "");
-  if (!ct.includes("application/json")) { json(res, 415, { error: "Content-Type: application/json 이 필요합니다.", code: "BAD_CONTENT_TYPE" }); return true; } // CSRF(단순요청) 차단
-  return false;
 }
 
 export const opsRoutes: RouteFn = async (ctx, req, res, url) => {

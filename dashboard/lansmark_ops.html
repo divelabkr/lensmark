@@ -128,6 +128,7 @@
       <button class="tab-btn" data-tab="revenue">매출</button>
       <button class="tab-btn" data-tab="server">서버</button>
       <button class="tab-btn" data-tab="roadmap">🗺 로드맵</button>
+      <button class="tab-btn" data-tab="backup">🛟 백업/복구</button>
     </nav>
 
     <!-- ===== 종합: 핵심 KPI 한눈 + 유입추세 + 상태 ===== -->
@@ -205,6 +206,21 @@
         <div class="w-h"><span class="ico" style="background:var(--blue-s)">🗺</span>추가기능 로드맵<span class="meta">제목 클릭 → 구현 프롬프트 팝업</span></div>
         <div id="roadmap-list"></div>
         <div class="w-foot">미구현 기능 스펙 보관함 — 나중에 이 프롬프트만 주면 바로 구현. 출처·HUMAN GATE 명시.</div>
+      </section>
+    </section>
+
+    <!-- ===== 백업/복구: blob 스냅샷(같은-DB) — 지금백업·목록·복구. 진짜 DR(PITR)은 Layer2 ===== -->
+    <section class="tab" data-tab="backup">
+      <section class="w">
+        <div class="w-h"><span class="ico" style="background:var(--blue-s)">🛟</span>백업 · 복구<span class="meta" id="bk-mode">—</span></div>
+        <div id="bk-dr" style="background:var(--amber-s);border:1px solid var(--amber);border-radius:10px;padding:10px 13px;font-size:11.5px;font-weight:700;line-height:1.55;margin-bottom:13px">⚠ 같은 Firestore 내 스냅샷 — 운영 실수·논리 손상 복구용입니다. 프로젝트/DB 전체 손실(재해)은 보호하지 않습니다. 진짜 재해복구(DR)는 <b>Layer2: GCP 관리형 PITR 7일 + 일일 스케줄 백업</b>.</div>
+        <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:13px">
+          <button class="btn pri" id="bk-now">지금 백업</button>
+          <button class="btn" id="bk-reload">↻ 목록 갱신</button>
+          <span id="bk-status" style="font-size:11.5px;color:var(--ink3);font-weight:700"></span>
+        </div>
+        <div id="bk-list"><div class="empty">백업 탭을 열면 불러옵니다…</div></div>
+        <div class="w-foot">복구는 되돌릴 수 없습니다 — 복구 전 현재 상태를 자동 백업(pre-restore)하고, 복구 후 <b>인스턴스 재시작</b>이 필요합니다(메모리 반영).</div>
       </section>
     </section>
 
@@ -511,11 +527,48 @@ function openRoadmap(r){if(!r)return;
 }
 renderRoadmap();
 
-// 섹션 탭 전환(종합·회원·동향·매출·서버·로드맵) — CSP-safe(addEventListener)
+/* ===== 백업/복구 — blob 스냅샷 상태/목록 + 지금백업 + 복구(클라 RESTORE 타이핑 + 서버 confirm 이중). 백업 탭 lazy-load(10초 자동갱신 비대상 — 입력/목록 보호). ===== */
+async function loadBackup(){
+  const list=$("bk-list"),stx=$("bk-status"),mode=$("bk-mode");if(!list)return;
+  try{
+    const r=await fetch("/api/ops/backup/status",{headers:adminHdr()});
+    if(!r.ok){if(stx)stx.textContent=r.status===401?"관리자 인증 필요":("상태 오류 "+r.status);list.innerHTML=`<div class="empty">상태 조회 실패(${r.status})</div>`;return;}
+    const s=await r.json();
+    if(mode)mode.textContent=(s.mode||"")+(s.applicable?"":" · 휘발(비대상)");
+    if(stx)stx.textContent=s.lastBackupAt?("마지막 백업 "+ktime(s.lastBackupAt)+" · 스냅샷 "+(s.snapshots||[]).length+"개 · 대상 "+(s.storeKeys||[]).length+"키"):"아직 스냅샷 없음";
+    if(!s.applicable){list.innerHTML=`<div class="empty">${esc(s.note||"이 모드에선 백업이 동작하지 않습니다(file/firestore에서만).")}</div>`;return;}
+    const snaps=s.snapshots||[];
+    list.innerHTML=snaps.length?snaps.map(m=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line2);flex-wrap:wrap"><span style="font-weight:800;font-size:11.5px">${esc(ktime(m.createdAt))}</span><span class="pill ${m.reason==='pre-restore'?'mock':'on'}">${esc(m.reason)}</span><span style="color:var(--ink3);font-size:10.5px">${esc((m.keys||[]).length)}키 · ${esc(Math.round((m.totalBytes||0)/1024))}KB · v${esc(m.appVersion||'—')}</span><code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px;font-size:10px">${esc(m.id)}</code><span style="flex:1"></span><button class="btn bk-rs" data-id="${esc(m.id)}" style="border-color:var(--red);color:var(--red)">복구</button></div>`).join(""):`<div class="empty">아직 스냅샷이 없습니다 — '지금 백업'으로 첫 스냅샷을 만드세요.</div>`;
+    list.querySelectorAll(".bk-rs").forEach(b=>b.addEventListener("click",()=>doRestore(b.getAttribute("data-id"))));
+  }catch(e){list.innerHTML=`<div class="empty">상태 조회 실패: ${esc(e&&e.message||e)}</div>`;}
+}
+async function doBackupNow(){
+  const b=$("bk-now");if(!confirm("지금 현재 상태를 스냅샷으로 백업합니다. 진행할까요?"))return;
+  b.disabled=true;const t0=b.textContent;b.textContent="백업 중…";
+  try{const r=await fetch("/api/ops/backup",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:"{}"});const j=await r.json().catch(()=>({}));if(!r.ok)alert("백업 실패: "+(j.error||r.status));else await loadBackup();}
+  catch(e){alert("백업 실패: "+(e&&e.message||e));}
+  b.disabled=false;b.textContent=t0;
+}
+async function doRestore(id){
+  if(!id)return;
+  const typed=prompt("⚠ 복구는 되돌릴 수 없습니다(복구 전 현재 상태는 자동 백업됩니다).\n이 스냅샷으로 복구하려면 RESTORE 를 입력하세요:\n\n"+id);
+  if(typed===null)return;
+  if(typed!=="RESTORE"){alert("확인 문구(RESTORE)가 일치하지 않아 취소했습니다.");return;}
+  try{const r=await fetch("/api/ops/backup/restore",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({id:id,confirm:typed})});const j=await r.json().catch(()=>({}));
+    if(!r.ok){alert("복구 실패: "+(j.error||r.status));return;}
+    alert("복구 적용됨 — "+((j.appliedKeys||[]).length)+"개 키"+(((j.failedKeys||[]).length)?(" (실패 "+j.failedKeys.length+")"):"")+".\n"+(j.note||"")+"\n\n되돌리기용 pre-restore: "+(j.preRestoreId||"(생성 실패)"));
+    await loadBackup();
+  }catch(e){alert("복구 실패: "+(e&&e.message||e));}
+}
+if($("bk-now"))$("bk-now").addEventListener("click",doBackupNow);
+if($("bk-reload"))$("bk-reload").addEventListener("click",loadBackup);
+
+// 섹션 탭 전환(종합·회원·동향·매출·서버·로드맵·백업) — CSP-safe(addEventListener). 백업은 열 때 lazy-load.
 document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{
   const t=b.getAttribute("data-tab");
   document.querySelectorAll(".tab-btn").forEach(x=>x.classList.toggle("active",x.getAttribute("data-tab")===t));
   document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.getAttribute("data-tab")===t));
+  if(t==="backup")loadBackup();
 }));
 load(); setInterval(load,10000);
 </script>
