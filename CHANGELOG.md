@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.74.3 — 2026-06-14 · 라이브 UX 수정 — 비교뷰 정리 + 큰필지 경고 + 지도 preconnect
+> 사장님 라이브 피드백 반영. 프런트 단일파일(인라인 JS 구문 OK·서빙 검증).
+- **비교뷰 정리** — '따로'=구역별 추천 작물만, '합쳐서'=소득 비교. 따로가 전 구역 자동시뮬해 작물+소득 중복되던 것 분리(따로 더 빠름)
+- **큰 필지 경고** — 대면적(>10ha) 선택 시 '소득=전체면적 기준' 토스트 + '⚠대면적 Nha' 표기(−2.7억류 비현실 소득 오인 차단)
+- **지도 preconnect** — VWorld·cdnjs·gstatic 조기연결(초기 로드 가속). 근본 느림(VWorld 지연·다수타일)은 후속
+- 검증 인라인 구문 OK·서빙 확인 · arch 0
+
 ## 0.74.2 — 2026-06-14 · 익명(PII-0) 쓰임검증 모드 + L1 표시 정직성
 > 무료 '쓰임 검증' 배포를 개인정보 수집 0으로. 회원가입·전화/푸시 구독을 서버에서 차단(404).
 - **익명 PII-0 모드**(`LANSMARK_ANON_ONLY=1`) — account/auth·alerts/subscribe·push/subscribe → 404(PII 미수집), /api/config로 노출→앱이 로그인·알림 UI 숨김. 무료 흐름(추천·시뮬)은 익명ID로 정상. deploy.sh에 기본 ON(계정·알림 열려면 제거). 라이브: 게이트 404·recommend 200 확인

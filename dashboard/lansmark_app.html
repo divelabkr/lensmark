@@ -10,6 +10,10 @@
 <meta name="apple-mobile-web-app-title" content="LENSMARK" />
 <title>LENSMARK · 땅 → 추천 → 소득 시뮬</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin /><!-- Leaflet CDN 조기연결(지도 초기 로드 가속·B) -->
+<link rel="preconnect" href="https://api.vworld.kr" crossorigin /><!-- VWorld 타일 서버 조기연결 -->
+<link rel="dns-prefetch" href="https://api.vworld.kr" />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <style>
@@ -550,7 +554,8 @@ async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
   rect.addTo(SELLAYER);
   const area=lls?polygonAreaM2(pc.polygon):null;
   if(!lls&&!window._npHint){window._npHint=1;toast("이 지점엔 필지 경계가 없어 기본 3,300㎡로 표시돼요 — 농지(전·답·과수원)를 탭하면 실제 경계·면적이 잡힙니다.");} // 폴백 정직 안내: 일반 사각형을 실필지인 척 금지(정직성)
-  const it={center,tier:"parcel",rect,parcel:pc,area:area||3300,noParcel:!lls,rec:null,terr:null,lc:null,override:false,opts:Object.assign(defOpts(),{area:area||3300}),key,sim:null,busy:true};
+  if(lls&&area&&area>100000&&!window._bigHint){window._bigHint=1;toast("이 필지는 약 "+Math.round(area/10000)+"ha로 매우 큽니다 — 소득은 '전체 면적' 기준이라 단일작물엔 비현실적일 수 있어요. 구역을 눌러 실제 재배 면적으로 조정하세요.");} // 큰 필지(산지·임야) 정직 경고: 비현실 소득 오인 차단
+  const it={center,tier:"parcel",rect,parcel:pc,area:area||3300,noParcel:!lls,bigParcel:!!(lls&&area>100000),rec:null,terr:null,lc:null,override:false,opts:Object.assign(defOpts(),{area:area||3300}),key,sim:null,busy:true};
   SEL.set(key,it);FOCUS=key;renderSelect();
   try{
     const lc=await apiLandClass(center[0],center[1]);it.lc=lc;if(it.rect.setStyle)it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});
@@ -1428,7 +1433,7 @@ function renderDetailPin(){const st=pinState;if(!st)return;
 function renderSelect(){const items=[...SEL.values()];document.getElementById("cnt").innerHTML=`선택 <b>${items.length}</b>`;const plist=document.getElementById("plist");
   if(items.length===0){plist.innerHTML=`<div class="empty"><span class="ic">▦</span>토지를 탭해 선택<br/>(여러 구역 다중 선택 → 비교)</div>`;document.getElementById("ptitle").textContent="🌱 땅을 선택하세요";document.getElementById("psub").textContent="토지선택 — 다중 비교";return;}
   if(items.length>=2){return renderCompare(items);}
-  const it=SEL.get(FOCUS)||items[0];document.getElementById("ptitle").textContent="▦ 토지 분석";document.getElementById("psub").textContent="구역: "+areaText(it.area)+(it.noParcel?" · ⚠필지경계 없음(기본면적·추정)":"")+" · 토지유형→추천→소득";
+  const it=SEL.get(FOCUS)||items[0];document.getElementById("ptitle").textContent="▦ 토지 분석";document.getElementById("psub").textContent="구역: "+areaText(it.area)+(it.noParcel?" · ⚠필지경계 없음(기본면적·추정)":"")+(it.bigParcel?" · ⚠대면적 "+Math.round(it.area/10000)+"ha(전체기준·조정권장)":"")+" · 토지유형→추천→소득";
   if(it.busy&&it.tier==="parcel"&&!it.lc){plist.innerHTML=loading("토지 유형 확인 중…");return;}
   if(it.error){plist.innerHTML=errCard(it.error,"err-retry2");const er=document.getElementById("err-retry2");if(er)er.addEventListener("click",async()=>{ // 막다른 끝 금지 — 같은 셀 재조회(onClick과 동일 흐름)
     it.error=null;it.busy=true;renderSelect();
@@ -1450,15 +1455,16 @@ function renderSelect(){const items=[...SEL.values()];document.getElementById("c
   bindChips(plist,async(cropId)=>{CHOSEN[it.key]=cropId;it.crop=cropId;it.simBusy=true;renderSelect();await ensureSim(it,cropId);renderSelect();});
 }
 /* ===== 다중 비교 (따로/합쳐서) ===== */
-async function renderCompare(items){document.getElementById("ptitle").textContent=`📊 토지 비교 (${items.length})`;document.getElementById("psub").textContent=(VIEW==="comb"?"합쳐서 — 최적 땅·작물 랭킹":"따로 — 구역별 추천+소득")+" · 합계 "+areaText(sumSelArea());const plist=document.getElementById("plist");const _psc=plist.scrollTop||0; // 재렌더 시 스크롤 위치 보존(추가 선택해도 위로 안 튐)
+async function renderCompare(items){document.getElementById("ptitle").textContent=`📊 토지 비교 (${items.length})`;document.getElementById("psub").textContent=(VIEW==="comb"?"합쳐서 — 소득 비교·최적 랭킹":"따로 — 구역별 추천 작물")+" · 합계 "+areaText(sumSelArea());const plist=document.getElementById("plist");const _psc=plist.scrollTop||0; // 재렌더 시 스크롤 위치 보존(추가 선택해도 위로 안 튐)
   if(!isPro()&&!FREEBETA){const z=items.map((it,i)=>`구역 ${i+1}: ${it.rec?esc((it.rec.crops||[]).slice(0,3).map(c=>c.ko).join("·")):(it.lc?esc(it.lc.label):"…")}`).join("<br>");plist.innerHTML=paywallCard()+`<div class="card"><div class="sectt" style="margin-bottom:6px">선택 구역 ${items.length}곳(무료 추천)</div><div class="creg" style="margin:0">${z}</div></div>`;bindPay(()=>renderSelect());return;}
-  const pend=items.filter(it=>it.tier==="parcel"&&it.terr&&it.rec&&it.rec.crops[0]&&it.rec.crops[0].id).filter(it=>{const cid=CHOSEN[it.key]||it.rec.crops[0].id;return !(it.cmp&&it.cmp._cid===cid);});
-  if(pend.length){plist.innerHTML=loading("구역별 소득 계산 중…");await Promise.all(pend.map(async it=>{const cid=CHOSEN[it.key]||it.rec.crops[0].id;try{const c=coordOf(it);const s=await apiSimulate(cid,c[0],c[1],it.opts,it.terr,it.rec.region);s._cid=cid;it.cmp=s;}catch(_){it.cmp=null;}}));}
+  // 소득 시뮬레이션은 '합쳐서'(소득 비교)에서만 — '따로'는 작물 추천만(작물+소득 중복 제거·따로가 더 빠름)
+  if(VIEW==="comb"){const pend=items.filter(it=>it.tier==="parcel"&&it.terr&&it.rec&&it.rec.crops[0]&&it.rec.crops[0].id).filter(it=>{const cid=CHOSEN[it.key]||it.rec.crops[0].id;return !(it.cmp&&it.cmp._cid===cid);});
+    if(pend.length){plist.innerHTML=loading("구역별 소득 계산 중…");await Promise.all(pend.map(async it=>{const cid=CHOSEN[it.key]||it.rec.crops[0].id;try{const c=coordOf(it);const s=await apiSimulate(cid,c[0],c[1],it.opts,it.terr,it.rec.region);s._cid=cid;it.cmp=s;}catch(_){it.cmp=null;}}));}}
   const rows=items.map((it,i)=>({i,it,sim:(it.tier==="parcel"&&it.cmp)||null,topText:it.rec?(it.tier==="parcel"?it.rec.crops[0].ko:it.rec.crops.slice(0,2).map(c=>c.ko).join("·")):"…"}));
-  if(VIEW==="sep"){plist.innerHTML=rows.map(r=>{
+  if(VIEW==="sep"){plist.innerHTML=rows.map(r=>{ // 따로 = 구역별 '추천 작물'만(소득 X — 소득은 합쳐서에서)
     const nonAgri=r.it.lc&&r.it.lc.action!=="reconfirm";
-    const inc=r.sim?`<div class="sectt" style="margin:8px 0 3px">예상 소득 (보통 ${fmt(r.sim.incomeKrw.p50)}원)</div>${bar(r.sim.incomeKrw,{col:r.sim.incomeKrw.p50<0?'w':'g',zero:true})}`:(nonAgri?`<div class="lc-r" style="margin-top:7px">${esc(r.it.lc.reason)}</div>`:`<div class="tagrow" style="margin-top:7px">${cropChips(r.it.rec?r.it.rec.crops:[],null)}</div>`);
-    return `<div class="card"><div class="ch"><span class="cname">구역 ${r.i+1} · ${r.it.rec?esc(r.it.rec.regionText):(r.it.lc?esc(r.it.lc.label):'…')}</span><button class="cx" data-key="${esc(r.it.key)}">✕</button></div><div class="creg">${r.it.lc?landBadge(r.it.lc)+' ':''}${r.it.tier==='parcel'&&r.sim?`추천 1순위 <b>${esc(r.sim.cropNameKo)}</b>`:(r.it.rec?esc(r.it.rec.note):'')}</div>${inc}</div>`;}).join("")+'<div class="card"><div class="src">※ 비교는 보통값(P50) 기준 — 각 필지의 신뢰도·면책·출처·손익분기는 단일 분석에서 확인하세요. 수익·매입 보장이 아니며 모든 수치는 범위(P10–P90)입니다.</div></div>';}
+    const body=nonAgri?`<div class="lc-r" style="margin-top:7px">${esc(r.it.lc.reason)}</div>`:`<div class="tagrow" style="margin-top:7px">${cropChips(r.it.rec?r.it.rec.crops:[],CHOSEN[r.it.key]||null)}</div>`;
+    return `<div class="card"><div class="ch"><span class="cname">구역 ${r.i+1} · ${r.it.rec?esc(r.it.rec.regionText):(r.it.lc?esc(r.it.lc.label):'…')}</span><button class="cx" data-key="${esc(r.it.key)}">✕</button></div><div class="creg">${r.it.lc?landBadge(r.it.lc)+' ':''}${r.it.rec?esc(r.it.rec.note):'추천 불러오는 중…'}</div>${body}</div>`;}).join("")+'<div class="card"><div class="src">※ 구역별 <b>추천 작물</b> — 소득 비교는 상단 「합쳐서」에서. 수익·매입 보장이 아니며 모든 수치는 범위(P10–P90)입니다.</div></div>';}
   else{const parc=rows.filter(r=>r.sim).sort((a,b)=>b.sim.incomeKrw.p50-a.sim.incomeKrw.p50);const others=rows.filter(r=>!r.sim);const best=parc[0];
     const table=parc.length?`<div class="card"><div class="sectt" style="margin-bottom:8px">필지별 최적 작물·소득 (보통 기준 내림차순)</div>
       <table class="cmp-table"><tr><th>구역</th><th>작물</th><th>소득(보통)</th><th>범위(나쁠 때~좋을 때)</th><th>보정</th></tr>
