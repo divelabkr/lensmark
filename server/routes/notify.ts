@@ -12,6 +12,7 @@ import type { RouteFn } from "../context";
 
 export const notifyRoutes: RouteFn = async (ctx, req, res, url) => {
   const p = url.pathname;
+  if (ctx.config.anonOnly && (p === "/api/alerts/subscribe" || p === "/api/alerts/unsubscribe")) { json(res, 404, { error: "not found", path: p }); return true; } // 익명 모드: 전화번호 구독 비활성(PII 미수집)
 
   // ── 구독 신청(동의+번호 저장) ──
   if (p === "/api/alerts/subscribe") {

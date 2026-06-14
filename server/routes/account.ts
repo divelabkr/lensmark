@@ -31,6 +31,7 @@ function subjectHash(method: string, subject: string): string {
 export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
   const p = url.pathname;
   if (!p.startsWith("/api/account")) return false; // 빠른 탈출
+  if (ctx.config.anonOnly) { json(res, 404, { error: "not found", path: p }); return true; } // 익명 모드: 계정/로그인 비활성(이메일·전화 미수집)
 
   // ── 인증 시작(검증기 seam) ──
   if (p === "/api/account/auth/start" && req.method === "POST") {

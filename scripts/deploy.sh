@@ -20,6 +20,7 @@ ENV_VARS+=",LANSMARK_STORE=firestore"                # 재배포 영속(A-7)
 ENV_VARS+=",LANSMARK_DATA_DIR=/tmp/lansmark-data"
 ENV_VARS+=",LANSMARK_REQUIRE_ENTITLEMENT=false"      # 무료 베타(유료 전환 시 이 두 줄 제거)
 ENV_VARS+=",LANSMARK_ALLOW_OPEN_PAID=1"
+ENV_VARS+=",LANSMARK_ANON_ONLY=1"                    # 익명 PII-0 쓰임검증 베타 — 회원가입·전화/푸시 구독 비활성(계정·알림 열려면 이 줄 제거)
 ENV_VARS+=",LANSMARK_CORS_ORIGIN=${APP_ORIGIN}"
 ENV_VARS+=",LANSMARK_APP_ORIGIN=${APP_ORIGIN}"
 ENV_VARS+=",LANSMARK_TRUST_PROXY_HOPS=1"             # Firebase Hosting 1홉(레이트리밋 IP 정확)

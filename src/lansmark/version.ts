@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.74.2",
+    date: "2026-06-14",
+    title: "익명(PII-0) 쓰임검증 모드 + L1 표시 정직성",
+    items: [
+      "익명 PII-0 모드(LANSMARK_ANON_ONLY) — 무료 '쓰임 검증' 베타용. 회원가입(이메일/전화)·알림 전화구독·푸시구독 엔드포인트를 서버에서 404로 차단(개인정보 미수집)하고, /api/config로 노출해 앱이 로그인·알림 UI를 숨긴다. 핵심 무료 흐름(땅선택→추천→시뮬)은 익명ID로 그대로 작동. deploy.sh에 ANON_ONLY=1(계정·알림 열려면 제거). 라이브 검증: account/alerts/push=404 · recommend=200 · config.anonOnly=true.",
+      "L1(표시 정직성): 보정 '실측 N건' 표시가 원시 건수라 단일 사용자가 일지 다건으로 부풀릴 수 있었음 → 표시(reason)를 제출자 캡(MAX_WEIGHT_PER_USER) 반영 '유효 건수'(effectiveSampleCount)로. 보정 magnitude·승격·scope 로직(n)은 raw 유지(무회귀). 익명 다중신원은 한 풀로 합산.",
+      "검증: tsc·vitest 553(+2: L1 유효건수·anonOnly 게이트) · arch 0. ⚠ 익명 모드 배포는 개인정보 수집 0이라 처리방침 부담 없이 쓰임·지불의사(가격노출 클릭) 측정 가능 — 회원가입/문자를 켜려면 개인정보방침 확정이 선행.",
+    ],
+  },
+  {
     version: "0.74.1",
     date: "2026-06-14",
     title: "보안 패치 — 비결제 레드팀(정직성 위반 2건) + at-rest 키 형식검증",

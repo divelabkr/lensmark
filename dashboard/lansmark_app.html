@@ -494,7 +494,7 @@ async function init(){
   const KOREA_BOUNDS=[[32.5,124.0],[43.5,132.5]];
   MAP=L.map("map",{zoomControl:true,minZoom:6,maxBounds:KOREA_BOUNDS,maxBoundsViscosity:1.0}).setView([35.84,127.40],7);
   let cfg=null;
-  try{cfg=await jget("/api/config");if(cfg&&cfg.payment){PAY=cfg.payment;FREEBETA=(PAY.required===false);}}catch(_){}
+  try{cfg=await jget("/api/config");if(cfg&&cfg.payment){PAY=cfg.payment;FREEBETA=(PAY.required===false);}if(cfg&&cfg.anonOnly){try{var _as=document.createElement("style");_as.textContent="#acctbtn,#alarm-open,#hr{display:none!important}";document.head.appendChild(_as);}catch(_e){}}}catch(_){} /* 익명 모드: 로그인·알림 UI 숨김(서버가 엔드포인트도 404로 enforce) */
   updateProBadge();const _pro=document.getElementById("pro");if(_pro)_pro.addEventListener("click",()=>{if(confirm("구매(Pro) 권한을 해제할까요? (테스트용)")){clearEnt();if(MODE==="pin"){if(pinState)renderDetailPin();}else renderSelect();}});
   /* ===== 지도 형태 3종(일반·위성·지형) — VWorld Base/Satellite(키 있으면) + OpenTopoMap(지형·키 불필요). CSP img-src https: 허용. 선택은 localStorage 보존. ===== */
   const _osm={url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"© OpenStreetMap",max:19};

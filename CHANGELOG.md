@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.74.2 — 2026-06-14 · 익명(PII-0) 쓰임검증 모드 + L1 표시 정직성
+> 무료 '쓰임 검증' 배포를 개인정보 수집 0으로. 회원가입·전화/푸시 구독을 서버에서 차단(404).
+- **익명 PII-0 모드**(`LANSMARK_ANON_ONLY=1`) — account/auth·alerts/subscribe·push/subscribe → 404(PII 미수집), /api/config로 노출→앱이 로그인·알림 UI 숨김. 무료 흐름(추천·시뮬)은 익명ID로 정상. deploy.sh에 기본 ON(계정·알림 열려면 제거). 라이브: 게이트 404·recommend 200 확인
+- **L1 표시 정직성** — 보정 '실측 N건'을 원시 건수→제출자 캡 반영 '유효 건수'(effectiveSampleCount)로. magnitude·승격·scope 로직은 raw 유지(무회귀)
+- 검증 tsc·vitest 553(+2)·arch 0. ⚠ 익명 모드는 개인정보 0이라 처리방침 부담 없이 배포 가능
+
 ## 0.74.1 — 2026-06-14 · 보안 패치 — 비결제 레드팀(정직성 2건) + at-rest 키 형식검증
 > 비결제 표면 멀티에이전트 red-team(16에이전트·7확정) 수정. 둘 다 정직성(1원칙) 위반 — 돈이 아니라 '거짓을 진실로 표기'.
 - **H1 soilEvidence 위조 차단** — 클라가 `soilEvidence.source='official_soil_test'`만 보내면 실측 없이 신뢰등급 'A' 날조됐음. `sanitizeSoilEvidence`로 클라값 manual_input(C)/none(D) 강등(위성과 동일 서버경계). A/B는 서버 파이프라인만

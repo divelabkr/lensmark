@@ -13,6 +13,7 @@ import { confirmPayment } from "../payment/confirm";
 import { validateLandInput } from "../core/validate";
 import { getSoilConfidence } from "../policy/soilPolicy";
 import { flywheelSubmitterId } from "../../../server/routes/journal";
+import { effectiveSampleCount } from "../core/calibrate";
 
 describe("레드팀 수정 회귀가드", () => {
   it("H4 entitlement.consume — quota 초과·실효·레거시 처리", () => {
@@ -75,5 +76,14 @@ describe("레드팀 수정 회귀가드", () => {
     expect(flywheelSubmitterId("anon-x", false)).toBe("anon-x");         // 이미 anon
     expect(flywheelSubmitterId("order:abc", true)).toBe("order:abc");    // 유료 인증 → 그대로(배지 카운트)
     expect(flywheelSubmitterId("acct:Z", false)).toBe(flywheelSubmitterId("acct:Z", false)); // 안정(같은 사용자=같은 키)
+  });
+
+  it("L1 effectiveSampleCount — 단일 제출자 다건 캡(실측 N건 부풀리기 차단)", () => {
+    const one = Array.from({ length: 8 }, () => toOutcomeRecord({ cropId: "apple", userId: "acct:Z", yieldKg: 1, costKrw: 1, revenueKrw: 1 }, { actualYieldKg: 1 }));
+    expect(effectiveSampleCount(one)).toBe(3);   // 1명 8건 → 캡 3(MAX_WEIGHT_PER_USER)
+    const five = Array.from({ length: 5 }, (_, i) => toOutcomeRecord({ cropId: "apple", userId: "u" + i, yieldKg: 1, costKrw: 1, revenueKrw: 1 }, { actualYieldKg: 1 }));
+    expect(effectiveSampleCount(five)).toBe(5);  // 5명 각1 → 5(서로 다른 실제 제출자만 건수 기여)
+    const anon = Array.from({ length: 6 }, (_, i) => toOutcomeRecord({ cropId: "apple", userId: "anon-" + i, yieldKg: 1, costKrw: 1, revenueKrw: 1 }, { actualYieldKg: 1 }));
+    expect(effectiveSampleCount(anon)).toBe(3);  // 익명 전체=한 풀 → 캡 3(무헤더 다중제출 우회 차단)
   });
 });

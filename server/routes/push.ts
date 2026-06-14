@@ -16,6 +16,7 @@ import type { RouteFn } from "../context";
 export const pushRoutes: RouteFn = async (ctx, req, res, url) => {
   const p = url.pathname;
   if (!p.startsWith("/api/push")) return false; // 빠른 탈출
+  if (ctx.config.anonOnly && (p === "/api/push/subscribe" || p === "/api/push/unsubscribe")) { json(res, 404, { error: "not found", path: p }); return true; } // 익명 모드: 푸시 구독 비활성
 
   // VAPID 공개키 — 프론트가 PushManager.subscribe에 사용. 미설정이면 configured:false → 프론트 '준비 중'.
   if (p === "/api/push/vapid" && req.method === "GET") {

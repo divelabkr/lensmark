@@ -28,6 +28,7 @@ export const metaRoutes: RouteFn = (ctx, _req, res, url) => {
     json(res, 200, {
       mode: ctx.config.dataMode,
       version: APP_VERSION,
+      anonOnly: ctx.config.anonOnly, // 익명 모드 — 프론트가 로그인·알림 UI 숨김(PII 미수집)
       // VWorld 키 있으면 위성/하이브리드/베이스 타일 URL, 없으면 null(프론트는 OSM 폴백)
       tiles: ctx.config.vworldKey ? {
         satellite: tileUrlTemplate("Satellite", ctx.config.vworldKey),

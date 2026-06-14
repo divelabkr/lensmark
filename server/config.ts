@@ -30,6 +30,7 @@ export interface Config {
   paypalClientId: string | undefined; // PayPal client id(있으면 PayPal 결제 노출 — 비밀키는 사용처서 env 직접)
   simPriceKrw: number;           // 정밀분석 단가
   requireEntitlement: boolean;   // 유료 게이트(기본 on)
+  anonOnly: boolean;             // 익명 모드: 회원가입·전화/푸시 구독 비활성(PII 미수집 — 무료 쓰임검증 배포)
   adminToken: string | undefined; // 운영 콘솔 관리자 토큰(미설정=개발 오픈)
   corsAllow: OriginPolicy;       // '*' 또는 허용 도메인 목록
   rateGlobal: number;            // /api/* 분당 요청 상한
@@ -67,6 +68,8 @@ export function loadConfig(): Config {
     paypalClientId: process.env.PAYPAL_CLIENT_ID,
     simPriceKrw: Number(process.env.LANSMARK_SIM_PRICE_KRW || 4900),
     requireEntitlement: (process.env.LANSMARK_REQUIRE_ENTITLEMENT ?? "true") !== "false",
+    anonOnly: process.env.LANSMARK_ANON_ONLY === "1", // 익명 PII-0 모드(회원가입·구독 비활성)
+
     adminToken: process.env.LANSMARK_ADMIN_TOKEN,
     corsAllow: parseOrigins(process.env.LANSMARK_CORS_ORIGIN),
     rateGlobal: Number(process.env.LANSMARK_RATE_GLOBAL || 240),
