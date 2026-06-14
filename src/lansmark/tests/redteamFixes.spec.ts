@@ -10,6 +10,9 @@ import { getValidationLevel } from "../core/calibration";
 import { okClimate } from "../data/providers/auto";
 import { satelliteFactors } from "../core/satellite";
 import { confirmPayment } from "../payment/confirm";
+import { validateLandInput } from "../core/validate";
+import { getSoilConfidence } from "../policy/soilPolicy";
+import { flywheelSubmitterId } from "../../../server/routes/journal";
 
 describe("레드팀 수정 회귀가드", () => {
   it("H4 entitlement.consume — quota 초과·실효·레거시 처리", () => {
@@ -57,5 +60,20 @@ describe("레드팀 수정 회귀가드", () => {
   it("H3 confirmPayment — 금액 불일치 차단(서버 expectedAmount)", async () => {
     await expect(confirmPayment({ paymentKey: "p", orderId: "o", amount: 1, expectedAmount: 4900, userId: "order:o", secretKey: "sk" }))
       .rejects.toThrow(/금액 불일치/);
+  });
+
+  it("H1(soil) validateLandInput — 클라 soilEvidence.source 위조 차단(신뢰등급 'A' 날조 불가)", () => {
+    const land: any = validateLandInput({ areaM2: 3300, soilEvidence: { source: "official_soil_test", ph: 6.5 } });
+    expect(land.soilEvidence.source).toBe("manual_input");        // 클라 자가신고 = 최대 C로 강등
+    expect(getSoilConfidence(land.soilEvidence)).not.toBe("A");   // 'A'(공식 검정) 날조 불가
+    const empty: any = validateLandInput({ areaM2: 3300, soilEvidence: { source: "official_soil_test" } });
+    expect(empty.soilEvidence.source).toBe("none");               // 수치 전무 → none(D), 빈 검정서 위조 차단
+  });
+
+  it("H2(flywheel) flywheelSubmitterId — 무료베타 계정ID '✓검증' 배지 위조 차단", () => {
+    expect(flywheelSubmitterId("acct:Z", false)).toMatch(/^anon-/);      // 무료 계정ID → anon 강등(배지 제외)
+    expect(flywheelSubmitterId("anon-x", false)).toBe("anon-x");         // 이미 anon
+    expect(flywheelSubmitterId("order:abc", true)).toBe("order:abc");    // 유료 인증 → 그대로(배지 카운트)
+    expect(flywheelSubmitterId("acct:Z", false)).toBe(flywheelSubmitterId("acct:Z", false)); // 안정(같은 사용자=같은 키)
   });
 });

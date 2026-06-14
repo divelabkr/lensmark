@@ -45,10 +45,12 @@ export class ClientErrorStore {
 export async function notifyAlertWebhook(text: string): Promise<void> {
   const url = process.env.LANSMARK_ALERT_WEBHOOK || "";
   if (!url) return;
+  // 사용자 유래 텍스트(무인증 client-error 등)가 운영자 채널을 핑(@everyone)하거나 피싱 링크를 렌더하지 못하게 무력화(레드팀 L — webhook 인젝션).
+  const safe = String(text).replace(/[@<>]/g, (c) => (c === "@" ? "＠" : c === "<" ? "‹" : "›")).slice(0, 1500);
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 4000);
-    await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, content: text }), signal: ctrl.signal }).catch(() => {});
+    await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: safe, content: safe, allowed_mentions: { parse: [] } }), signal: ctrl.signal }).catch(() => {}); // allowed_mentions: Discord 멘션 핑 차단
     clearTimeout(t);
   } catch { /* 경보 실패 무시 */ }
 }

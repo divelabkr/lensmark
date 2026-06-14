@@ -13,6 +13,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.74.1",
+    date: "2026-06-14",
+    title: "보안 패치 — 비결제 레드팀(정직성 위반 2건) + at-rest 키 형식검증",
+    items: [
+      "비결제 표면 멀티에이전트 red-team(16에이전트·7확정) 수정. H1(정직성 1원칙): validateLandInput이 클라 soilEvidence.source를 무검증 통과 → 'official_soil_test' 위조로 신뢰등급 'A'(공식 토양검정) 날조 가능했음. sanitizeSoilEvidence로 클라값을 manual_input(C)/none(D)으로 강등(위성 sanitizeSatellite와 동일 서버 신뢰경계), 검정등급(A/B)은 서버 인증 파이프라인만 부여.",
+      "H2(해자·정직성): 무료베타에서 일지 수확이 계정ID(acct:*)를 '✓검증' 배지에 산입(/api/feedback는 anon 제외인데 일지만 acct 산입 비대칭) → 무결제 이메일 다계정으로 검증배지 위조 가능했음. flywheelSubmitterId로 무료 계정ID를 anon 네임스페이스로 강등(배지 제외·보정 magnitude 기여는 유지) — 피드백 경로와 대칭.",
+      "L2: 무인증 /api/client-error가 운영자 Slack/Discord 경보로 새니타이즈 없이 전송 → @everyone 핑·피싱링크 인젝션 가능. @<> 무력화 + allowed_mentions:{parse:[]}. L3: retail-price·alerts(외부 API 쿼터 소모)를 sensitive 레이트버킷 편입. (L1=일지 수확 표시건수 부풀리기는 후속 Low.)",
+      "at-rest: bootSafety가 LANSMARK_DATA_KEY '존재'만 검사하던 것 → hex64 형식검증 추가(형식 틀린 운영키가 dataKey()에서 null이 되어 조용히 평문 PII 저장하는 배포 footgun 차단). 미서빙 레거시 데모 브랜드 LENSMARK 정합(사용자 노출면은 이미 전부 LEN).",
+      "검증: tsc·vitest 551(+3: soil 위조·flywheel 배지·DATA_KEY 형식) · arch 0 · guardrail STRICT 0. 결제 red-team(v0.74.0)에 이어 비결제 표면 종결. ⚠ 무료베타 배포는 이 패치 후 기술 게이트 통과(법적 통신판매/개인정보방침은 별개 HUMAN GATE).",
+    ],
+  },
+  {
     version: "0.74.0",
     date: "2026-06-14",
     title: "PG 2종 스위칭(Toss+PayPal) + 결제·인증 멀티에이전트 red-team",

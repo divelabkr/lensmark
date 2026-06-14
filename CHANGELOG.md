@@ -3,6 +3,14 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.74.1 — 2026-06-14 · 보안 패치 — 비결제 레드팀(정직성 2건) + at-rest 키 형식검증
+> 비결제 표면 멀티에이전트 red-team(16에이전트·7확정) 수정. 둘 다 정직성(1원칙) 위반 — 돈이 아니라 '거짓을 진실로 표기'.
+- **H1 soilEvidence 위조 차단** — 클라가 `soilEvidence.source='official_soil_test'`만 보내면 실측 없이 신뢰등급 'A' 날조됐음. `sanitizeSoilEvidence`로 클라값 manual_input(C)/none(D) 강등(위성과 동일 서버경계). A/B는 서버 파이프라인만
+- **H2 무료베타 검증배지 위조 차단** — 무결제 이메일 5개로 일지 수확이 '✓검증' 배지 산입(피드백은 anon 제외인데 일지만 acct 산입 비대칭). `flywheelSubmitterId`로 무료 계정ID anon 강등(배지 제외·보정 기여 유지)
+- **L2 webhook 인젝션** — 무인증 client-error가 운영자 Slack/Discord 경보에 @everyone·피싱링크 주입. `@<>` 무력화 + `allowed_mentions:{parse:[]}`. **L3** retail-price·alerts를 sensitive 레이트버킷 편입
+- **at-rest 키 형식검증** — bootSafety가 DATA_KEY 존재만 검사 → hex64 형식검증 추가(형식 틀린 운영키=조용한 평문 PII footgun 차단). 레거시 데모 브랜드 LEN 정합
+- 검증 tsc·vitest 551(+3)·arch 0. ⚠ 무료베타 배포 기술게이트 통과(법적 통신판매·개인정보방침은 별개 HUMAN GATE)
+
 ## 0.74.0 — 2026-06-14 · PG 2종 스위칭(Toss+PayPal) + 결제·인증 멀티에이전트 red-team
 > Toss 직결 → PG seam(pgRegistry SSOT)로 PayPal 추가·스위칭. PayPal 키 없으면 전 경로 fail-closed(HUMAN GATE).
 - **PG 2종** — PayPal(REST v2 orders)+Toss. pgRegistry가 off/pending/live·활성 판정(체크아웃·ops·부팅 공용). PayPal 웹훅=verify-webhook-signature API+cert_url paypal.com 화이트리스트(SSRF 방어)+서버권위 금액검증(KRW 정확액), 키 없으면 발급 0

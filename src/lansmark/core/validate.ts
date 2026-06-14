@@ -1,4 +1,4 @@
-import type { CultivationType, LandInput, SalesChannel, SimulationInput } from "../types";
+import type { CultivationType, LandInput, SalesChannel, SimulationInput, SoilEvidenceInput } from "../types";
 import { getCropProfile } from "../data/crops.seed";
 
 export class ValidationError extends Error {
@@ -42,6 +42,26 @@ function requireArea(raw: unknown): number {
   return area;
 }
 
+/**
+ * 토양 증거 서버 신뢰경계(레드팀 H1 — 위성 sanitizeSatellite와 동일 원칙) — 클라가 보낸 source는 신뢰하지 않는다.
+ *   클라 자가신고 수치는 'manual_input'(최대 신뢰도 C)로만 인정하고, 검정 등급('official_soil_test'·'old_soil_test'=A/B)은
+ *   서버측 인증 파이프라인(fetchRestrictedSoilEvidence)에서만 부여한다 → 클라 source 위조로 신뢰도 'A' 날조 차단(정직성).
+ */
+function sanitizeSoilEvidence(raw: unknown): SoilEvidenceInput | undefined {
+  if (!isObject(raw)) return undefined;
+  const num = (v: unknown, lo: number, hi: number) => { const n = finiteNum(v); return n === undefined ? undefined : clamp(n, lo, hi); };
+  const ph = num(raw.ph, 0, 14);
+  const organicMatterGkg = num(raw.organicMatterGkg, 0, 500);
+  const ecDsM = num(raw.ecDsM, 0, 100);
+  const p2o5MgKg = num(raw.p2o5MgKg, 0, 5000);
+  const potassiumCmolKg = num(raw.potassiumCmolKg, 0, 50);
+  const calciumCmolKg = num(raw.calciumCmolKg, 0, 100);
+  const magnesiumCmolKg = num(raw.magnesiumCmolKg, 0, 50);
+  const hasAny = [ph, organicMatterGkg, ecDsM, p2o5MgKg, potassiumCmolKg, calciumCmolKg, magnesiumCmolKg].some((v) => v !== undefined);
+  // 클라 입력은 보낸 source 무관하게 강등: 값 있으면 manual_input(C), 전무면 none(D). A/B(검정)는 서버만 부여.
+  return { source: hasAny ? "manual_input" : "none", ph, organicMatterGkg, ecDsM, p2o5MgKg, potassiumCmolKg, calciumCmolKg, magnesiumCmolKg } as SoilEvidenceInput;
+}
+
 export function validateLandInput(raw: unknown): LandInput {
   if (!isObject(raw)) throw new ValidationError("땅 정보(land)가 필요합니다 — 지도에서 필지를 먼저 선택해 주세요.");
   const areaM2 = requireArea(raw.areaM2);
@@ -56,8 +76,10 @@ export function validateLandInput(raw: unknown): LandInput {
       throw new ValidationError("필지 경계 데이터 형식이 올바르지 않습니다 — 필지를 다시 선택해 주세요.");
     }
   }
+  // soilEvidence 서버 신뢰경계(레드팀 H1) — 클라 source 위조로 신뢰등급 'A' 날조 차단(위성과 동일). 클라값은 항상 강등.
+  const soilEvidence = sanitizeSoilEvidence((raw as Record<string, unknown>).soilEvidence);
   // 나머지 필드는 enum/타입 기반 저위험 → 그대로 통과
-  return { ...raw, areaM2 } as unknown as LandInput;
+  return { ...raw, areaM2, soilEvidence } as unknown as LandInput;
 }
 
 export function clampCandidateLimit(raw: unknown, fallback: number): number {

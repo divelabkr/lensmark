@@ -102,6 +102,17 @@ function loadOwned(ctx: Ctx, res: import("node:http").ServerResponse, id: unknow
   return e;
 }
 
+/**
+ * 플라이휠 '✓검증' 배지 정직성(레드팀 H2) — 배지(distinctSubmitters)는 '결제 인증된 서로 다른 제출자'만 카운트해야 한다.
+ *   무료베타(paidMode=false)의 계정ID(acct:*)를 anon 네임스페이스로 강등 → 배지 산입 제외(보정 magnitude엔 여전히 기여).
+ *   /api/feedback가 무료베타에서 anon으로 제외하는 것과 대칭(무결제 다계정으로 검증배지 위조 차단). 유료는 신원 그대로 카운트.
+ */
+export function flywheelSubmitterId(userId: string, paidMode: boolean): string {
+  if (paidMode) return userId;                  // 유료: 결제 인증 신원 → 배지 카운트(정상)
+  if (userId.startsWith("anon")) return userId; // 무료·비로그인: 이미 anon
+  return "anon-jh-" + crypto.createHash("sha256").update(userId).digest("hex").slice(0, 16); // 무료 계정ID(acct:*) → anon 강등(배지 제외)
+}
+
 export const journalRoutes: RouteFn = async (ctx, req, res, url) => {
   const p = url.pathname;
   if (!p.startsWith("/api/journal")) return false; // 빠른 탈출(다른 라우트로)
@@ -176,8 +187,10 @@ export const journalRoutes: RouteFn = async (ctx, req, res, url) => {
     //   · userId를 실어 'validated=서로 다른 제출자 수' 판정에 정상 반영(자기검증 위조는 엔티틀먼트 게이트로 차단).
     let flywheel = false;
     if (firstHarvest && e.predicted) {
+      // 배지 정직성(H2): 무료베타 계정ID(acct:*)는 배지 산입 제외(anon 강등) — /api/feedback와 대칭. 보정 기여는 유지.
+      const fwUser = flywheelSubmitterId(ent.userId, ctx.config.requireEntitlement);
       ctx.feedbackStore.add(toOutcomeRecord(
-        { cropId: e.cropId, region: e.region, userId: ent.userId, terrain: e.predicted.terrain, yieldKg: e.predicted.yieldKg, costKrw: e.predicted.costKrw, revenueKrw: e.predicted.revenueKrw },
+        { cropId: e.cropId, region: e.region, userId: fwUser, terrain: e.predicted.terrain, yieldKg: e.predicted.yieldKg, costKrw: e.predicted.costKrw, revenueKrw: e.predicted.revenueKrw },
         { actualYieldKg: h.yieldKg, actualRevenueKrw: h.revenueKrw },
       ));
       flywheel = true;
