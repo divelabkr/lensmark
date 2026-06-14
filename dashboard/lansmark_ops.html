@@ -127,6 +127,7 @@
       <button class="tab-btn" data-tab="trends">동향</button>
       <button class="tab-btn" data-tab="revenue">매출</button>
       <button class="tab-btn" data-tab="server">서버</button>
+      <button class="tab-btn" data-tab="roadmap">🗺 로드맵</button>
     </nav>
 
     <!-- ===== 종합: 핵심 KPI 한눈 + 유입추세 + 상태 ===== -->
@@ -196,6 +197,15 @@
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--line2)">🧾</span>최근 활동</div><div id="recent"><div class="empty">활동 없음</div></div><div class="w-foot">결제 · 웹훅 · 게이트 · 실효</div></section>
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--red-s)">🐞</span>클라이언트 에러<span class="meta" id="ce-c">—</span></div><div id="clienterr"><div class="empty">없음</div></div><div class="w-foot">브라우저(사용자 화면) JS 에러 · 새 종류 발생 시 경보(LANSMARK_ALERT_WEBHOOK)</div></section>
       </div>
+    </section>
+
+    <!-- ===== 로드맵: 추가기능 스펙(프롬프트) 보관 — 제목 클릭 시 팝업 ===== -->
+    <section class="tab" data-tab="roadmap">
+      <section class="w">
+        <div class="w-h"><span class="ico" style="background:var(--blue-s)">🗺</span>추가기능 로드맵<span class="meta">제목 클릭 → 구현 프롬프트 팝업</span></div>
+        <div id="roadmap-list"></div>
+        <div class="w-foot">미구현 기능 스펙 보관함 — 나중에 이 프롬프트만 주면 바로 구현. 출처·HUMAN GATE 명시.</div>
+      </section>
     </section>
 
     <div class="foot">읽기 전용 모니터링 + 관리자 액션(게이트·실효) · 시크릿(키)은 노출되지 않습니다. <b>운영 배포 시 관리자 인증(LANSMARK_ADMIN_TOKEN) 뒤에 두세요.</b> 데이터: <code>/api/health</code> · <code>/api/ops/stats</code> · 10초 자동 갱신.</div>
@@ -452,7 +462,56 @@ async function load(){
 }
 $("refresh").addEventListener("click",load);
 $("logout").addEventListener("click",()=>{sessionStorage.removeItem("lansmark_admin");location.reload();}); // 토큰 파기 + 잠금(O2)
-// 섹션 탭 전환(종합·회원·동향·매출·서버) — CSP-safe(addEventListener)
+
+/* ===== 추가기능 로드맵 — 미구현 기능 스펙(프롬프트) 보관. 제목 클릭 → 팝업. 정적(서버 무관). ===== */
+const ROADMAP=[
+  {title:"작물 생육단계 타임라인 + 병해 비교 가이드", status:"준비완료·미구현", tags:["리텐션","해자","정직성"], prompt:`[기능] 작물 생육단계 타임라인 + 병해 비교 (매일 보는 동반자)
+
+[목적/가치]
+· LENSMARK을 '한 번 쓰고 끝'(땅→추천→소득)에서 '매일 보는 동반자'로 전환 = 리텐션.
+· 매일 사진 비교 = 실측 데이터 수집 = 해자(플라이휠) 강화. 재배일지와 통합.
+· 무료-전망-검증 단계의 핵심 훅: '농민이 매일 돌아오나'를 검증.
+
+[형식 — 중요]
+· 바차트 아님(단계는 순서·시간축이지 수량 아님). 타임라인/스테퍼로.
+· ① 생육단계 스테퍼(씨→발아→새순→생장→개화→결실→수확): 현재 단계 강조 + 단계마다 참고사진
+  ② 수확까지 진행바(D-day·%) — 막대는 여기에만  ③ 병해: 정상→초기→진행 사진 스트립.
+· 기존 「생육·출하 타임라인」(buildGrowthCalendar)을 새로 만들지 말고 확장 — 단계 마커+참고사진 얹기.
+
+[정직성 크럭스 — 1원칙]
+· 참고 이미지는 반드시 실사진: 농진청·농사로 생육사진 / NCPMS 병해 실사진. AI생성·스톡 금지(틀린 사진=날조=오도).
+· 비교 판단은 농민 눈으로. 'AI가 N% 건강' 자동 진단 금지(정확도 보장 불가=1원칙 위반).
+· 사진 출처·연도·라이선스 표기.
+
+[린 버전 먼저]
+· 상위 3~5작물(고구마·사과·블루베리)에 단계 마커+실사진 몇 장+병해 1~2개. → '매일 돌아오나' 검증 → 전 작물 확장.
+
+[데이터 소스 / HUMAN GATE]
+· 농진청·농사로 생육사진 라이선스 확보.
+· NCPMS 병해 이미지: 전에 mixed-content(http)로 제외 → https 프록시/서버 캐시로 해결 필요.
+· 이미지 라이선스·출처 = HUMAN GATE.
+
+[병해 피쉬본] 원인·대응(왜 걸렸나·뭘 하나)엔 피쉬본, 시간 변화는 사진 스트립(역할 분리).
+[기존 배선 활용] buildGrowthCalendar · NCPMS(/api/alerts pests) · 재배일지(실측) · qualityGate(피쉬본 패턴).`},
+];
+function renderRoadmap(){const el=$("roadmap-list");if(!el)return;
+  el.innerHTML=ROADMAP.length?ROADMAP.map((r,i)=>`<div class="rm-item" data-i="${i}" style="background:var(--line2);border-radius:12px;padding:13px 15px;margin-bottom:9px;cursor:pointer">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:800;font-size:13px">${esc(r.title)}</span><span class="pill mock">${esc(r.status)}</span>${(r.tags||[]).map(t=>`<span style="font-size:10.5px;color:var(--ink3);background:var(--card);border-radius:6px;padding:1px 6px">#${esc(t)}</span>`).join("")}</div>
+    <div style="font-size:11px;color:var(--ink3);margin-top:5px">제목을 누르면 구현 프롬프트(스펙) 전체가 뜹니다 ↗</div></div>`).join(""):`<div class="empty">로드맵 항목 없음</div>`;
+  el.querySelectorAll(".rm-item").forEach(it=>it.addEventListener("click",()=>openRoadmap(ROADMAP[+it.dataset.i])));
+}
+function openRoadmap(r){if(!r)return;
+  const ov=document.createElement("div");ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px";
+  ov.innerHTML=`<div style="background:var(--card);border-radius:16px;max-width:680px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.3)"><div style="padding:15px 18px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px"><span style="font-weight:800;flex:1">${esc(r.title)}</span><button id="rm-copy" class="btn">복사</button><button id="rm-x" class="btn">닫기</button></div><pre style="margin:0;padding:16px 18px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.6;font-family:inherit">${esc(r.prompt)}</pre></div>`;
+  document.body.appendChild(ov);const close=()=>ov.remove();
+  ov.addEventListener("click",e=>{if(e.target===ov)close();});
+  ov.querySelector("#rm-x").addEventListener("click",close);
+  ov.querySelector("#rm-copy").addEventListener("click",()=>{try{navigator.clipboard.writeText(r.prompt);ov.querySelector("#rm-copy").textContent="복사됨";}catch(_){}});
+  document.addEventListener("keydown",function _esc(e){if(e.key==="Escape"){close();document.removeEventListener("keydown",_esc);}});
+}
+renderRoadmap();
+
+// 섹션 탭 전환(종합·회원·동향·매출·서버·로드맵) — CSP-safe(addEventListener)
 document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{
   const t=b.getAttribute("data-tab");
   document.querySelectorAll(".tab-btn").forEach(x=>x.classList.toggle("active",x.getAttribute("data-tab")===t));
