@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LANSMARK · 보정엔진 데모</title>
+<title>LENSMARK · 보정엔진 데모</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
@@ -111,7 +111,7 @@
 <body>
 <div class="app">
   <aside class="side">
-    <div class="logo"><div class="mark">🌿</div><div class="name">LANSMARK</div></div>
+    <div class="logo"><div class="mark">🌿</div><div class="name">LENSMARK</div></div>
     <nav class="nav">
       <a class="active"><span class="i">◧</span>의사결정</a>
       <a onclick="document.getElementById('engine-panel').scrollIntoView({behavior:'smooth'})"><span class="i">⚙</span>보정 근거</a>
@@ -395,7 +395,7 @@ function render(){const s=STATE.res,c=CROPS.find(x=>x.id===STATE.crop),ideal=STA
    <div class="cflag">🏔 지형: 국토지리원 DEM <i>(입력값)</i></div>
    <div class="cflag">🛰 위성: Sentinel-1/2 (무료·상업확정)</div>
    <div class="cflag" style="color:var(--green-mid);font-weight:800">API 연결 시 위 mock→실데이터 자동 전환</div>`;
-  document.getElementById("disc-text").textContent="LANSMARK 결과는 수익·재배성공 보장이나 매입추천이 아닙니다. 농진청 표준소득을 base로 지형·토양·기후·위성 보정한 의사결정 보조 시뮬레이션이며, 실제 결과는 재배기술·병해충·판로·가격에 따라 달라집니다. 현재 수치는 데모(농진청 구조 + mock) 기반이며, 실데이터 연동·실측 보정(validated) 후 확정됩니다.";
+  document.getElementById("disc-text").textContent="LENSMARK 결과는 수익·재배성공 보장이나 매입추천이 아닙니다. 농진청 표준소득을 base로 지형·토양·기후·위성 보정한 의사결정 보조 시뮬레이션이며, 실제 결과는 재배기술·병해충·판로·가격에 따라 달라집니다. 현재 수치는 데모(농진청 구조 + mock) 기반이며, 실데이터 연동·실측 보정(validated) 후 확정됩니다.";
   const ct=document.querySelector(".content");ct.classList.remove("fade");void ct.offsetWidth;ct.classList.add("fade");}
 
 document.getElementById("in-crop").innerHTML=CROPS.map(c=>`<option value="${c.id}">${c.ko}</option>`).join("");

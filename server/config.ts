@@ -8,6 +8,7 @@ import { readFileSync, existsSync } from "node:fs";
 import * as crypto from "node:crypto";
 import { parseOrigins, type OriginPolicy } from "../src/lansmark/api/security";
 import { pgRegistry, pgPresenceFromEnv, type PgKind } from "../src/lansmark/payment/pgRegistry";
+import { dataKey } from "../src/lansmark/db/atRest"; // at-rest 키 형식검증 SSOT(hex64) — 부팅서 형식까지 강제
 
 /**
  * `.env` 로더(의존성 0) — `KEY=VALUE` 줄만 파싱. **이미 설정된 env는 보존**(12-factor: 플랫폼 주입 우선).
@@ -135,8 +136,13 @@ export function bootSafety(config: Config): void {
       else if (pr.state === "live" && !pr.webhookReady) fails.push(`${pr.label} 웹훅 키 미설정 — 비동기 결제확인 위조검증 불가(라이브 결제면 필수)`);
     }
     // at-rest 키(P2 C#5/#6) — 미설정 시 전화번호·일지좌표 등 PII가 평문 저장된다. 명시 동의 없으면 차단(deploy.sh는 DATA_KEY 주입).
-    if (!process.env.LANSMARK_DATA_KEY && process.env.LANSMARK_ALLOW_PLAINTEXT_PII !== "1")
+    // PII at-rest 키(P2 C#5/#6 + 배포 테스트 발견) — 미설정이면 평문 저장 차단. ★형식(hex64)도 검증:
+    //   형식 틀린 키는 dataKey()가 null 반환 → '조용히 평문'(at-rest 무력화)이라 배포 footgun. 부팅서 차단(fail-closed).
+    const _dk = process.env.LANSMARK_DATA_KEY;
+    if (!_dk && process.env.LANSMARK_ALLOW_PLAINTEXT_PII !== "1")
       fails.push("LANSMARK_DATA_KEY 미설정 — PII 평문 저장(at-rest 미암호화). 키 주입 또는 의도면 LANSMARK_ALLOW_PLAINTEXT_PII=1");
+    else if (_dk && !dataKey())
+      fails.push("LANSMARK_DATA_KEY 형식 오류 — hex 64자(32B)여야 at-rest 암호화가 적용된다. 현재 키는 무시되어 PII가 평문 저장됨(조용한 실패 차단).");
     if (fails.length) {
       console.error("[lansmark][SECURITY] 운영 부팅 차단:\n - " + fails.join("\n - "));
       process.exit(1);

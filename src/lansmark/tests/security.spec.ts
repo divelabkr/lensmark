@@ -197,7 +197,7 @@ describe("bootSafety: 운영 유료게이트 우회 차단(REQUIRE_ENTITLEMENT)"
     finally { process.exit = origExit; console.error = origErr; console.warn = origWarn; process.env = saved; }
     return exited;
   }
-  const strongSecret = { LANSMARK_ENTITLEMENT_SECRET: "x".repeat(40), LANSMARK_DATA_KEY: "k".repeat(32) }; // 운영 부팅 통과용 기본 — DATA_KEY도 부팅 강제(P2 C#6)
+  const strongSecret = { LANSMARK_ENTITLEMENT_SECRET: "x".repeat(40), LANSMARK_DATA_KEY: "a".repeat(64) }; // 운영 부팅 통과용 기본 — DATA_KEY는 hex64(형식검증 통과) 필수(P2 C#6 + 형식 footgun)
   it("운영 + requireEntitlement=false + 우회없음 → 부팅 차단(exit 1)", () => {
     expect(bootExitCode(prodConfig({ requireEntitlement: false }), { ...strongSecret, LANSMARK_ALLOW_OPEN_PAID: undefined })).toBe(1);
   });
@@ -212,5 +212,8 @@ describe("bootSafety: 운영 유료게이트 우회 차단(REQUIRE_ENTITLEMENT)"
   });
   it("TOSS_CLIENT_KEY만 설정(서버 비밀키 없음) → 부팅 차단(exit 1·P2 C#6)", () => {
     expect(bootExitCode(prodConfig({ requireEntitlement: true }), { ...strongSecret, TOSS_CLIENT_KEY: "live_ck", TOSS_SECRET_KEY: undefined })).toBe(1);
+  });
+  it("DATA_KEY 형식 오류(hex64 아님) → 부팅 차단(exit 1·조용한 평문 PII 방지·배포 footgun)", () => {
+    expect(bootExitCode(prodConfig({ requireEntitlement: true }), { LANSMARK_ENTITLEMENT_SECRET: "x".repeat(40), LANSMARK_DATA_KEY: "not-a-valid-hex64-key" })).toBe(1);
   });
 });
