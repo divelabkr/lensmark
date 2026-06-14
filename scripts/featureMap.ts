@@ -94,11 +94,11 @@ export const FEATURES: Feature[] = [
   },
   {
     id: "paywall-entitlement", name: "결제·유료권한", stage: "pay",
-    flow: "결제(Toss/데모) → HMAC 엔티틀먼트(jti·quota·exp) → 정밀분석 잠금해제",
-    endpoints: ["/api/pay/mock", "/api/pay/confirm", "/api/pg/webhook"],
-    files: ["src/lansmark/policy/entitlement.ts", "src/lansmark/payment/confirm.ts", "src/lansmark/payment/pgWebhook.ts", "server/paidAccess.ts", "server/routes/payment.ts"],
-    tests: ["src/lansmark/tests/entitlement.spec.ts", "src/lansmark/tests/pgPayment.spec.ts", "src/lansmark/tests/redteamFixes.spec.ts"],
-    guardrails: ["서버권위 검증(fail-closed)", "금액 서버검증", "토큰 quota·실효"], status: "live", notes: "결제창 목업(mockPayModal) 활성 · 실 Toss v2 SDK redirect seam(키 연결 시 자동 전환) · confirm/webhook 키 필요",
+    flow: "결제(Toss/PayPal/데모) → 서버권위 금액검증 → HMAC 엔티틀먼트(jti·quota·exp) → 정밀분석 잠금해제",
+    endpoints: ["/api/pay/mock", "/api/pay/confirm", "/api/pg/webhook", "/api/pay/paypal/create", "/api/pay/paypal/capture", "/api/pg/paypal/webhook"],
+    files: ["src/lansmark/policy/entitlement.ts", "src/lansmark/payment/confirm.ts", "src/lansmark/payment/pgWebhook.ts", "src/lansmark/payment/paypal.ts", "src/lansmark/payment/pgRegistry.ts", "server/paidAccess.ts", "server/routes/payment.ts"],
+    tests: ["src/lansmark/tests/entitlement.spec.ts", "src/lansmark/tests/pgPayment.spec.ts", "src/lansmark/tests/redteamFixes.spec.ts", "src/lansmark/tests/pgRegistry.spec.ts", "src/lansmark/tests/paypalPayment.spec.ts"],
+    guardrails: ["서버권위 검증(fail-closed)", "금액 서버검증", "토큰 quota·실효", "PG 키 미완비=fail-closed"], status: "live", notes: "PG 2종 스위칭: Toss(confirm+webhook 실구현) · PayPal(REST v2 orders·fail-closed·키 HUMAN GATE) · 활성 전환은 ops PG 스위칭(키 완비 PG만). 데모(mock)는 키 전무·비운영 한정",
   },
   {
     id: "precise-sim", name: "정밀 소득 시뮬(P10/50/90)", stage: "simulate",
@@ -304,8 +304,8 @@ export const FEATURES: Feature[] = [
   },
   {
     id: "ops-console", name: "운영자 콘솔", stage: "ops",
-    flow: "통합 준비도·결제·플라이휠·활동로그 + 관리자 인증 + 토큰 실효(revoke) + 유료 게이트 런타임 토글(무료베타↔유료)",
-    endpoints: ["/api/ops/stats", "/api/ops/revoke", "/api/ops/paid-gate"],
+    flow: "통합 준비도·결제·플라이휠·활동로그 + 관리자 인증 + 토큰 실효(revoke) + 유료 게이트 런타임 토글(무료베타↔유료) + PG 스위칭(Toss↔PayPal)",
+    endpoints: ["/api/ops/stats", "/api/ops/revoke", "/api/ops/paid-gate", "/api/ops/pg-preference"],
     files: ["dashboard/lansmark_ops.html", "server/routes/ops.ts", "server/runtimeFlags.ts"],
     tests: ["src/lansmark/tests/serverRoutes.spec.ts", "src/lansmark/tests/opsRoutes.spec.ts"],
     guardrails: ["관리자 인증(timing-safe)", "시크릿 미노출", "운영 무료개방은 ALLOW_OPEN_PAID=1 동의(런타임 우회 차단)"], status: "live",

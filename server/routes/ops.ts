@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { assessQuality } from "../../src/lansmark/quality/qualityGate";
 import { evaluateOps } from "../../src/lansmark/ops/opsWatch"; // 콘솔 종합판정 — Tier1 감시자와 같은 문장(SSOT · UX 감사 O6)
 import { integrationReadiness } from "../../src/lansmark/data/providers";
+import { pgRegistry, pgPresenceFromEnv } from "../../src/lansmark/payment/pgRegistry";
 import { RDA_REAL_META } from "../../src/lansmark/data/rdaIncome.real";
 
 // 앱 첫로드 페이로드(최적화 트리거) — over-the-wire 비용. 파일 변경(mtime) 시에만 재계산(gzip 비쌈) → 운영선 1회.
@@ -86,6 +87,26 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     return true;
   }
 
+  // PG 선호(활성 결제수단) 런타임 토글(영속) — Toss↔PayPal 스위칭. 관리자 전용 쓰기.
+  if (url.pathname === "/api/ops/pg-preference" && req.method === "POST") {
+    if (blockedOpsMutation(req, res, ctx)) return true;
+    let b: any = {};
+    try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    const v = b.pg;
+    // 'auto'/null = 오버라이드 해제(자동 선택). 'toss'|'paypal'만 명시 허용.
+    if (v !== "toss" && v !== "paypal" && v !== "auto" && v !== null) { json(res, 400, { error: "pg는 'toss'|'paypal'|'auto'여야 합니다.", code: "BAD_VALUE" }); return true; }
+    const pref = (v === "toss" || v === "paypal") ? v : null;
+    // 키 미완비 PG로의 전환은 거부(자동 폴백되어 무의미·운영자 오인) — live가 아닌 선호는 막는다(fail-closed).
+    if (pref) {
+      const target = pgRegistry(pgPresenceFromEnv(), pref).providers.find((x) => x.kind === pref);
+      if (!target || target.state !== "live") { json(res, 409, { error: `${pref} 결제 키 미완비(state=${target?.state ?? "off"}) — 활성 전환 불가. 키 설정 후 가능.`, code: "PG_NOT_LIVE" }); return true; }
+    }
+    ctx.runtimeFlags.setPgPreference(pref);
+    ctx.logOps("결제", `PG 선호 ${pref ?? "자동"}`);
+    json(res, 200, { ok: true, preference: pref });
+    return true;
+  }
+
   if (url.pathname !== "/api/ops/stats") return false;
   if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
 
@@ -143,7 +164,7 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     optimization, // 최적화 '언제' 트리거(페이로드·저장소 헤드룸)
     quality,      // 데이터 품질 게이트(신뢰 피쉬본) — 운영 녹색 ≠ 데이터 정확
     usage,
-    payment: { mode: ctx.config.tossClientKey ? "live" : "mock", requireEntitlement: ctx.config.requireEntitlement, overridden: ctx.runtimeFlags.requireEntitlement() !== null, priceKrw: ctx.config.simPriceKrw },
+    payment: (() => { const r = pgRegistry(pgPresenceFromEnv(), ctx.runtimeFlags.pgPreference()); return { mode: ctx.config.tossClientKey ? "live" : "mock", requireEntitlement: ctx.config.requireEntitlement, overridden: ctx.runtimeFlags.requireEntitlement() !== null, priceKrw: ctx.config.simPriceKrw, pg: { active: r.active, preference: r.preference, providers: r.providers, enabled: r.enabledKinds } }; })(),
     recent: ctx.opsLog.slice(0, 20),
     config: { dataMode: ctx.config.dataMode, port: ctx.config.port, store: ctx.storeMode },
     // 스토어 건전성 — firestore 워밍 실패(sealed)면 true. 운영자가 실효 부활 위험을 인지하고 게이트 ON 자제(H2).

@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { readFileSync, existsSync } from "node:fs";
 import * as crypto from "node:crypto";
 import { parseOrigins, type OriginPolicy } from "../src/lansmark/api/security";
+import { pgRegistry, pgPresenceFromEnv, type PgKind } from "../src/lansmark/payment/pgRegistry";
 
 /**
  * `.env` 로더(의존성 0) — `KEY=VALUE` 줄만 파싱. **이미 설정된 env는 보존**(12-factor: 플랫폼 주입 우선).
@@ -25,6 +26,7 @@ export interface Config {
   dataMode: string;              // auto | mock | live
   vworldKey: string | undefined; // 있으면 위성/하이브리드 타일 URL 제공
   tossClientKey: string | undefined; // 있으면 결제 live, 없으면 mock 결제(데모)
+  paypalClientId: string | undefined; // PayPal client id(있으면 PayPal 결제 노출 — 비밀키는 사용처서 env 직접)
   simPriceKrw: number;           // 정밀분석 단가
   requireEntitlement: boolean;   // 유료 게이트(기본 on)
   adminToken: string | undefined; // 운영 콘솔 관리자 토큰(미설정=개발 오픈)
@@ -61,6 +63,7 @@ export function loadConfig(): Config {
     dataMode: (process.env.LANSMARK_DATA_MODE ?? "auto").toLowerCase(),
     vworldKey: process.env.VWORLD_API_KEY,
     tossClientKey: process.env.TOSS_CLIENT_KEY,
+    paypalClientId: process.env.PAYPAL_CLIENT_ID,
     simPriceKrw: Number(process.env.LANSMARK_SIM_PRICE_KRW || 4900),
     requireEntitlement: (process.env.LANSMARK_REQUIRE_ENTITLEMENT ?? "true") !== "false",
     adminToken: process.env.LANSMARK_ADMIN_TOKEN,
@@ -86,12 +89,18 @@ export function loadConfig(): Config {
   };
 }
 
-/** 결제 요약(health·ops 공통 형태). config 라우트는 tossClientKey 등 추가 필드가 있어 별도 구성. */
-export function paymentSummary(config: Config) {
+/**
+ * 결제 요약(health·ops 공통 형태) + PG 스위칭 상태.
+ *   mode(live/mock)는 기존 호환(Toss 중심 표시). pg = Toss·PayPal 레지스트리(활성·선호·provider별 상태).
+ *   pgPreference = 운영자 런타임 선호(ops 토글). 미지정이면 자동(live 중 toss>paypal).
+ */
+export function paymentSummary(config: Config, pgPreference: PgKind | null = null) {
+  const reg = pgRegistry(pgPresenceFromEnv(), pgPreference);
   return {
     mode: config.tossClientKey ? "live" : "mock",
     requireEntitlement: config.requireEntitlement,
     priceKrw: config.simPriceKrw,
+    pg: { active: reg.active, preference: reg.preference, providers: reg.providers, enabled: reg.enabledKinds },
   };
 }
 
@@ -119,10 +128,12 @@ export function bootSafety(config: Config): void {
     if (!config.requireEntitlement && process.env.LANSMARK_ALLOW_OPEN_PAID !== "1")
       fails.push("LANSMARK_REQUIRE_ENTITLEMENT=false (유료 게이트 우회·무료 베타) — 의도면 LANSMARK_ALLOW_OPEN_PAID=1, 아니면 제거");
     // 라이브 결제 키 정합(P2 C#6) — 클라 키만 있고 서버 비밀/웹훅 시크릿이 없으면 결제·웹훅 검증이 런타임에야 깨진다(부팅서 차단).
-    if (process.env.TOSS_CLIENT_KEY && !process.env.TOSS_SECRET_KEY)
-      fails.push("TOSS_CLIENT_KEY 설정인데 TOSS_SECRET_KEY 미설정 — 결제 승인 서버검증 불가(라이브 결제면 비밀키 필수)");
-    if (process.env.TOSS_CLIENT_KEY && !process.env.PG_WEBHOOK_SECRET)
-      fails.push("TOSS_CLIENT_KEY 설정인데 PG_WEBHOOK_SECRET 미설정 — 웹훅 위조 검증 불가");
+    // PG 키 정합(P2 C#6 + 감사 config-boot-1) — 레지스트리 SSOT 기준 일관 차단(어느 키가 빠졌든·향후 PG 추가도 자동 포함).
+    //   pending(반쪽설정=결제 불가)은 전수 차단 + live인데 웹훅 미설정(비동기 결제확인 위조검증 불가)도 운영 차단.
+    for (const pr of pgRegistry(pgPresenceFromEnv()).providers) {
+      if (pr.state === "pending") fails.push(`${pr.label} 결제 키 일부만 설정(${pr.missing.join("·")}) — 결제 불가(fail-closed). 키 완비 또는 전부 제거`);
+      else if (pr.state === "live" && !pr.webhookReady) fails.push(`${pr.label} 웹훅 키 미설정 — 비동기 결제확인 위조검증 불가(라이브 결제면 필수)`);
+    }
     // at-rest 키(P2 C#5/#6) — 미설정 시 전화번호·일지좌표 등 PII가 평문 저장된다. 명시 동의 없으면 차단(deploy.sh는 DATA_KEY 주입).
     if (!process.env.LANSMARK_DATA_KEY && process.env.LANSMARK_ALLOW_PLAINTEXT_PII !== "1")
       fails.push("LANSMARK_DATA_KEY 미설정 — PII 평문 저장(at-rest 미암호화). 키 주입 또는 의도면 LANSMARK_ALLOW_PLAINTEXT_PII=1");

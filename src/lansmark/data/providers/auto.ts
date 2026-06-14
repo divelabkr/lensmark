@@ -72,6 +72,8 @@ export function integrationReadiness() {
       kamisPrice: { keyed: kamis, live: Km.live, runtime: Km.runtime, note: dn("원/kg · 검증 품목(apple 등)만 live, 그 외 base 단가 폴백", Km.runtime.state) },
       tossPayment: { keyed: k("TOSS_CLIENT_KEY") && k("TOSS_SECRET_KEY"), live: k("TOSS_CLIENT_KEY") && k("TOSS_SECRET_KEY"), note: "confirm+webhook 실구현(키 필요)" },
       pgWebhook: { keyed: k("PG_WEBHOOK_SECRET"), live: k("PG_WEBHOOK_SECRET"), note: "HMAC 서명검증" },
+      paypalPayment: { keyed: k("PAYPAL_CLIENT_ID") && k("PAYPAL_SECRET"), live: k("PAYPAL_CLIENT_ID") && k("PAYPAL_SECRET"), note: "REST v2 orders(create/capture) 실구현 — 키 필요·기본 sandbox" },
+      paypalWebhook: { keyed: k("PAYPAL_CLIENT_ID") && k("PAYPAL_SECRET") && k("PAYPAL_WEBHOOK_ID"), live: k("PAYPAL_CLIENT_ID") && k("PAYPAL_SECRET") && k("PAYPAL_WEBHOOK_ID"), note: "verify-webhook-signature(공식 API 검증)" },
       // 실 RDA 적재 여부를 빌드 메타에서 동적으로 — v0.59 적재 후에도 '데모'로 표기되던 낡은 하드코딩 교정(반대방향 정직성 오류).
       rdaIncome: RDA_REAL_META
         ? { keyed: true, live: true, note: `실 농산물소득조사 ${RDA_REAL_META.baseYears.join(",")} · ${RDA_REAL_META.rows}작물${RDA_REAL_META.regions ? ` · 지역행 ${RDA_REAL_META.regions}` : ""}(미수록 작물은 데모 폴백)` }

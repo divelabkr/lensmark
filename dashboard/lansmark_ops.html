@@ -182,6 +182,7 @@
       <section class="w">
         <div class="w-h"><span class="ico" style="background:var(--green-s)">💳</span>결제 · 유료권한</div>
         <div class="kgrid" id="payment"></div>
+        <div id="pg-ctrl" style="margin-top:13px"></div>
         <div id="paidgate-ctrl" style="margin-top:13px"></div>
         <div id="revoke-ctrl" style="margin-top:11px"></div>
       </section>
@@ -207,7 +208,7 @@ const fmt=n=>Number(n||0).toLocaleString("ko-KR"); // 숫자 콤마 공용(원�
 const ktime=iso=>{const d=new Date(iso||0);return isNaN(d)?String(iso||"").slice(11,19):d.toLocaleTimeString("ko-KR",{hour12:false});}; // UTC ISO → KST 표시(O5 — 한 화면 두 시간대 금지)
 // 런타임-인지 — '키=live' 거짓 녹색 차단. degraded(키 있으나 실 API 다운)는 폴백으로 강등, pending(실호출 검증 전)은 낙관이되 라벨로 정직.
 function statusOf(it){ const st=it.runtime&&it.runtime.state; if(st==="degraded")return["fallback","⚠폴백중"]; if(it.live)return["live",st==="pending"?"키있음·검증전":"LIVE"]; if(it.keyed)return["fallback","폴백"]; return["off","키 필요"]; }
-const LABEL={vworldTiles:"VWorld 타일",vworldGeocode:"주소→좌표",vworldParcel:"필지경계",vworldDem:"지형 DEM",kmaClimate:"기후(KMA)",kamisPrice:"도매가(KAMIS)",tossPayment:"결제(Toss)",pgWebhook:"PG 웹훅",rdaIncome:"소득 base(RDA)"};
+const LABEL={vworldTiles:"VWorld 타일",vworldGeocode:"주소→좌표",vworldParcel:"필지경계",vworldDem:"지형 DEM",kmaClimate:"기후(KMA)",kamisPrice:"도매가(KAMIS)",tossPayment:"결제(Toss)",pgWebhook:"PG 웹훅",paypalPayment:"결제(PayPal)",paypalWebhook:"PayPal 웹훅",rdaIncome:"소득 base(RDA)"};
 
 /* ===== SVG 시각화 헬퍼(무의존 — 외부 차트 라이브러리 0) ===== */
 // 반원 게이지: 0→max를 좌→우 반원 호로. 중앙에 값.
@@ -352,6 +353,14 @@ async function load(){
     kpi(fmt(u.entitlementsMinted||0),"발급 엔티틀먼트")+
     kpi(fmt(u.mockPaysIssued||0),"데모 결제")+
     kpi(won((u.entitlementsMinted||0)*(pay.priceKrw||0)),"매출 추정"); // 상시 녹색 금지 — 색은 '판정'에만(O9)
+  // ── PG 스위칭(Toss↔PayPal) — provider별 상태 + 활성 전환(키 없는 PG는 전환 불가) ──
+  {const pg=pay.pg||{providers:[],active:null,preference:null};
+    const stPill=st=>st==="live"?'<span class="pill on">live</span>':st==="pending"?'<span class="pill mock">검증전</span>':'<span class="pill off">키없음</span>';
+    const rows=(pg.providers||[]).map(pv=>`<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-top:1px solid var(--line2)"><span style="font-weight:800;min-width:104px">${esc(pv.label||pv.kind)}</span>${stPill(pv.state)}${pv.state==="live"&&pv.webhookReady===false?' <span class="pill mock">웹훅✕</span>':''}${pg.active===pv.kind?' <span class="pill on">활성</span>':''}<span style="flex:1;color:var(--ink3);font-size:10.5px">${esc(pv.note||"")}</span>${pv.state==="live"&&pg.active!==pv.kind?`<button class="btn pg-sw" data-pg="${esc(pv.kind)}">활성으로</button>`:""}</div>`).join("");
+    const autoBtn=pg.preference?`<button class="btn pg-sw" data-pg="auto">자동 선택으로</button>`:"";
+    $("pg-ctrl").innerHTML=`<div style="background:var(--line2);border-radius:12px;padding:14px 16px"><div style="font-size:12.5px;font-weight:800;margin-bottom:4px">PG 스위칭 <span style="font-weight:600;color:var(--ink3)">— 활성: ${esc(pg.active||"없음(데모/mock)")}${pg.preference?` · 선호 고정(${esc(pg.preference)})`:" · 자동(toss&gt;paypal)"}</span></div>${rows||'<div class="empty">PG 없음</div>'}<div style="margin-top:9px">${autoBtn}</div></div>`;
+    document.querySelectorAll(".pg-sw").forEach(btn=>btn.addEventListener("click",async()=>{const pgv=btn.getAttribute("data-pg");btn.disabled=true;try{const r=await fetch("/api/ops/pg-preference",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({pg:pgv})});const j=await r.json().catch(()=>({}));if(!r.ok){alert("실패: "+(j.error||r.status));btn.disabled=false;return;}load();}catch(e){alert("실패: "+(e&&e.message||e));btn.disabled=false;}}));
+  }
   // 유료 게이트 런타임 토글 — degraded면 '켜기' 차단(서버 409와 UI 일치·H2).
   {const on=!!pay.requireEntitlement, degraded=!!s.storeDegraded, blockOn=degraded&&!on;
     const storePill=degraded?'<span class="pill off">스토어 저하</span>':'<span class="pill on">스토어 정상</span>';

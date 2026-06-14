@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.74.0 — 2026-06-14 · PG 2종 스위칭(Toss+PayPal) + 결제·인증 멀티에이전트 red-team
+> Toss 직결 → PG seam(pgRegistry SSOT)로 PayPal 추가·스위칭. PayPal 키 없으면 전 경로 fail-closed(HUMAN GATE).
+- **PG 2종** — PayPal(REST v2 orders)+Toss. pgRegistry가 off/pending/live·활성 판정(체크아웃·ops·부팅 공용). PayPal 웹훅=verify-webhook-signature API+cert_url paypal.com 화이트리스트(SSRF 방어)+서버권위 금액검증(KRW 정확액), 키 없으면 발급 0
+- **ops 스위칭** — /api/ops/pg-preference(관리자·CSRF 가드) 활성 PG 전환(키 미완비=409) + PG 위젯(provider별 상태·웹훅 readiness·활성 전환). 부팅 점검을 레지스트리 SSOT로 일원화(반쪽설정 전수 차단)
+- **멀티에이전트 red-team**(qwen 1차+6차원 적대감사 스웜·15에이전트·반증검증) — 위조발급·금액우회·이중민트 0(전 경로 fail-closed). 확정 2(Low·정직성) 수정: 레지스트리 라벨↔런타임 일치(거짓 'pending' 제거)·부팅 pending 전수차단 + orderJti 'pp:' 네임스페이스(Toss·PayPal orderId 충돌 차단)
+- 검증 tsc·vitest 548(+17)·arch 0. ⚠ PayPal 운영=키 주입+webhook 이벤트 docs 재검증+통신판매/가맹 심사 HUMAN GATE
+
 ## 0.73.1 — 2026-06-13 · 토지선택 복원 버그 수정
 - **회귀 수정** — 저장/공유 선택 복원(resume·#s= 링크)이 옛 격자(cellOf)로 뜨던 버그. restore가 apiParcel 재호출로 실폴리곤·PNU·실면적 재구성(onClick과 동일). 판로·연차 옵션 보존
 

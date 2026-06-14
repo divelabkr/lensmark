@@ -7,7 +7,8 @@
 import { json, readBody } from "../respond";
 import { handlePgWebhook } from "../../src/lansmark/payment/pgWebhook";
 import { confirmPayment } from "../../src/lansmark/payment/confirm";
-import { mintEntitlementToken } from "../../src/lansmark/policy/entitlement";
+import { mintEntitlementToken, orderJti } from "../../src/lansmark/policy/entitlement";
+import { paypalConfigured, paypalWebhookConfigured, createPaypalOrder, capturePaypalToEntitlement, verifyPaypalWebhook, extractPaypalCapture, paypalAmountOk, paypalOrderKey } from "../../src/lansmark/payment/paypal";
 import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
 import { sessionTokenFrom } from "../cookies";
 import type { RouteFn } from "../context";
@@ -68,6 +69,69 @@ export const paymentRoutes: RouteFn = async (ctx, req, res, url) => {
       ctx.logOps("결제", `confirm 실패: ${e?.message ?? e}`); // 상세는 서버 로그만(정보유출 방지)
       json(res, 402, { error: "결제 승인에 실패했습니다.", code: "PAYMENT_FAILED" });
     }
+    return true;
+  }
+
+  // ── PayPal(두 번째 PG) — 키 없으면 비활성(404·노출 안 함). 흐름: create → 사용자 승인 → capture(서버권위 금액검증) → 발급. ──
+  if (p === "/api/pay/paypal/create" && req.method === "POST") {
+    if (!paypalConfigured()) { json(res, 404, { error: "not found", path: p }); return true; } // 키 없으면 fail-closed
+    try {
+      const out = await createPaypalOrder(ctx.config.simPriceKrw); // 금액=서버권위 단가(클라 금액 안 받음)
+      ctx.logOps("결제", `PayPal 주문 생성 ${out.orderId}`);
+      json(res, 200, { ok: true, provider: "paypal", ...out });
+    } catch (e: any) {
+      ctx.logOps("결제", `PayPal create 실패: ${e?.message ?? e}`); // 상세는 서버 로그만
+      json(res, 502, { error: "PayPal 주문 생성에 실패했습니다.", code: "PAYPAL_CREATE_FAILED" });
+    }
+    return true;
+  }
+
+  if (p === "/api/pay/paypal/capture" && req.method === "POST") {
+    if (!paypalConfigured()) { json(res, 404, { error: "not found", path: p }); return true; }
+    let body: any = {};
+    try { body = JSON.parse((await readBody(req)) || "{}"); } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    const acctUid = sessionAccountUserId(ctx.sessions, sessionTokenFrom(req)); // 로그인 계정 결속(레드팀 #3)
+    try {
+      const out = await capturePaypalToEntitlement({
+        orderId: String(body.orderId ?? ""),
+        expectedAmount: ctx.config.simPriceKrw,            // ★ 서버 권위 가격(클라 금액 무시)
+        ttlMs: ctx.config.entitlementTtlMs,
+        boundAccount: acctUid ? acctUid.slice("acct:".length) : undefined,
+      });
+      if (out.entitlementToken) ctx.metrics.entitlementsMinted++;
+      ctx.logOps("결제", `PayPal 캡처 발급 ${out.orderId}`);
+      json(res, 200, { ok: true, provider: "paypal", ...out });
+    } catch (e: any) {
+      ctx.logOps("결제", `PayPal capture 실패: ${e?.message ?? e}`); // 상세는 서버 로그만(정보유출 방지)
+      json(res, 402, { error: "결제 승인에 실패했습니다.", code: "PAYMENT_FAILED" });
+    }
+    return true;
+  }
+
+  if (p === "/api/pg/paypal/webhook" && req.method === "POST") {
+    if (!paypalWebhookConfigured()) { json(res, 404, { error: "not found", path: p }); return true; }
+    const raw = await readBody(req);
+    const hdr = (n: string) => (req.headers[n] as string) ?? undefined;
+    // 서명검증(PayPal verify-webhook-signature API) — 실패는 전부 거부(fail-closed). userId·금액은 서버권위(클라 신뢰 금지).
+    const ok = await verifyPaypalWebhook({
+      "paypal-auth-algo": hdr("paypal-auth-algo"), "paypal-cert-url": hdr("paypal-cert-url"),
+      "paypal-transmission-id": hdr("paypal-transmission-id"), "paypal-transmission-sig": hdr("paypal-transmission-sig"),
+      "paypal-transmission-time": hdr("paypal-transmission-time"),
+    }, raw);
+    if (!ok) { ctx.logOps("웹훅", "PayPal 거부: bad-signature"); json(res, 400, { ok: false, reason: "bad-signature" }); return true; }
+    let event: any = {};
+    try { event = JSON.parse(raw); } catch { json(res, 400, { ok: false, reason: "bad-json" }); return true; }
+    const cap = extractPaypalCapture(event);
+    if (!cap.completed) { json(res, 200, { ok: true, ignored: event?.event_type ?? "non-capture" }); return true; } // 캡처완료 아님 → 무시
+    if (!paypalAmountOk(cap.currency, cap.amountValue, ctx.config.simPriceKrw)) { json(res, 200, { ok: true, reason: "amount-mismatch" }); return true; } // 서버권위 금액 불일치 → 발급 안 함
+    const nsKey = paypalOrderKey(cap.orderId); // PG 네임스페이스(Toss orderId와 jti/userId 충돌 차단·entitlement-cross-2)
+    if (ctx.idem.seen(nsKey)) { json(res, 200, { ok: true, reason: "duplicate" }); return true; }                            // 멱등(재전송 차단)
+    // jti=주문 결정적 → capture 경로와 동일 토큰(quota 공유·이중발급 차단·PAY-DOUBLE-MINT)
+    const token = mintEntitlementToken({ userId: "order:" + nsKey, source: "order", reference: cap.orderId, jti: orderJti(nsKey), exp: Date.now() + ctx.config.entitlementTtlMs });
+    ctx.idem.mark(nsKey);
+    ctx.metrics.entitlementsMinted++;
+    ctx.logOps("웹훅", `PayPal 수신 ${cap.orderId}`);
+    json(res, 200, { ok: true, provider: "paypal", entitlementToken: token, orderId: cap.orderId });
     return true;
   }
 

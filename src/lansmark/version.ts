@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.74.0",
+    date: "2026-06-14",
+    title: "PG 2종 스위칭(Toss+PayPal) + 결제·인증 멀티에이전트 red-team",
+    items: [
+      "결제대행 2종화 — Toss 직결에 PayPal(REST v2 orders) 추가 + 스위칭. pgRegistry(순수 SSOT)가 키 조합으로 off/pending/live + 활성 PG 판정(체크아웃·ops·부팅 공용). PayPal provider는 키 없으면 전 경로 fail-closed(create/capture/webhook throw·발급 0) — 키=HUMAN GATE(PAYPAL_CLIENT_ID/SECRET/WEBHOOK_ID). 웹훅은 PayPal verify-webhook-signature API + cert_url paypal.com 화이트리스트(SSRF 방어) + 서버권위 금액검증(KRW 정확액). ⚠ webhook 이벤트 필드·KRW 통화는 공식 docs 재검증 마커(운영 키 E2E 1건 후 live 승격).",
+      "ops PG 스위칭 — /api/ops/pg-preference(관리자 토글·CSRF 가드)로 활성 PG 전환(키 미완비 PG는 409 거부) + PG 위젯(provider별 live/pending/off pill·웹훅 readiness·활성 전환). 부팅 점검을 레지스트리 SSOT 기준으로 일원화(반쪽설정 전수 차단 — Toss/PayPal/향후 PG 자동).",
+      "멀티에이전트 red-team(qwen 1차 + 6차원 적대감사 스웜·15에이전트·반증검증) — 무인증 위조발급·금액우회·이중민트 0건(전 경로 fail-closed 확인). 확정 2건(Low·정직성 1원칙) 수정: ① 레지스트리 라벨('결제 가능=client+secret')을 런타임 게이트와 일치 — 'pending인데 실발급'되던 거짓 라벨 제거(webhook은 별도 readiness로 정직 노출) ② 부팅을 레지스트리 pending 전수 차단으로(client-less 반쪽설정 사각 해소). + PG 네임스페이스(orderJti 'pp:' 접두 — Toss·PayPal orderId 동일문자열 충돌 차단). uncertain 3건(capture-hijack·boundAccount webhook·런타임 의존)은 실 PayPal 키 E2E 시 검증 대상으로 명시.",
+      "검증: tsc·vitest 548(+17: pgRegistry 8·paypal fail-closed/금액/cert/네임스페이스 9) · arch 0(paywall-entitlement에 paypal·pgRegistry 등록) · ops 위젯 라이브 서빙 확인. ⚠ PayPal 운영 활성 = 키 주입 + webhook 이벤트 docs 재검증 + 통신판매/가맹 심사가 HUMAN GATE.",
+    ],
+  },
+  {
     version: "0.73.1",
     date: "2026-06-13",
     title: "토지선택 복원 버그 수정 — 저장/공유 선택도 실필지로",

@@ -11,7 +11,7 @@ import { JsonFile } from "../src/lansmark/db/jsonFile";
 import { FirestoreLite } from "../src/lansmark/db/firestoreLite";
 import { FsDoc } from "../src/lansmark/db/firestoreStores";
 
-interface Flags { requireEntitlement?: boolean; } // 미설정(undefined)=오버라이드 없음(config/.env 기본 사용)
+interface Flags { requireEntitlement?: boolean; pgPreference?: "toss" | "paypal"; } // 미설정(undefined)=오버라이드 없음(config/.env 기본 사용)
 
 export class RuntimeFlagsStore {
   private file: JsonFile<Flags> | null = null;   // file 모드(생성자서 동기 로드)
@@ -39,6 +39,18 @@ export class RuntimeFlagsStore {
   /** 유료 게이트 오버라이드 저장(영속) — ops 토글이 호출. file=디스크, firestore=lm_state/flags 문서. */
   setRequireEntitlement(v: boolean): void {
     this.d.requireEntitlement = v;
+    this.file?.flush();
+    this.doc?.save(JSON.stringify(this.mem)); // firestore write-through(재시작 보존)
+  }
+
+  /** PG 선호(활성 결제수단) 오버라이드 값 — 없으면 null(자동: live 중 toss>paypal). */
+  pgPreference(): "toss" | "paypal" | null {
+    const v = this.d.pgPreference;
+    return v === "toss" || v === "paypal" ? v : null;
+  }
+  /** PG 선호 저장(영속) — null이면 오버라이드 제거(자동 선택 복귀). ops PG 스위칭 토글이 호출. */
+  setPgPreference(v: "toss" | "paypal" | null): void {
+    if (v === null) delete this.d.pgPreference; else this.d.pgPreference = v;
     this.file?.flush();
     this.doc?.save(JSON.stringify(this.mem)); // firestore write-through(재시작 보존)
   }
