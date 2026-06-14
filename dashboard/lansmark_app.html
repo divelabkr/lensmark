@@ -549,7 +549,8 @@ async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
   const rect=L.polygon(lls||sq,{color:col,weight:2,fillColor:col,fillOpacity:.20,dashArray:lls?null:"4 3"}); // 실폴리곤, 없으면 작은 사각형(원 금지·항상 경계형)
   rect.addTo(SELLAYER);
   const area=lls?polygonAreaM2(pc.polygon):null;
-  const it={center,tier:"parcel",rect,parcel:pc,area:area||3300,rec:null,terr:null,lc:null,override:false,opts:Object.assign(defOpts(),{area:area||3300}),key,sim:null,busy:true};
+  if(!lls&&!window._npHint){window._npHint=1;toast("이 지점엔 필지 경계가 없어 기본 3,300㎡로 표시돼요 — 농지(전·답·과수원)를 탭하면 실제 경계·면적이 잡힙니다.");} // 폴백 정직 안내: 일반 사각형을 실필지인 척 금지(정직성)
+  const it={center,tier:"parcel",rect,parcel:pc,area:area||3300,noParcel:!lls,rec:null,terr:null,lc:null,override:false,opts:Object.assign(defOpts(),{area:area||3300}),key,sim:null,busy:true};
   SEL.set(key,it);FOCUS=key;renderSelect();
   try{
     const lc=await apiLandClass(center[0],center[1]);it.lc=lc;if(it.rect.setStyle)it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});
@@ -1427,7 +1428,7 @@ function renderDetailPin(){const st=pinState;if(!st)return;
 function renderSelect(){const items=[...SEL.values()];document.getElementById("cnt").innerHTML=`선택 <b>${items.length}</b>`;const plist=document.getElementById("plist");
   if(items.length===0){plist.innerHTML=`<div class="empty"><span class="ic">▦</span>토지를 탭해 선택<br/>(여러 구역 다중 선택 → 비교)</div>`;document.getElementById("ptitle").textContent="🌱 땅을 선택하세요";document.getElementById("psub").textContent="토지선택 — 다중 비교";return;}
   if(items.length>=2){return renderCompare(items);}
-  const it=SEL.get(FOCUS)||items[0];document.getElementById("ptitle").textContent="▦ 토지 분석";document.getElementById("psub").textContent="구역: "+areaText(it.area)+" · 토지유형→추천→소득";
+  const it=SEL.get(FOCUS)||items[0];document.getElementById("ptitle").textContent="▦ 토지 분석";document.getElementById("psub").textContent="구역: "+areaText(it.area)+(it.noParcel?" · ⚠필지경계 없음(기본면적·추정)":"")+" · 토지유형→추천→소득";
   if(it.busy&&it.tier==="parcel"&&!it.lc){plist.innerHTML=loading("토지 유형 확인 중…");return;}
   if(it.error){plist.innerHTML=errCard(it.error,"err-retry2");const er=document.getElementById("err-retry2");if(er)er.addEventListener("click",async()=>{ // 막다른 끝 금지 — 같은 셀 재조회(onClick과 동일 흐름)
     it.error=null;it.busy=true;renderSelect();
@@ -1557,7 +1558,7 @@ async function restore(s){s=s||{};SELLAYER.clearLayers();SEL.clear();for(const k
       const sq=[[center[0]-3e-4,center[1]-4e-4],[center[0]-3e-4,center[1]+4e-4],[center[0]+3e-4,center[1]+4e-4],[center[0]+3e-4,center[1]-4e-4]];
       const rect=L.polygon(lls||sq,{color:col,weight:2,fillColor:col,fillOpacity:.20,dashArray:lls?null:"4 3"}).addTo(SELLAYER);
       const area=lls?polygonAreaM2(pc.polygon):null,baseOpts=(typeof sv.opts==="object"&&sv.opts)?sv.opts:defOpts();
-      const it={center,tier:"parcel",rect,parcel:pc,area:area||3300,rec:null,terr:null,lc:null,override:false,opts:Object.assign({},baseOpts,{area:area||baseOpts.area||3300}),key,sim:null,busy:true};
+      const it={center,tier:"parcel",rect,parcel:pc,area:area||3300,noParcel:!lls,rec:null,terr:null,lc:null,override:false,opts:Object.assign({},baseOpts,{area:area||baseOpts.area||3300}),key,sim:null,busy:true};
       SEL.set(key,it);FOCUS=key;const cr=fixCrop(sv.crop);if(cr)CHOSEN[key]=cr;
       try{const lc=await apiLandClass(center[0],center[1]);it.lc=lc;if(it.rect.setStyle)it.rect.setStyle({color:lcStyle(lc).c,fillColor:lcStyle(lc).c});if(lc.action!=="block"){it.rec=await recommend(center[0],center[1],"parcel");it.terr=await apiTerrain(center[0],center[1]);}}catch(_){}it.busy=false;}
     const last=[...SEL.values()].pop();if(last)MAP.setView(last.center,16);renderSelect();}else renderSelect();}
