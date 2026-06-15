@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.76.0",
+    date: "2026-06-15",
+    title: "감사용 카테고리 선택 zip 내보내기 + ops에 CI 테스트 파이프라인 상태(GitHub Actions)",
+    items: [
+      "감사 내보내기(ops 🛟 백업/복구 탭): 카테고리 체크박스로 원하는 자료만 골라 복호된 평문을 zip(의존성0 ZIP 작성기)으로 다운로드 — 감사(監査) 제출용. 세션(인증 토큰)·암호화 키·서명 시크릿은 항상 제외(스토어 미보관), PII 카테고리는 [PII] 라벨 + 내보내기 전 경고. 관리자 가드(403/401/415 CSRF)·화이트리스트(세션·미지키 차단)·manifest/README 동봉. /api/ops/export.",
+      "CI 상태 표시(ops 서버 탭): GitHub Actions ci.yml(main)의 최신 실행을 통과/실패/진행중으로 표시 + 로그 링크. /actions/runs(전체) 대신 ci.yml 워크플로만 조회(ops-watch cron 실패를 CI 실패로 오인 방지). 서버 120s 캐시·fail-soft(조회 실패는 라벨만)·공개 repo 무인증 또는 LANSMARK_GITHUB_TOKEN. /api/ops/ci.",
+      "검증: tsc·vitest 581(+10: 내보내기·zip 라운드트립·CI 파싱/캐시/fail-soft)·arch 38기능·62엔드포인트. 로컬 E2E: 내보내기 zip을 OS unzip으로 유효 확인(manifest·README·카테고리 json) + 세션 화이트리스트 차단 + CI 게이팅. ci.yml(기존)은 push/PR마다 tsc·vitest·arch·가드레일 그린 게이트.",
+    ],
+  },
+  {
     version: "0.75.0",
     date: "2026-06-15",
     title: "백업·복구 시스템 + ops '🛟 백업/복구' 탭(복구버튼) — blob 스냅샷(같은-DB) · Layer2(PITR)는 별도",

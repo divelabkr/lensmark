@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.76.0 — 2026-06-15 · 감사용 카테고리 zip 내보내기 + ops에 CI 파이프라인 상태
+> 감사(監査) 대응: 원하는 자료만 골라 압축 제출. + GitHub Actions 테스트 파이프라인 상태를 ops에 표시.
+- **감사 내보내기** — ops 백업 탭에 카테고리 체크박스 → 복호 평문 zip(의존성0 ZIP) 다운로드. 세션(인증)·암호화 키 항상 제외, [PII] 라벨+경고, 화이트리스트(세션·미지키 차단), manifest/README 동봉. `/api/ops/export`
+- **CI 상태(ops 서버 탭)** — ci.yml(main) 최신 실행 통과/실패/진행중 + 로그 링크. ci.yml 워크플로만 조회(ops-watch 실패 오인 방지)·서버 120s 캐시·fail-soft·공개 repo 무인증(또는 `LANSMARK_GITHUB_TOKEN`). `/api/ops/ci`
+- 검증: tsc · vitest 581(+10) · arch 38기능·62엔드포인트 · 로컬 E2E(zip OS unzip 유효·세션 차단·CI 게이팅) · ci.yml/main=success #31
+
 ## 0.75.0 — 2026-06-15 · 백업·복구 시스템 + ops '🛟 백업/복구' 탭(복구버튼)
 > "보안·백업이 실제 붙어 작동하나" 요청. Layer1=앱레벨 같은-DB 스냅샷(지금 구현). Layer2=GCP PITR(승인 후).
 - **백업/복구(blob 계층)** — 각 스토어 영속 blob(lm_state 문서/.data 파일, ENC1 암호문)을 불투명 바이트로 복사 → 별도 위치(lm_backups / .data/backups) 보관·목록·복구. 복호·키 불필요·PII 비노출·라운드트립 자명. 같은 모드만 복구

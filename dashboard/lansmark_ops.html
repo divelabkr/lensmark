@@ -190,8 +190,13 @@
       </section>
     </section>
 
-    <!-- ===== 서버: 통합·건전성·활동로그 ===== -->
+    <!-- ===== 서버: CI·통합·건전성·활동로그 ===== -->
     <section class="tab" data-tab="server">
+      <section class="w" style="margin-bottom:16px">
+        <div class="w-h"><span class="ico" style="background:var(--blue-s)">🧪</span>CI 테스트 파이프라인<span class="meta">GitHub Actions</span></div>
+        <div id="ci-panel"><div class="empty">불러오는 중…</div></div>
+        <div class="w-foot">push/PR마다 tsc·vitest·arch·가드레일 그린 게이트 — <code>.github/workflows/ci.yml</code></div>
+      </section>
       <div class="wgrid">
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--blue-s)">🔌</span>통합 준비도<span class="meta" id="int-c">—</span></div><div style="display:flex;gap:18px;align-items:center"><div id="intg-gauge" style="flex:0 0 auto"></div><div id="intg-list" style="flex:1;min-width:0"></div></div><div class="w-foot" id="intg-foot"></div></section>
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--amber-s)">⚙️</span>시스템 · 건전성</div><div style="display:flex;gap:16px;align-items:center;margin-bottom:12px"><div id="sys-gauge" style="flex:0 0 auto"></div><div id="sys-kpi" style="flex:1"></div></div><div id="sys-stat" class="stat-row"></div><div class="w-foot" id="sys-foot"></div></section>
@@ -221,6 +226,15 @@
         </div>
         <div id="bk-list"><div class="empty">백업 탭을 열면 불러옵니다…</div></div>
         <div class="w-foot">복구는 되돌릴 수 없습니다 — 복구 전 현재 상태를 자동 백업(pre-restore)하고, 복구 후 <b>인스턴스 재시작</b>이 필요합니다(메모리 반영).</div>
+      </section>
+      <section class="w" style="margin-top:16px">
+        <div class="w-h"><span class="ico" style="background:var(--green-s)">📦</span>감사용 내보내기<span class="meta">카테고리 선택 → zip</span></div>
+        <div style="font-size:11.5px;color:var(--ink3);font-weight:700;margin:-7px 0 11px">감사(監査) 측이 요청한 자료만 골라 <b>복호된 평문 zip</b>으로 받습니다. 세션(인증 토큰)·암호화 키는 항상 제외됩니다.</div>
+        <div id="exp-cats"><div class="empty">백업 탭을 열면 카테고리를 불러옵니다…</div></div>
+        <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:13px">
+          <button class="btn pri" id="exp-go">선택 자료 내보내기(zip)</button>
+          <span style="font-size:11px;color:var(--ink3)">⚠ <b style="color:var(--red)">[PII]</b> 표시 = 개인정보 포함 — 전달·보관 주의</span>
+        </div>
       </section>
     </section>
 
@@ -536,6 +550,9 @@ async function loadBackup(){
     const s=await r.json();
     if(mode)mode.textContent=(s.mode||"")+(s.applicable?"":" · 휘발(비대상)");
     if(stx)stx.textContent=s.lastBackupAt?("마지막 백업 "+ktime(s.lastBackupAt)+" · 스냅샷 "+(s.snapshots||[]).length+"개 · 대상 "+(s.storeKeys||[]).length+"키"):"아직 스냅샷 없음";
+    const ec=$("exp-cats");
+    if(ec){const cats=s.exportCategories||[];
+      ec.innerHTML=cats.length?cats.map(c=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:3px 12px 3px 0;font-size:12px;font-weight:600;cursor:pointer"><input type="checkbox" class="exp-cat" value="${esc(c.key)}" data-pii="${c.pii?1:0}" checked> ${esc(c.label)}${c.pii?' <span style="color:var(--red);font-weight:800">[PII]</span>':''}</label>`).join(""):`<div class="empty">${s.applicable?"내보낼 카테고리 없음":"이 모드에선 내보내기 비대상(file/firestore만)"}</div>`;}
     if(!s.applicable){list.innerHTML=`<div class="empty">${esc(s.note||"이 모드에선 백업이 동작하지 않습니다(file/firestore에서만).")}</div>`;return;}
     const snaps=s.snapshots||[];
     list.innerHTML=snaps.length?snaps.map(m=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line2);flex-wrap:wrap"><span style="font-weight:800;font-size:11.5px">${esc(ktime(m.createdAt))}</span><span class="pill ${m.reason==='pre-restore'?'mock':'on'}">${esc(m.reason)}</span><span style="color:var(--ink3);font-size:10.5px">${esc((m.keys||[]).length)}키 · ${esc(Math.round((m.totalBytes||0)/1024))}KB · v${esc(m.appVersion||'—')}</span><code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px;font-size:10px">${esc(m.id)}</code><span style="flex:1"></span><button class="btn bk-rs" data-id="${esc(m.id)}" style="border-color:var(--red);color:var(--red)">복구</button></div>`).join(""):`<div class="empty">아직 스냅샷이 없습니다 — '지금 백업'으로 첫 스냅샷을 만드세요.</div>`;
@@ -560,8 +577,34 @@ async function doRestore(id){
     await loadBackup();
   }catch(e){alert("복구 실패: "+(e&&e.message||e));}
 }
+async function doExport(){
+  const boxes=[...document.querySelectorAll(".exp-cat:checked")];
+  if(!boxes.length){alert("내보낼 카테고리를 1개 이상 선택하세요.");return;}
+  const cats=boxes.map(c=>c.value), pii=boxes.some(c=>c.dataset.pii==="1");
+  if(pii&&!confirm("선택에 개인정보(PII) 포함 카테고리가 있습니다. 복호된 평문 zip으로 내보냅니다 — 안전하게 전달하세요. 진행할까요?"))return;
+  const b=$("exp-go");b.disabled=true;const t0=b.textContent;b.textContent="내보내는 중…";
+  try{const r=await fetch("/api/ops/export",{method:"POST",headers:{...adminHdr(),"content-type":"application/json"},body:JSON.stringify({categories:cats})});
+    if(!r.ok){const j=await r.json().catch(()=>({}));alert("내보내기 실패: "+(j.error||r.status));}
+    else{const blob=await r.blob();const cd=r.headers.get("content-disposition")||"";const fn=(cd.match(/filename="([^"]+)"/)||[])[1]||"lansmark-audit-export.zip";const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=fn;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
+  }catch(e){alert("내보내기 실패: "+(e&&e.message||e));}
+  b.disabled=false;b.textContent=t0;
+}
+/* ===== CI 상태(GitHub Actions) — 서버 탭. 서버측 120s 캐시라 자주 호출해도 GitHub엔 최대 1회/120s. ===== */
+async function loadCi(){
+  const el=$("ci-panel"); if(!el)return;
+  try{
+    const r=await fetch("/api/ops/ci",{headers:adminHdr()});
+    if(!r.ok){el.innerHTML=`<div class="empty">CI 상태 조회 실패(${r.status})</div>`;return;}
+    const c=await r.json();
+    if(!c.run){el.innerHTML=`<div class="empty">CI 상태 없음${c.error?(" — "+esc(c.error)):""} <span style="color:var(--ink3)">(${esc(c.repo||"")})</span></div>`;return;}
+    const run=c.run, prog=run.status!=="completed", concl=run.conclusion;
+    const cw=prog?["mock","⏳ 진행중"]:concl==="success"?["on","✓ 통과"]:concl==="failure"?["off","✗ 실패"]:["mock","• "+esc(concl||run.status)];
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap"><span class="pill ${cw[0]}" style="font-size:12px">${cw[1]}</span><span style="font-weight:800">${esc(run.name||"ci")} #${esc(run.runNumber)}</span><span style="color:var(--ink3);font-size:11px">${esc(run.branch)} · ${esc(run.sha)} · ${esc(run.event)} · ${esc(ktime(run.at))}</span><span style="flex:1"></span>${run.url?`<a class="btn" href="${esc(run.url)}" target="_blank" rel="noopener">로그 ↗</a>`:""}</div>${c.authed?"":`<div style="font-size:10.5px;color:var(--ink3);margin-top:7px">무인증 조회(60/h) · 비공개거나 잦으면 LANSMARK_GITHUB_TOKEN 설정</div>`}`;
+  }catch(e){el.innerHTML=`<div class="empty">CI 조회 실패: ${esc(e&&e.message||e)}</div>`;}
+}
 if($("bk-now"))$("bk-now").addEventListener("click",doBackupNow);
 if($("bk-reload"))$("bk-reload").addEventListener("click",loadBackup);
+if($("exp-go"))$("exp-go").addEventListener("click",doExport);
 
 // 섹션 탭 전환(종합·회원·동향·매출·서버·로드맵·백업) — CSP-safe(addEventListener). 백업은 열 때 lazy-load.
 document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>{
@@ -569,8 +612,10 @@ document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>
   document.querySelectorAll(".tab-btn").forEach(x=>x.classList.toggle("active",x.getAttribute("data-tab")===t));
   document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.getAttribute("data-tab")===t));
   if(t==="backup")loadBackup();
+  if(t==="server")loadCi();
 }));
 load(); setInterval(load,10000);
+loadCi(); setInterval(loadCi,120000); // CI 상태(서버 120s 캐시)
 </script>
 </body>
 </html>

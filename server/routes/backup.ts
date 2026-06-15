@@ -65,5 +65,24 @@ export const backupRoutes: RouteFn = async (ctx, req, res, url) => {
     return true;
   }
 
+  // 감사용 내보내기(선택 카테고리 복호 zip 다운로드) — 관리자 쓰기 가드 + CSRF. body: { categories:[...] }.
+  if (url.pathname === "/api/ops/export" && req.method === "POST") {
+    if (blockedOpsMutation(req, res, ctx)) return true;
+    let b: any = {};
+    try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    const cats = Array.isArray(b.categories) ? b.categories.filter((x: any) => typeof x === "string") : [];
+    if (!cats.length) { json(res, 400, { error: "categories(배열)에서 1개 이상 선택해야 합니다.", code: "NO_CATEGORY" }); return true; }
+    try {
+      const at = new Date().toISOString();
+      const { zip, selected } = await ctx.backup.buildExport(cats, at);
+      if (!selected.length) { json(res, 400, { error: "유효한 카테고리가 없습니다(세션·미지 키 제외).", code: "NO_VALID_CATEGORY" }); return true; }
+      ctx.logOps("내보내기", `감사 내보내기 ${selected.length}개(${selected.join(",")})`);
+      const fname = `lansmark-audit-export-${at.slice(0, 10)}.zip`;
+      res.writeHead(200, { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${fname}"`, "Content-Length": String(zip.length), "Cache-Control": "no-store" });
+      res.end(zip); // 바이너리 — json() 미사용
+    } catch (e) { json(res, 500, { error: "내보내기 실패", detail: (e as Error)?.message }); }
+    return true;
+  }
+
   return false;
 };

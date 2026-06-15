@@ -13,6 +13,7 @@ import { gzipSync } from "node:zlib";
 import { join } from "node:path";
 import { assessQuality } from "../../src/lansmark/quality/qualityGate";
 import { evaluateOps } from "../../src/lansmark/ops/opsWatch"; // 콘솔 종합판정 — Tier1 감시자와 같은 문장(SSOT · UX 감사 O6)
+import { getCiStatus } from "../../src/lansmark/ops/ciStatus"; // CI 상태(GitHub Actions) — '서버' 탭 표시
 import { integrationReadiness } from "../../src/lansmark/data/providers";
 import { pgRegistry, pgPresenceFromEnv } from "../../src/lansmark/payment/pgRegistry";
 import { RDA_REAL_META } from "../../src/lansmark/data/rdaIncome.real";
@@ -89,6 +90,13 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
     ctx.runtimeFlags.setPgPreference(pref);
     ctx.logOps("결제", `PG 선호 ${pref ?? "자동"}`);
     json(res, 200, { ok: true, preference: pref });
+    return true;
+  }
+
+  // CI 상태(GitHub Actions) — 관리자 읽기. 서버 캐시(120s)·fail-soft(조회 실패는 라벨만).
+  if (url.pathname === "/api/ops/ci" && req.method === "GET") {
+    if (!adminOk(req, ctx)) { json(res, 401, { error: "관리자 인증 필요", code: "ADMIN_REQUIRED" }); return true; }
+    json(res, 200, await getCiStatus());
     return true;
   }
 

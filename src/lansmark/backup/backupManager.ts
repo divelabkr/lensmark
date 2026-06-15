@@ -7,6 +7,7 @@
  */
 import { BackupError, CONFIRM_TOKEN, SNAP_ID_RE, type BlobEntry, type SnapshotMeta, type StoreMode } from "./types";
 import type { BlobBackend } from "./blobBackend";
+import { listExportCategories, buildAuditExport, type ExportCategory, type ExportResult } from "./auditExport";
 
 /** 보존 스냅샷 개수(초과분 prune). */
 const KEEP_SNAPSHOTS = 10;
@@ -21,6 +22,7 @@ export interface BackupStatus {
   storeKeys: string[];          // 백업 대상 키
   keepLimit: number;            // 보존 개수
   layer2: { kind: string; note: string }; // 진짜 DR 안내(정직 라벨)
+  exportCategories: ExportCategory[]; // 감사용 내보내기 카테고리(세션 제외·PII 표시)
 }
 
 /** 복구 결과(부분 실패도 정직하게 노출). */
@@ -89,6 +91,7 @@ export class BackupManager {
       storeKeys: this.be.listStoreKeys(),
       keepLimit: KEEP_SNAPSHOTS,
       layer2: { kind: "GCP 관리형 PITR + 일일 스케줄 백업", note: LAYER2_NOTE },
+      exportCategories: listExportCategories(this.be),
     };
   }
 
@@ -120,5 +123,10 @@ export class BackupManager {
       reloadRequired: true,
       note: "복구가 영속 계층에 적용됐습니다 — 인스턴스 재시작 후 메모리에 반영됩니다(재시작 전엔 옛 상태가 다시 쓰일 수 있음).",
     };
+  }
+
+  /** 감사용 내보내기 — 선택 카테고리를 복호해 zip(Buffer). be는 캡슐화 유지(라우트가 직접 접근 X). */
+  async buildExport(categories: string[], at: string): Promise<ExportResult> {
+    return buildAuditExport(this.be, categories, { appVersion: this.appVersion, at });
   }
 }
