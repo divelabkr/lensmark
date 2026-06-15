@@ -72,9 +72,23 @@ rollback() {
   verify || true   # 롤백 후 버전은 레포보다 낮을 수 있음 — 헬스만 참고
 }
 
+# ───── Hosting 배포 — firebase.json(rewrite serviceId 등) 변경을 라이브에 반영 ─────
+#   배경: gcloud run deploy는 Cloud Run만 갱신 — Hosting rewrite(도메인→Cloud Run 라우팅)는 별도 배포 필요.
+#         serviceId가 실제 서비스(lansmark-api)와 어긋나면 Hosting이 백엔드를 못 찾아 사이트 전체 연결 실패.
+#         firebase CLI 부재 시 Cloud Run 배포까지의 성공을 깨지 않도록 '경고 후 통과'(hard-fail 금지).
+hosting() {
+  if ! command -v firebase >/dev/null 2>&1; then
+    echo "  ⚠ firebase CLI 없음 — Hosting 미배포. 수동 실행 필요: firebase deploy --only hosting --project ${PROJECT}"
+    return 0
+  fi
+  echo "── Hosting 배포: rewrite(** → Cloud Run ${SERVICE}) 반영 @ ${PROJECT}"
+  firebase deploy --only hosting --project "$PROJECT"
+}
+
 case "${1:-deploy}" in
   verify)   verify ;;
   rollback) rollback ;;
+  hosting)  hosting ;;
   deploy)
     echo "── 배포: ${SERVICE} @ ${REGION} (전체 설정 명시 — 드리프트 0)"
     gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
@@ -83,8 +97,9 @@ case "${1:-deploy}" in
       --set-env-vars "$ENV_VARS" \
       --set-secrets "$SECRETS" \
       --quiet
+    hosting   # Hosting rewrite도 함께 반영(firebase.json 변경이 라이브에 닿도록 — SSOT 일원화)
     verify
     echo "✓ 배포+검증 완료. 문제 시: bash scripts/deploy.sh rollback"
     ;;
-  *) echo "사용: bash scripts/deploy.sh [deploy|verify|rollback]"; exit 1 ;;
+  *) echo "사용: bash scripts/deploy.sh [deploy|verify|rollback|hosting]"; exit 1 ;;
 esac
