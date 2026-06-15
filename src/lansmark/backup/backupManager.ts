@@ -107,7 +107,8 @@ export class BackupManager {
     if (target.meta.storeMode !== this.be.mode) throw new BackupError("MODE_MISMATCH", `스냅샷 모드(${target.meta.storeMode}) ≠ 현재(${this.be.mode}) — 같은 모드에서만 복구할 수 있습니다.`);
     // ① 복구 전 현재 상태 자동 스냅샷(2단 되돌리기) — 실패해도 복구는 진행하되 preRestoreId=null로 정직 노출.
     let preRestoreId: string | null = null;
-    try { preRestoreId = (await this.createSnapshot("pre-restore")).id; } catch { preRestoreId = null; }
+    try { preRestoreId = (await this.createSnapshot("pre-restore")).id; }
+    catch (e) { preRestoreId = null; console.warn("[backup] 복구 전 pre-restore 스냅샷 실패 — 되돌리기 지점 없이 진행(응답 preRestoreId=null). 원인:", (e as Error)?.message); } // qwen 1차: 무음 실패 가시화
     // ② 대상 blob을 라이브에 기록(원문 그대로). 부분 실패는 appliedKeys/failedKeys로 노출(운영자가 pre-restore 복귀 판단).
     const appliedKeys: string[] = [], failedKeys: string[] = [];
     for (const e of target.entries) {

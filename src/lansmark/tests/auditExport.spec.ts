@@ -48,6 +48,17 @@ describe("auditExport — 카테고리·복호·zip", () => {
     const { manifest } = await buildAuditExport(be, ["analytics"], { appVersion: "t", at: "x" });
     expect((manifest as any).categories[0].records).toBe(2);
   });
+
+  it("복호 실패(ENC1인데 키 없음) — 평문/암호문 노출 안 하고 note만 (qwen 1차)", async () => {
+    // 키 미설정(afterEach가 보장) 상태에서 ENC1 blob → openAtRest no-key → 에러 마커만, 원문 미노출.
+    const cipher = "ENC1:Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MA==";
+    const be = new MemoryBlobBackend(new Map([["feedback", cipher]]));
+    const { zip, manifest } = await buildAuditExport(be, ["feedback"], { appVersion: "t", at: "x" });
+    const cat = (manifest as any).categories[0];
+    expect(cat.note).toContain("복호 실패");
+    expect(cat.records).toBeNull();
+    expect(zip.toString("latin1")).not.toContain(cipher); // 암호문 원문이 zip에 새지 않음
+  });
 });
 
 describe("zipWriter — 유효 ZIP(라운드트립)", () => {
