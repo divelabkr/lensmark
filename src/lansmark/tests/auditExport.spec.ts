@@ -77,4 +77,8 @@ describe("zipWriter — 유효 ZIP(라운드트립)", () => {
     expect(out.toString("utf8")).toBe(payload.toString("utf8")); // 라운드트립 일치
     expect(method).toBe(8); // 반복 페이로드라 deflate 채택
   });
+
+  it("과대 파일명은 명확한 에러로 throw(ZIP 16비트 이름길이 한도·qwen 적대프로빙 #2·3)", () => {
+    expect(() => makeZip([{ name: "a".repeat(70000), data: Buffer.from("x") }])).toThrow(/65535/);
+  });
 });

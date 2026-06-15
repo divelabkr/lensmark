@@ -26,6 +26,9 @@ export function makeZip(entries: ZipEntry[]): Buffer {
   let offset = 0;
   for (const e of entries) {
     const nameBuf = Buffer.from(e.name, "utf8");
+    // ZIP 포맷 한도 명시 가드(qwen 적대프로빙 #2·#3) — 16비트 이름길이·32비트 크기(ZIP64 미지원). 현재 호출부는 고정 ASCII 키라 미도달이나, 재사용 시 모호한 RangeError 대신 명확히 실패.
+    if (nameBuf.length > 0xffff) throw new Error(`ZIP 파일명 과다: ${nameBuf.length}B > 65535`);
+    if (e.data.length > 0xffffffff) throw new Error(`ZIP 항목 과대: ${e.data.length}B > 4GiB(ZIP64 미지원)`);
     const crc = crc32(e.data);
     const comp = deflateRawSync(e.data);
     const useDeflate = comp.length < e.data.length;
