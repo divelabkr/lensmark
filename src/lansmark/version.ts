@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.76.1",
+    date: "2026-06-15",
+    title: "서비스워커 치명 버그 수정 — 네트워크 실패 시 'Returned response is null'로 페이지가 안 열리던 것",
+    items: [
+      "사장님 Safari 화면으로 확인된 실버그: 서비스워커(sw.js) fetch 폴백이 네트워크 실패 + 캐시 비어있을 때 undefined를 반환 → respondWith(null) → WebKit 'FetchEvent.respondWith received an error: Returned response is null' → 페이지 하드 실패. 통신사가 Firebase 공용 IP를 막아 fetch가 실패하면 서비스워커가 그걸 '복구 불가 에러'로 키웠다(차단=방아쇠, SW=증폭).",
+      "수정 ① 폴백이 절대 null 반환 안 함: 캐시(요청→/app) 있으면 오프라인 제공, 내비게이션은 최소 오프라인 페이지(새로고침 버튼), 서브리소스는 Response.error()(유효 Response). ② install을 addAll(전체-실패시 빈 캐시)에서 개별 캐시(allSettled)로 — CDN 1개 실패해도 로컬 쉘(/app)은 캐시돼 오프라인 폴백 가능. ③ 캐시 버전 v1→v2: activate가 깨진 v1을 삭제하고 재구성.",
+      "효과: 캐시가 있으면 차단망에서도 앱 쉘이 오프라인으로 뜸(이전엔 흰 화면+에러). 근본 접속(라이브 도달)은 여전히 Firebase 차단 IP 우회(Cloudflare/DNS 또는 통신사 유해차단 해제)가 필요 — SW 수정은 '깨진 페이지'를 없애고 우아하게 만든다. 프런트 단일파일·SW 구문검사 OK·tsc/vitest/arch 무관.",
+    ],
+  },
+  {
     version: "0.76.0",
     date: "2026-06-15",
     title: "감사용 카테고리 선택 zip 내보내기 + ops에 CI 테스트 파이프라인 상태(GitHub Actions)",

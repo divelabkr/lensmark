@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.76.1 — 2026-06-15 · 서비스워커 치명 버그 수정(네트워크 실패 시 페이지가 안 열리던 것)
+> 사장님 Safari 화면으로 확인된 실버그. 차단망에서 SW가 페이지를 하드 실패시킴.
+- **null-응답 버그** — sw.js fetch 폴백이 네트워크 실패 + 캐시 비어있을 때 `undefined` 반환 → `respondWith(null)` → WebKit "Returned response is null" → 페이지 안 열림. (통신사 Firebase IP 차단=방아쇠, SW가 증폭)
+- **수정** ① 폴백 절대 null 금지(캐시→/app→오프라인 페이지/`Response.error()`) ② install을 `addAll`→개별 `allSettled`(CDN 1개 실패해도 로컬 쉘 캐시) ③ 캐시 v1→v2(깨진 캐시 재구성)
+- 효과: 캐시 있으면 차단망에서도 오프라인으로 쉘 뜸. 근본 접속은 여전히 IP 우회(Cloudflare/DNS) 필요 — SW는 '깨진 페이지'를 우아하게. SW 구문검사 OK·tsc/vitest/arch 무관
+
 ## 0.76.0 — 2026-06-15 · 감사용 카테고리 zip 내보내기 + ops에 CI 파이프라인 상태
 > 감사(監査) 대응: 원하는 자료만 골라 압축 제출. + GitHub Actions 테스트 파이프라인 상태를 ops에 표시.
 - **감사 내보내기** — ops 백업 탭에 카테고리 체크박스 → 복호 평문 zip(의존성0 ZIP) 다운로드. 세션(인증)·암호화 키 항상 제외, [PII] 라벨+경고, 화이트리스트(세션·미지키 차단), manifest/README 동봉. `/api/ops/export`
