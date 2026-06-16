@@ -338,9 +338,18 @@ function showWelcome(){
   const step=(n,t,d)=>`<div style="display:flex;gap:11px;align-items:flex-start"><span style="flex:none;width:26px;height:26px;border-radius:50%;background:#E3F1DC;color:var(--green-mid);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px">${n}</span><div><div style="font-weight:800;font-size:13.5px">${t}</div><div class="src" style="margin-top:1px">${d}</div></div></div>`;
   const m=document.createElement("div");m.className="vmodal";m.id="vmodal";
   m.innerHTML=`<div class="vbox" style="max-width:420px">
-    <div class="vtop">🌿 LENSMARK에 오신 걸 환영합니다</div>
+    <div class="vtop" style="text-align:center">🌿 LENSMARK에 오신 걸 환영합니다</div>
     <div style="padding:16px 18px">
-      <div style="font-size:13px;color:var(--ink2);font-weight:700;text-align:center;margin-bottom:15px">내 땅을 고르면 → <b style="color:var(--green-mid)">무료 작물 추천</b> → <b style="color:var(--green-mid)">정밀 소득 분석</b></div>
+      <div style="font-size:13px;color:var(--ink2);font-weight:700;text-align:center;margin-bottom:13px">내 땅을 고르면 → <b style="color:var(--green-mid)">무료 작물 추천</b> → <b style="color:var(--green-mid)">정밀 소득 분석</b></div>
+      <!-- 의도 묻기(절충안: 한 번 탭·건너뛰기 가능) — 무엇이 궁금한지 먼저 받아 그 흐름으로 안내+개인화(localStorage 'lansmark_intent'). 막는 가입폼이 아니라 빠른 길안내. -->
+      <div style="font-size:12.5px;font-weight:800;text-align:center;margin-bottom:9px">무엇이 궁금하세요? <span style="font-weight:600;color:var(--ink3);font-size:11px">· 건너뛰어도 돼요</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        <button class="btn wc-intent" data-intent="returnfarm" style="padding:10px">🌱 귀농 준비</button>
+        <button class="btn wc-intent" data-intent="crop" style="padding:10px">🌾 작물 추천</button>
+        <button class="btn wc-intent" data-intent="income" style="padding:10px">💰 소득 분석</button>
+        <button class="btn wc-intent" data-intent="browse" style="padding:10px">👀 그냥 둘러보기</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--ink3);font-weight:700;text-align:center;margin-bottom:9px">이렇게 진행돼요 ↓</div>
       <div style="display:flex;flex-direction:column;gap:11px">
         ${step("1","지도에서 내 땅을 탭","주소·지번 검색 또는 '📍 내 위치'로 이동")}
         ${step("2","추천 작물 확인 (무료)","기후·지형에 맞는 작물을 자동 추천")}
@@ -359,6 +368,14 @@ function showWelcome(){
   document.getElementById("wc-close").addEventListener("click",close);
   document.getElementById("wc-geo").addEventListener("click",()=>{close();const g=document.getElementById("srch-geo");if(g)g.click();}); // 내 위치 버튼 재사용
   document.getElementById("wc-assess").addEventListener("click",()=>{close();if(typeof openAssess==="function")openAssess();});
+  // 의도 칩 — 고른 목적을 저장(개인화 토대)하고 그 흐름으로 바로 안내. returnfarm=자가진단, crop/income=땅부터 고르게 내 위치로, browse=닫기.
+  m.querySelectorAll(".wc-intent").forEach(b=>b.addEventListener("click",()=>{
+    const it=b.dataset.intent;try{localStorage.setItem("lansmark_intent",it);}catch(_){}
+    close();
+    if(it==="returnfarm"){if(typeof openAssess==="function")openAssess();}
+    else if(it==="crop"||it==="income"){const g=document.getElementById("srch-geo");if(g)g.click();}
+    /* browse = 그냥 지도 둘러보기(추가 동작 없음) */
+  }));
 }
 function showWhatsNew(version,rels){
   if(document.getElementById("vmodal"))return;
@@ -512,7 +529,11 @@ async function init(){
   let baseLayer=null;
   const setBasemap=k=>{const b=BASEMAPS[k]||BASEMAPS.base;
     MAP.eachLayer(l=>{if(l instanceof L.TileLayer)MAP.removeLayer(l);}); // 기존 타일레이어 전부 제거(위성+일반 오버랩 원천 차단)
-    baseLayer=L.tileLayer(b.url,{maxZoom:19,maxNativeZoom:b.max,attribution:b.attr});baseLayer.addTo(MAP);if(baseLayer.bringToBack)baseLayer.bringToBack();
+    baseLayer=L.tileLayer(b.url,{maxZoom:19,maxNativeZoom:b.max,attribution:b.attr});
+    // 타일 실패 폴백 — VWorld가 막히거나(키 도메인 불일치·통신사 IP 차단) 응답을 못 주면 지도가 빈 배경(#dfe7da)만 남는다(특히 확대 시).
+    // tileerror가 누적(>3)되면 한 번만 OSM로 교체해 '지도가 아예 안 뜨는' 것을 막는다. (근본 해결은 VWorld 키에 lensmark.kr 도메인 등록 — HUMAN GATE.)
+    if(b.url!==_osm.url){let _te=0;baseLayer.on("tileerror",function(){ if(++_te>3 && baseLayer && baseLayer._url!==_osm.url){ try{MAP.removeLayer(baseLayer);}catch(_e){} baseLayer=L.tileLayer(_osm.url,{maxZoom:19,maxNativeZoom:_osm.max,attribution:_osm.attr+" · VWorld 대체"}); baseLayer.addTo(MAP); if(baseLayer.bringToBack)baseLayer.bringToBack(); } });}
+    baseLayer.addTo(MAP);if(baseLayer.bringToBack)baseLayer.bringToBack();
     try{localStorage.setItem("lansmark_basemap",k);}catch(_){}
     document.querySelectorAll("#mapsw button").forEach(x=>x.classList.toggle("on",x.dataset.bm===k));};
   let _bm="base";try{_bm=localStorage.getItem("lansmark_basemap")||"base";}catch(_){}if(!BASEMAPS[_bm])_bm="base"; // 토지선택엔 경계·라벨 보이는 일반맵이 기본
