@@ -1,0 +1,42 @@
+# LENSMARK Hosting 자동배포 — firebase.json(rewrite) 변경을 사람 로그인 없이 라이브에 반영.
+#   배경: gcloud run deploy는 Cloud Run만 갱신 → Hosting rewrite는 별도 배포 필요(serviceId 불일치 시 사이트 전체 연결 실패).
+#         로컬 `firebase login`은 매번 사람 손이 필요 → GitHub Actions + 서비스계정 시크릿으로 1회 등록 후 자동화.
+#   인증: 레포 시크릿 FIREBASE_SERVICE_ACCOUNT_LENSMARK_DEV(서비스계정 JSON) — HUMAN GATE로 1회 등록.
+#         미등록이면 배포를 '스킵'(워크플로 실패 아님)해 혼란을 막는다.
+name: deploy-hosting
+on:
+  workflow_dispatch:          # Actions 탭에서 버튼 1번으로 수동 배포
+  push:
+    branches: [main]
+    paths:                    # 호스팅에 영향 주는 변경만 트리거(불필요 배포 방지)
+      - 'firebase.json'
+      - 'public/**'
+      - '.github/workflows/deploy-hosting.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # 시크릿 유무 확인 — 없으면 명확히 안내하고 스킵(빨간 X로 겁주지 않기)
+      - name: 서비스계정 시크릿 확인
+        id: guard
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LENSMARK_DEV }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::FIREBASE_SERVICE_ACCOUNT_LENSMARK_DEV 시크릿 미등록 — Hosting 배포 스킵. README/DEPLOY.md A-4 참고해 1회 등록하면 이후 자동."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      # 실제 배포 — channelId: live = `firebase deploy --only hosting`와 동일(라이브 채널)
+      - name: Firebase Hosting 배포
+        if: steps.guard.outputs.ready == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LENSMARK_DEV }}
+          projectId: lensmark-dev
+          channelId: live
