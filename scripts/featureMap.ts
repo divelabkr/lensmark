@@ -51,6 +51,7 @@ export const EXCLUDED = {
     "src/lansmark/policy/disclaimer.ts", "src/lansmark/policy/soilPolicy.ts",
     "src/lansmark/data/cropPests.seed.ts", "server/context.ts",
     "src/lansmark/api/_rateLimit.ts", // ⚠ 미사용(Next.js 예시 전용) · 실서버는 security.ts 사용
+    "src/lansmark/version.archive.ts", // 릴리스 노트 아카이브(런타임 미사용 — version.ts 슬림)
   ],
 };
 
