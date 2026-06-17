@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.76.5",
+    date: "2026-06-17",
+    title: "설계 감사 즉시조치 ① — 무료 추천↔유료 시뮬 근거 일치(모순 제거) + 배포 철자 가드",
+    items: [
+      "핵심 모순 봉합: 무료 추천(cropSuitability)이 기후를 안 써서 유료 시뮬(factors)과 추천이 어긋나고, 그 위에 '🌤 기후 근거'가 붙어 거짓처럼 보이던 것 → 무료 추천도 유료와 '동일 데이터 기준'(내한·내서성·물요구·서리민감)으로 기후 반영. /api/recommend가 기후를 먼저 가져와 랭킹+근거+시뮬이 한 기준으로. 기후 위험 근거를 우선 노출(slice 보존).",
+      "배포 철자 footgun 가드: scripts/deploy.sh가 firebase.json serviceId == SERVICE 일치 확인 후 배포 — lensmark/lansmark 오타로 인한 사이트 전체 장애를 사전 차단.",
+      "tsc·vitest 590(+2: 기후반영 회귀가드)·arch 0. 설계 감사 7축 중 ②흐름·⑦운영 부분 개선(전 축 85는 데이터 실자료·HA 대공사 등 단계적).",
+    ],
+  },
+  {
     version: "0.76.4",
     date: "2026-06-17",
     title: "기후 근거가 추천에 자연스럽게 — 필지 고르면 '🌤 이 땅 기후(추천 근거)'가 추천 작물 바로 아래에",
