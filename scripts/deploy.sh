@@ -92,6 +92,9 @@ case "${1:-deploy}" in
   hosting)  hosting ;;
   deploy)
     echo "── 배포: ${SERVICE} @ ${REGION} (전체 설정 명시 — 드리프트 0)"
+    # 철자 footgun 가드 — firebase.json rewrite serviceId가 SERVICE와 일치하는지(lensmark↔lansmark 오타로 인한 사이트 전체 장애 사전 차단).
+    FB_SVC="$(node -e "const j=require('./firebase.json');const r=(j.hosting.rewrites||[]).find(x=>x.run);process.stdout.write((r&&r.run&&r.run.serviceId)||'')" 2>/dev/null || true)"
+    [ "$FB_SVC" = "$SERVICE" ] || { echo "  ✗ firebase.json serviceId('$FB_SVC') ≠ SERVICE('$SERVICE') — lensmark/lansmark 철자 불일치 → 배포 중단(과거 전체 장애 원인)"; exit 1; }
     # 안정화(2026-06): memory 512Mi→1Gi(Node/tsx OOM 재시작 방지) + --cpu-boost(시작/재시작 시 CPU 부스트로 빠르고 안정적 부팅).
     #   ⚠ min=max=1 유지 — 현재 firestore blob 어댑터는 단일 인스턴스 정합 전제(다중 인스턴스 HA는 per-record 락 승격 후 · DEPLOY.md §3-1).
     gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \

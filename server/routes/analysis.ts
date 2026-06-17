@@ -42,13 +42,12 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
       }
     } catch (e) { badInput(res, e); return true; }
     ctx.analytics.funnel("recommend", req.headers["x-lansmark-anon"] as string | undefined); // 퍼널 1단계(유입) + 익명 기기로 신규/재방문 판정
-    // 기후 근거(자연스러운 여정): 추천과 '같은 응답'으로 이 땅 기후를 함께 내려, 프런트가 추천 작물 바로 아래에 '왜'로 보여줌(별도 위젯·추가 호출 X).
-    //   실패해도 추천은 그대로 유지(fail-soft) — 기후 블록만 생략. 좌표 없으면(상위 줌) 생략.
-    let climateEv: ReturnType<typeof climateEvidence> | undefined;
+    // 기후를 '먼저' 가져와 추천 랭킹에도·근거에도 같이 씀 → 무료 추천 ↔ 유료 시뮬 근거 일치(모순 제거). 실패/좌표없으면 기후 생략(fail-soft, 추천은 유지).
+    let climate; let climateEv: ReturnType<typeof climateEvidence> | undefined;
     if (land.lat != null && land.lng != null) {
-      try { const c = await ctx.providers.land.climate({ lat: land.lat, lng: land.lng }); if (c) climateEv = climateEvidence(c); } catch { /* 폴백: 기후 근거 생략 */ }
+      try { climate = await ctx.providers.land.climate({ lat: land.lat, lng: land.lng }); if (climate) climateEv = climateEvidence(climate); } catch { /* 폴백: 기후 미반영 */ }
     }
-    json(res, 200, { ok: true, mode: "free", paywallAfter: "crop_candidate_top", candidates: rankCropCandidates(land, limit), climateEvidence: climateEv });
+    json(res, 200, { ok: true, mode: "free", paywallAfter: "crop_candidate_top", candidates: rankCropCandidates(land, limit, climate), climateEvidence: climateEv });
     return true;
   }
 
