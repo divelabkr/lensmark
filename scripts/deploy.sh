@@ -57,6 +57,11 @@ verify() {
     -d '{"land":{"areaM2":3300,"soilEvidence":{"source":"none"}},"cropId":"apple","salesChannel":"mixed","region":"경상북도"}')
   [ "$CODE" = "200" ] || { echo "  ✗ /api/simulate ${CODE}"; exit 1; }
   echo "  ✓ 버전·store·시뮬 스모크 통과"
+  # 커스텀 도메인 end-to-end 스모크 — 사용자 실제 경로(도메인→Hosting→Cloudflare→Cloud Run)까지 살아있는지.
+  #   과거 serviceId 오타·통신사 IP 차단 류 장애를 '배포 단계'에서 포착. 단 도메인/DNS/Cloudflare는 배포와 타이밍이 달라 실패해도 경고만(비차단).
+  local DCODE
+  DCODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "${APP_ORIGIN}/api/version" || echo "000")
+  if [ "$DCODE" = "200" ]; then echo "  ✓ 커스텀 도메인(${APP_ORIGIN}) end-to-end 200"; else echo "  ⚠ ${APP_ORIGIN} → ${DCODE} (앱은 Run URL로 검증됨) — Hosting/도메인/Cloudflare 경로 점검 필요"; fi
 }
 
 # ───── 롤백 — 직전 READY 리비전으로 트래픽 전환(빌드 없이 수 초) ─────
