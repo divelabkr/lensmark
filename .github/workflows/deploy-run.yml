@@ -1,0 +1,57 @@
+# LENSMARK Cloud Run 자동배포 — 앱(프런트+백엔드)을 로컬 gcloud 없이 라이브에 올림.
+#   배경: deploy-hosting.yml은 Firebase Hosting(rewrite)만 갱신 — 실제 앱은 Cloud Run(lansmark-api)이라 별도 배포 필요.
+#         그동안 `bash scripts/deploy.sh`를 사람이 맥에서 돌려야 했음 → GitHub Actions + 서비스계정으로 자동화.
+#   SSOT: 배포 설정(env·시크릿·메모리 등)은 scripts/deploy.sh 그대로 재사용(드리프트 0). 여기선 gcloud 인증만 붙임.
+#   인증: 레포 시크릿 FIREBASE_SERVICE_ACCOUNT_LENSMARK_DEV(서비스계정 JSON) 재사용 — 단 그 SA에 Cloud Run 배포 권한 필요(README/대화 참고: run.admin·cloudbuild·artifactregistry·iam.serviceAccountUser·storage).
+#         미등록이면 실패 대신 스킵(혼란 방지). 권한 부족이면 gcloud가 명확한 메시지로 실패 → 권한 부여 후 재실행.
+name: deploy-run
+on:
+  workflow_dispatch:           # Actions 탭에서 버튼 1번으로 수동 배포
+  push:
+    branches: [main]
+    paths:                     # 앱/서버/엔진/데이터/배포설정 변경 시에만(불필요 배포 방지)
+      - 'src/**'
+      - 'server/**'
+      - 'dashboard/**'
+      - 'Dockerfile'
+      - 'package.json'
+      - 'scripts/deploy.sh'
+      - '.github/workflows/deploy-run.yml'
+
+concurrency:                   # 동시 배포 충돌 방지(한 번에 하나)
+  group: deploy-run
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # 시크릿 유무 확인 — 없으면 명확히 안내하고 스킵(빨간 X로 겁주지 않기)
+      - name: 서비스계정 시크릿 확인
+        id: guard
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LENSMARK_DEV }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::FIREBASE_SERVICE_ACCOUNT_LENSMARK_DEV 시크릿 없음 — Cloud Run 배포 스킵."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # GCP 인증 — 서비스계정 키로 gcloud 활성화(deploy.sh가 gcloud를 그대로 사용)
+      - if: steps.guard.outputs.ready == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LENSMARK_DEV }}
+      - if: steps.guard.outputs.ready == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+      # 실제 배포 — SSOT 스크립트 그대로(Cloud Run + 검증). hosting()은 firebase CLI 없으면 자동 스킵(hosting은 deploy-hosting.yml가 담당).
+      - name: Cloud Run 배포 (scripts/deploy.sh — 설정 SSOT 재사용)
+        if: steps.guard.outputs.ready == 'true'
+        run: bash scripts/deploy.sh
