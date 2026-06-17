@@ -11,10 +11,13 @@ export interface GeocodeResult {
 export interface ClimateResult {
   altitudeM?: number;
   annualRainfallMm?: number;
+  annualMeanTempC?: number;   // 연평균기온(℃) — 일평균기온 평균(실측). 작물 생육적온 맥락의 1차 근거
+  growingDegreeDays?: number; // 적산온도 GDD(℃·일) — 생육기(4~10월) 일평균이 base(10℃) 초과분 누적(실측·표준 농업기후 지표)
   minWinterTempC?: number;
   summerMaxTempC?: number;   // 여름 최고기온(℃, 폭염기 일최고 수준) — 고온 스트레스·온난화 평가용(없으면 미평가)
   frostRisk?: "low" | "medium" | "high" | "unknown";
   sunlightLevel?: "low" | "medium" | "high" | "unknown";
+  stationName?: string;      // 출처 관측소명(예: "전주") — 근거의 출처·정직성 표기용(최근접 ASOS)
 }
 export interface PriceResult {
   priceKrwPerKg: SigmaRange;

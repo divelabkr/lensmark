@@ -181,6 +181,16 @@ export const FEATURES: Feature[] = [
     notes: "Phase A: KMA 기후 요약 vs 작물 요구조건 적합 점검 · 무료·sensitive RL · ⚠ 일일 실측·필지별 시계열·자동 알림(인앱/푸시)은 Phase B seam(수집 cron+인프라)",
   },
   {
+    // 기후를 '근거(why)'로 — 농민이 읽을 평이한 문장(측정 사실). 작물별 판정은 factors에 위임(날조 금지).
+    id: "climate-evidence", name: "기후 근거(필지 기후 프로필)", stage: "recommend",
+    flow: "필지/지점 → KMA 실측 기후(연평균기온·적산온도GDD·강수·겨울최저·여름최고·일조) → 평이한 '기후 근거' 문장 + 출처(평년값 아님)·면책",
+    endpoints: [],
+    files: ["src/lansmark/core/climateEvidence.ts"],
+    tests: ["src/lansmark/tests/climateEvidence.spec.ts"],
+    guardrails: ["실측·출처(평년값 아님 명시)", "작물별 임계값 날조 금지(데이터 확보 후)", "면책"], status: "seam",
+    notes: "⚠ 데이터=최근접 ASOS·최근 1년(평년값 아님). UI 노출(필지 카드 '기후 근거')·API 노출은 다음 슬라이스. 전국 색지도·작물별 GDD 충분/부족 판정은 KMA 격자 평년값 + 농진청 작물 base 확보 후(HUMAN GATE).",
+  },
+  {
     id: "agri-alerts", name: "병충해·재난 알람", stage: "operate",
     flow: "작물·월 → 병해충(룰북)+기상/재해(계절 농학) 주의 + 현재월 매칭 · region 주면 KMA 실시간 기상특보 합류(live)",
     endpoints: ["/api/alerts"],
