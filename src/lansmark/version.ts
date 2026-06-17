@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.76.7",
+    date: "2026-06-17",
+    title: "리팩토링 정리 — 죽은 레거시 소득엔진·고아 파일 제거(~800줄)",
+    items: [
+      "리팩토링 점검 후속: 레거시 소득엔진 island(core/simulator·yield·cost·revenue·income) 완전 제거 — 테스트/예제만 쓰던 죽은 코드. canonical 유료엔진은 core/parcelSimulator.ts 하나로 단일화.",
+      "고아 dashboard/lansmark_dashboard.html(서빙 안 됨) + 미사용 *.route.example.ts 2종 제거. featureMap legacy 목록 비움 + 삭제 테스트 참조 정리. mockRun(npm run demo)은 캐노니컬/추천 데모로 정리.",
+      "무료 추천 기본 동작은 cropSuitability 테스트로 보존. tsc·vitest 585·arch 0. (의도적 단일파일 lansmark_app.html·version.ts 비대는 별도 결정 대기)",
+    ],
+  },
+  {
     version: "0.76.6",
     date: "2026-06-17",
     title: "지도 오버레이(정직 1차) — 핀에 '이 땅 기후' 팝업(실측·출처·면책)",
