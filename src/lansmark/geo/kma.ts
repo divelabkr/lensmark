@@ -81,12 +81,19 @@ export function climateFromAsos(rows: AsosDailyRow[]): ClimateResult {
   const summerMaxTempC = summerMax.length ? Math.round(Math.max(...summerMax) * 10) / 10 : undefined; // 6~8월 일최고의 최댓값(폭염기)
   const rain = rows.map((r) => r.rainMm).filter((n): n is number => n != null);
   const annualRainfallMm = rain.length ? Math.round(rain.reduce((a, b) => a + b, 0)) : undefined;
+  // 연평균기온 — 일평균기온(taAvgC)의 단순 평균(실측). 작물 생육적온 맥락의 1차 근거.
+  const avgT = rows.map((r) => r.taAvgC).filter((n): n is number => n != null);
+  const annualMeanTempC = avgT.length ? Math.round((avgT.reduce((a, b) => a + b, 0) / avgT.length) * 10) / 10 : undefined;
+  // 적산온도(GDD) — 생육기(4~10월) 일평균이 base(10℃)를 넘는 분을 누적(표준 농업기후 지표·실측). base 미만 일자는 0 기여(작물별 base 차이는 데이터 확보 후 — 지금은 통용 10℃ 고정·라벨로 명시).
+  const GDD_BASE = 10;
+  const growRows = rows.filter((r) => r.month >= 4 && r.month <= 10 && r.taAvgC != null);
+  const growingDegreeDays = growRows.length ? Math.round(growRows.reduce((a, r) => a + Math.max(0, (r.taAvgC as number) - GDD_BASE), 0)) : undefined;
   const sun = rows.map((r) => r.sunHr).filter((n): n is number => n != null);
   const avgSun = sun.length ? sun.reduce((a, b) => a + b, 0) / sun.length : undefined;
   const sunlightLevel: ClimateResult["sunlightLevel"] = avgSun == null ? "unknown" : avgSun < 5 ? "low" : avgSun <= 6.5 ? "medium" : "high";
   // 서리위험: 겨울 최저기온 심도 기반 파생 지표(작물별 내한성과는 별개의 일반 신호).
   const frostRisk: ClimateResult["frostRisk"] = minWinterTempC == null ? "unknown" : minWinterTempC <= -15 ? "high" : minWinterTempC <= -8 ? "medium" : "low";
-  return { annualRainfallMm, minWinterTempC, summerMaxTempC, frostRisk, sunlightLevel };
+  return { annualRainfallMm, annualMeanTempC, growingDegreeDays, minWinterTempC, summerMaxTempC, frostRisk, sunlightLevel };
 }
 
 /** 좌표 → 기후. 최근접 ASOS 지점의 최근 1년 일자료를 조회·집계(실응답 형식 검증 완료). */
@@ -99,5 +106,5 @@ export async function fetchClimate(lat: number, lng: number, authKey: string): P
   if (text == null) return { frostRisk: "unknown", sunlightLevel: "unknown" };           // 실패 → auto가 mock 폴백
   const rows = parseAsosDaily(text);
   if (rows.length < 60) return { frostRisk: "unknown", sunlightLevel: "unknown" };        // 표본 부족(부분/단기 응답) → 폴백(레드팀 M5)
-  return climateFromAsos(rows);
+  return { ...climateFromAsos(rows), stationName: st.name }; // 출처 관측소명 부착(근거 정직성)
 }

@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.76.3",
+    date: "2026-06-17",
+    title: "기후 근거(필지 기후 프로필) 엔진 — 실측 적산온도(GDD)·연평균기온 + 평이한 근거 (전국 색지도는 데이터 대기)",
+    items: [
+      "nullschool풍 '기후 지도+근거' 요청의 정직한 1차: KMA 실측 일자료에서 연평균기온·적산온도(GDD, 생육기 4~10월·기준 10℃)를 직접 계산(climateFromAsos) + climateEvidence가 농민이 읽을 평이한 '기후 근거' 문장으로 변환(출처 '평년값 아님'·면책 표기). 작물별 적합/위험 판정은 기존 데이터기반 factors.climateFactors에 위임 — 임계값 날조 금지(추측 금지).",
+      "사용자 관점 재정의: 화려한 바람 애니메이션·기후 위젯이 아니라 '이 땅에서 왜 이 작물인가'의 근거가 진짜 필요 → 측정 사실을 근거로 surfac(다음 슬라이스: 필지 카드 UI·/api 노출, 사용자 배포 후 검증).",
+      "전국 매끄러운 색지도·작물별 'GDD 충분/부족' 판정은 14개 지점 보간·임계값 날조가 되어 미구현 → KMA 격자 평년값 + 농진청 작물 base 확보 후(HUMAN_GATE.md에 신청서 정리). tsc·vitest 588(+5)·arch(climate-evidence 기능 등록).",
+    ],
+  },
+  {
     version: "0.76.2",
     date: "2026-06-16",
     title: "첫 화면 의도 묻기(온보딩) + 지도 타일 폴백(빈 지도 방지) + 웰컴 모달 중앙정렬",
