@@ -3,6 +3,11 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.76.7 — 2026-06-17 · 리팩토링 정리 — 죽은 레거시 엔진·고아 파일 제거(~800줄)
+- 레거시 소득엔진 island(core/simulator·yield·cost·revenue·income) 완전 제거 — 테스트/예제만 쓰던 죽은 코드. canonical=core/parcelSimulator.ts 단일화.
+- 고아 dashboard/lansmark_dashboard.html + 미사용 *.route.example.ts 2종 제거. featureMap legacy 비움. mockRun 데모 정리.
+- 무료 추천 기본 동작은 cropSuitability 테스트로 보존. tsc·vitest 585·arch 0.
+
 ## 0.76.6 — 2026-06-17 · 지도 오버레이(정직 1차) — 핀에 '이 땅 기후' 팝업
 - 필지 핀 클릭 → 지도 위 팝업으로 '🌤 이 땅 기후'(실측 + 출처 '평년값 아님'·면책). nullschool풍 '지도에 기후'의 정직한 1차.
 - 전국 색지도는 14지점 보간=날조라 미구현 → KMA 격자 확보 후(HUMAN_GATE.md). 추가형 팝업이라 레이아웃 무영향. tsc·vitest 590·arch 0.

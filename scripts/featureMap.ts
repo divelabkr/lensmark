@@ -43,10 +43,7 @@ export const PRODUCT_FLOW: { stage: Stage; label: string }[] = [
 
 /** 레거시/공유 — 어느 기능에도 안 묶여도 orphan 경고에서 제외. */
 export const EXCLUDED = {
-  legacy: [ // ⚠ 새 로직 금지(CLAUDE.md)
-    "src/lansmark/core/simulator.ts", "src/lansmark/core/yield.ts", "src/lansmark/core/cost.ts",
-    "src/lansmark/core/revenue.ts", "src/lansmark/core/income.ts",
-  ],
+  legacy: [], // 레거시 엔진(simulator/yield/cost/revenue/income) 제거됨(v0.76.7 정리) — canonical 유료엔진 = core/parcelSimulator.ts
   shared: [ // 타입·공유 유틸(특정 기능 소속 아님)
     "src/lansmark/types.ts", "src/lansmark/geo/types.ts", "src/lansmark/data/providers/types.ts",
     "src/lansmark/config.ts", "src/lansmark/client.ts", "src/lansmark/core/geo.ts",
@@ -106,7 +103,7 @@ export const FEATURES: Feature[] = [
     endpoints: ["/api/simulate"],
     files: ["src/lansmark/core/parcelSimulator.ts", "src/lansmark/core/factors.ts", "src/lansmark/core/terrain.ts",
       "src/lansmark/core/satellite.ts", "src/lansmark/core/uncertainty.ts", "src/lansmark/data/rdaIncome.ts", "src/lansmark/data/rdaRealLoader.ts", "src/lansmark/data/rdaIncome.real.ts", "src/lansmark/api/parcelRequest.ts"],
-    tests: ["src/lansmark/tests/parcelEngine.spec.ts", "src/lansmark/tests/engineInputs.spec.ts", "src/lansmark/tests/uncertainty.spec.ts", "src/lansmark/tests/parcelRequest.spec.ts", "src/lansmark/tests/report.spec.ts", "src/lansmark/tests/rdaReal.spec.ts"],
+    tests: ["src/lansmark/tests/parcelEngine.spec.ts", "src/lansmark/tests/engineInputs.spec.ts", "src/lansmark/tests/uncertainty.spec.ts", "src/lansmark/tests/parcelRequest.spec.ts", "src/lansmark/tests/rdaReal.spec.ts"],
     guardrails: ["P10·P50·P90 필수", "단일값 금지", "토양검정 게이팅", "base 출처·연도", "수익보장 금지", "면책", "온난화=KMA SSP 근사·외삽 면책", "실자료 폭 유도 시 '(폭 추정)' 정직 병기"], status: "live",
     notes: "⚠ 파이프라인 live · 소득 base=RDA 데모(verified:false) — **실자료 파이프라인 사전 구축 완료**: 농진청 소득조사 CSV → `npm run rda:build <csv>` → rdaIncome.real.ts 재생성 → getRdaBase 실값 우선(verified:true·연도·출처 표기). 자료 수령=HUMAN GATE · 가격=KAMIS(apple만 검증) · 지구온난화 ΔT(climateScenario): 시설 냉난방·냉량성 고온페널티 반영(데모·외삽) · heatTolerance 정밀화는 seam",
   },
@@ -234,7 +231,7 @@ export const FEATURES: Feature[] = [
     flow: "실측 제출(유료게이트) → 작물·지형버킷 보정 → 다음 예측 현실화 → validated(서로 다른 제출자 5↑)",
     endpoints: ["/api/feedback"],
     files: ["src/lansmark/core/feedbackStore.ts", "src/lansmark/core/calibrate.ts", "src/lansmark/core/calibration.ts", "src/lansmark/core/consolidate.ts"],
-    tests: ["src/lansmark/tests/calibration.spec.ts", "src/lansmark/tests/consolidate.spec.ts", "src/lansmark/tests/terrainBucket.spec.ts", "src/lansmark/tests/cost.spec.ts"],
+    tests: ["src/lansmark/tests/calibration.spec.ts", "src/lansmark/tests/consolidate.spec.ts", "src/lansmark/tests/terrainBucket.spec.ts"],
     guardrails: ["엔티틀먼트 게이트", "validated=서로 다른 제출자 수", "입력 클램프(변조 방지)"], status: "live",
     notes: "★ B2C→B2B 다리: B2C 사용(일지 수확·실측 제출)이 작물·지역버킷 보정을 쌓아 demo를 실측으로 대체 → validated 누적이 곧 B2B(객관 근거 판매)의 전환 게이트. B2C 단계의 '실측 제출 인센티브'가 해자·B2B의 연료.",
   },
