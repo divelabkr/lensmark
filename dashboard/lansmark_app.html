@@ -406,7 +406,7 @@ function nearest(list,lat,lng){let b=null,bd=1e9;for(const r of list){const d=(r
 function regionOf(lat,lng){const sg=nearest(SIGUNGU_PT,lat,lng),sd=nearest(SIDO_PT,lat,lng);return{sido:sd.name,sigungu:sg.dist<0.6?sg.name:null};}
 
 /* ===== 실데이터 호출 (필지단계 = 실엔진) ===== */
-async function apiRecommend(lat,lng){const d=await jpost("/api/recommend",{land:{lat,lng,areaM2:3300},limit:6});return d.candidates||[];}
+async function apiRecommend(lat,lng){return await jpost("/api/recommend",{land:{lat,lng,areaM2:3300},limit:6});} // 전체 응답 반환(candidates + climateEvidence)
 async function apiTerrain(lat,lng){return jget(`/api/terrain?lat=${lat}&lng=${lng}`);}      // {slopeDegree,aspect,altitudeM,source}
 async function apiParcel(lat,lng){return jget(`/api/parcel?lat=${lat}&lng=${lng}`);}        // {center,polygon,pnu,address}
 async function apiSimulate(cropId,lat,lng,opts,terr,region){
@@ -483,8 +483,8 @@ async function recommend(lat,lng,tier){
   const reg=regionOf(lat,lng);
   if(tier==="sido")return{tier,regionText:reg.sido,crops:(SIDO_CROPS[reg.sido]||["데이터 준비중"]).map(ko=>({ko})),note:"시·도 대표작물(예시 시드)",region:reg.sido};
   if(tier==="sigungu"){const k=reg.sigungu,list=k&&SIGUNGU_PRODUCE[k]?SIGUNGU_PRODUCE[k]:(SIDO_CROPS[reg.sido]||["데이터 준비중"]);return{tier,regionText:(reg.sigungu?reg.sigungu+" ":"")+"("+reg.sido+")",crops:list.map(ko=>({ko})),note:k&&SIGUNGU_PRODUCE[k]?"지역 특산물(예시 시드)":"대표작물(예시 시드)",region:reg.sido};}
-  const cands=await apiRecommend(lat,lng);
-  return{tier,regionText:(reg.sigungu?reg.sigungu+" ":"")+"필지",crops:cands.map(c=>({id:c.cropId,ko:c.cropNameKo,score:c.score,suit:c.suitability,conf:c.confidence,blockedBy:c.blockedBy})),note:"실제 재배가능 · 무료 적합도 추천",region:reg.sido};
+  const d=await apiRecommend(lat,lng),cands=(d&&d.candidates)||[];
+  return{tier,regionText:(reg.sigungu?reg.sigungu+" ":"")+"필지",crops:cands.map(c=>({id:c.cropId,ko:c.cropNameKo,score:c.score,suit:c.suitability,conf:c.confidence,blockedBy:c.blockedBy})),note:"실제 재배가능 · 무료 적합도 추천",region:reg.sido,climateEvidence:d&&d.climateEvidence};
 }
 
 /* ===== 상태/지도 ===== */
@@ -655,6 +655,7 @@ function recHeadHtml(rec,tier,chosenId,parcel,showAll){
     <div class="creg">${esc(rec.note)}${pnu} · <span class="badge b-free">🔓 무료 추천</span></div>
     <div class="sectt" style="margin-bottom:6px">추천 작물 ${guide}</div>
     <div class="tagrow">${(rec.crops&&rec.crops.length)?cropChips(rec.crops,chosenId):'<div class="src">이 위치에 맞는 추천 작물이 없습니다 — 아래 \'전체 작물 보기\'에서 직접 선택하세요.</div>'}</div>
+    ${(rec.climateEvidence&&rec.climateEvidence.facts&&rec.climateEvidence.facts.length)?`<div class="lc-r" style="margin-top:8px"><div style="font-weight:800;margin-bottom:3px">🌤 이 땅 기후 <span class="src" style="font-weight:600">· 추천 근거</span></div><div>${rec.climateEvidence.facts.map(f=>esc(f)).join(" · ")}</div><div class="src" style="margin-top:2px">출처: ${esc(rec.climateEvidence.sourceLabel)} · ${esc(rec.climateEvidence.disclaimer)}</div></div>`:''}
     ${(showAll&&tier==='parcel')?`<div style="margin-top:7px"><button class="btn" id="all-crops-btn" style="font-size:12px;padding:5px 10px">＋ 전체 작물 보기 (벼·보리 등)</button><div class="tagrow" id="all-crops" style="display:none;margin-top:7px"></div></div>`:''}
     ${tier==='parcel'?`<div class="lc-r" style="margin-top:7px">숫자 = <b>적합도</b>(0~100, 높을수록 적합) · 색: <span style="color:#10B95C">초록 적합</span>·<span style="color:#D98E1B">노랑 검토</span>·회색 낮음. 정밀 신뢰도·근거·인증게이트는 작물 선택 후 표시.</div>`:''}</div>`;
 }
