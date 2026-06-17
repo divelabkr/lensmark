@@ -92,9 +92,11 @@ case "${1:-deploy}" in
   hosting)  hosting ;;
   deploy)
     echo "── 배포: ${SERVICE} @ ${REGION} (전체 설정 명시 — 드리프트 0)"
+    # 안정화(2026-06): memory 512Mi→1Gi(Node/tsx OOM 재시작 방지) + --cpu-boost(시작/재시작 시 CPU 부스트로 빠르고 안정적 부팅).
+    #   ⚠ min=max=1 유지 — 현재 firestore blob 어댑터는 단일 인스턴스 정합 전제(다중 인스턴스 HA는 per-record 락 승격 후 · DEPLOY.md §3-1).
     gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
       --allow-unauthenticated --min-instances 1 --max-instances 1 \
-      --memory 512Mi --cpu 1 --concurrency 80 --no-cpu-throttling \
+      --memory 1Gi --cpu 1 --concurrency 80 --no-cpu-throttling --cpu-boost \
       --set-env-vars "$ENV_VARS" \
       --set-secrets "$SECRETS" \
       --quiet
