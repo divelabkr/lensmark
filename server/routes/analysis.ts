@@ -8,6 +8,7 @@ import { json, badInput, readBody } from "../respond";
 import { finiteParam } from "../../src/lansmark/api/httpUtil";
 import { validateLandInput, clampCandidateLimit } from "../../src/lansmark/core/validate";
 import { rankCropCandidates } from "../../src/lansmark/core/cropSuitability";
+import { climateEvidence } from "../../src/lansmark/core/climateEvidence";
 import { buildParcelInput, sanitizeTerrain, isObject } from "../../src/lansmark/api/parcelRequest";
 import { runParcelSimulationWithProviders, type ParcelInput } from "../../src/lansmark/core/parcelSimulator";
 import { terrainBucketOf, toOutcomeRecord } from "../../src/lansmark/core/feedbackStore";
@@ -41,7 +42,13 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
       }
     } catch (e) { badInput(res, e); return true; }
     ctx.analytics.funnel("recommend", req.headers["x-lansmark-anon"] as string | undefined); // 퍼널 1단계(유입) + 익명 기기로 신규/재방문 판정
-    json(res, 200, { ok: true, mode: "free", paywallAfter: "crop_candidate_top", candidates: rankCropCandidates(land, limit) });
+    // 기후 근거(자연스러운 여정): 추천과 '같은 응답'으로 이 땅 기후를 함께 내려, 프런트가 추천 작물 바로 아래에 '왜'로 보여줌(별도 위젯·추가 호출 X).
+    //   실패해도 추천은 그대로 유지(fail-soft) — 기후 블록만 생략. 좌표 없으면(상위 줌) 생략.
+    let climateEv: ReturnType<typeof climateEvidence> | undefined;
+    if (land.lat != null && land.lng != null) {
+      try { const c = await ctx.providers.land.climate({ lat: land.lat, lng: land.lng }); if (c) climateEv = climateEvidence(c); } catch { /* 폴백: 기후 근거 생략 */ }
+    }
+    json(res, 200, { ok: true, mode: "free", paywallAfter: "crop_candidate_top", candidates: rankCropCandidates(land, limit), climateEvidence: climateEv });
     return true;
   }
 
