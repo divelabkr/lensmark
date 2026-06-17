@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.76.2",
+    date: "2026-06-16",
+    title: "첫 화면 의도 묻기(온보딩) + 지도 타일 폴백(빈 지도 방지) + 웰컴 모달 중앙정렬",
+    items: [
+      "웰컴 온보딩에 '무엇이 궁금하세요?' 의도 칩 추가(🌱귀농 준비·🌾작물 추천·💰소득 분석·👀둘러보기) — 건너뛰기 가능(가치-먼저, 막는 가입폼 아님). 고르면 그 흐름으로 안내(귀농=자가진단 · 작물/소득=내 위치로 땅 고르기)하고 localStorage('lansmark_intent')에 저장해 개인화 토대로. 진행 단계(1 땅선택→2 추천→3 소득)는 '이렇게 진행돼요' 로드맵으로 명시.",
+      "지도 타일 폴백: VWorld 타일이 막히거나(키 도메인 불일치·통신사 IP 차단) 응답을 못 줘 지도가 빈 배경만 남던 것(특히 확대 시) → tileerror 누적(>3) 시 OSM로 1회 자동 교체해 '지도가 아예 안 뜨는' 상황 방지. 근본 해결은 VWorld 키에 lensmark.kr 도메인 등록(HUMAN GATE).",
+      "웰컴 모달 제목 중앙정렬. 프런트 단일파일(dashboard/lansmark_app.html) — tsc·vitest 583·arch 무관. 시각 확인은 배포 후 권장.",
+    ],
+  },
+  {
     version: "0.76.1",
     date: "2026-06-15",
     title: "서비스워커 치명 버그 수정 — 네트워크 실패 시 'Returned response is null'로 페이지가 안 열리던 것",
