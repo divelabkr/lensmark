@@ -1443,6 +1443,8 @@ function renderDetailPin(){const st=pinState;if(!st)return;
   const lcB=(st.tier==="parcel"&&st.lc)?reconfirmCard(st):"";
   if(st.busy&&!st.rec){plist.innerHTML=lcB+loading("추천 불러오는 중…");return;}
   const recHead=recHeadHtml(st.rec,st.tier,st.crop,st.parcel,true);
+  // 지도 오버레이(정직 버전): 핀에 '이 땅 기후' 팝업(실측·출처 '평년값 아님'·면책) — 지도 위에서 바로 근거 확인. 전국 색지도는 KMA 격자 확보 후(HUMAN_GATE).
+  if(PIN&&st.rec&&st.rec.climateEvidence&&st.rec.climateEvidence.facts&&st.rec.climateEvidence.facts.length){const ev=st.rec.climateEvidence;PIN.bindPopup(`<div style="font-weight:800;margin-bottom:4px">🌤 이 땅 기후</div><div style="font-size:12px;line-height:1.6">${ev.facts.map(f=>esc(f)).join("<br>")}</div><div style="font-size:10px;color:#777;margin-top:4px">${esc(ev.sourceLabel)}</div>`);}
   const guideSlot=(st.tier==="parcel"&&st.crop)?'<div class="card" id="guide-panel"></div>':''; // 품종·재배 가이드(무료=대표작물/유료=전체)
   if(st.tier!=="parcel"||!st.crop){plist.innerHTML=lcB+recHead+(st.tier!=="parcel"?hintCard("🔍","더 확대하면(필지 단계) 실제 재배가능 작물과 <b>소득 시뮬</b>이 가능합니다."):hintCard("👆","추천 작물을 누르면 그 작물의 <b>예상 소득</b>이 계산됩니다."));}
   else if(!isPro()&&!FREEBETA){plist.innerHTML=lcB+recHead+guideSlot+(st.entLost?errCard("이전 구매 권한이 종료되었습니다 — "+st.entLost):"")+paywallCard();bindPay(async()=>{st.simBusy=true;renderDetailPin();await ensureSim(st,st.crop);renderDetailPin();});renderGuide(st);} // 권한 만료/소진 사유를 페이월 위에 명시(말없는 회귀 금지)
