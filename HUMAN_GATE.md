@@ -16,6 +16,9 @@
 | 농업 지원금 | `DATA_GO_KR_SERVICE_KEY` | data.go.kr | 예(자동승인) | `integrations/publicSupport.ts` |
 | 브라우저 푸시 | `LANSMARK_VAPID_PUBLIC_KEY` · `..._PRIVATE_KEY` · `..._SUBJECT` | **자체 생성** | 즉시(외부 발급 없음) | `integrations/push.ts` |
 | 모니터링 크론 | `LANSMARK_MONITOR_CRON=1` | (인프라·자체) | 즉시 | `integrations/scheduler.ts` |
+| **AI 근거 설명**(Claude) | `ANTHROPIC_API_KEY` | console.anthropic.com | 예(키 발급) | `integrations/explain.ts` |
+
+> **AI 근거 설명**: Claude가 *엔진이 계산한 숫자를 평이하게 설명*만 한다(숫자·작물·출처 날조 금지 — 출력가드로 강제). 키 없으면 설명 기능만 비활성(무중단). **승격(verified) 전 라이브 키로 실응답 1건 캡처해 출력가드 보정**(SHAPE_UNVERIFIED 규율). UI 노출은 배포·실데이터 뒤.
 
 현재 준비 현황은 코드로 확인: `listIntegrations()` (`src/lansmark/integrations/index.ts`) — 키 **존재 여부만** 노출(값 비노출).
 
