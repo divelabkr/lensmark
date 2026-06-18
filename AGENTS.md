@@ -2,6 +2,9 @@
 
 > Codex CLI(및 AGENTS.md를 읽는 도구)가 매 세션 읽는 파일. **단일 출처(SSOT)는 `CLAUDE.md`** — 시작 시 `CLAUDE.md` + `ARCHITECTURE.md`를 먼저 읽어라. 여기엔 **절대 놓치면 안 되는 가드레일**만 인라인으로 둔다(중복·드리프트 방지).
 
+## CLI 설정(최초 1회)
+- 설치/로그인 후 `codex.config.example.toml`을 `~/.codex/config.toml`로 복사하면 모델·승인모드 세팅 완료. (키 이름은 버전마다 바뀌니 `codex --help`로 검증 — 추측 금지.)
+
 ## 시작 의식
 1. `CLAUDE.md`(프로젝트 메모리·8에이전트·배선) → `ARCHITECTURE.md`(기능 지도) → `RUN_LANSMARK.md` 순으로 읽는다.
 2. 코딩 전 `ARCHITECTURE.md`/`scripts/featureMap.ts`로 **이 작업이 어느 흐름·파일인지** 확인. 새 기능·엔드포인트·파일은 **featureMap에 즉시 등록**(아니면 `npm run arch` 실패).
