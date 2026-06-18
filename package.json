@@ -13,6 +13,7 @@
     "capture": "tsx scripts/captureLiveSamples.ts",
     "arch": "tsx scripts/archCheck.ts",
     "arch:render": "tsx scripts/archRender.ts",
+    "size": "tsx scripts/sizeGuard.ts",
     "rda:build": "tsx scripts/buildRdaReal.ts",
     "ops:watch": "tsx scripts/opsWatch.ts",
     "deploy": "bash scripts/deploy.sh",
