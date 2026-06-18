@@ -10,6 +10,7 @@ import { nongsaroConfigured } from "./nongsaro";
 import { plantDetailConfigured } from "./plantDetail";
 import { publicSupportConfigured } from "./publicSupport";
 import { vapidConfigured } from "./push";
+import { explainConfigured } from "./explain";
 
 export * from "./types";
 
@@ -18,7 +19,7 @@ export function monitorCronEnabled(): boolean {
   return (process.env.LANSMARK_MONITOR_CRON || "") === "1";
 }
 
-/** 6종 통합 준비 현황 — configured만 환경 따라 변하고, verified는 승격 전 항상 false. */
+/** 통합 준비 현황 — configured만 환경 따라 변하고, verified는 승격 전(실샘플 검증 전) false. */
 export function listIntegrations(): IntegrationStatus[] {
   return [
     {
@@ -55,6 +56,11 @@ export function listIntegrations(): IntegrationStatus[] {
       id: "monitor-cron", name: "모니터링 스케줄러", envVars: ["LANSMARK_MONITOR_CRON"], configured: monitorCronEnabled(), verified: false,
       applyUrl: "(인프라·자체)",
       humanGate: "외부 키 불필요 — 데이터 seam(특보·예찰) 승격 후 작업 등록 + LANSMARK_MONITOR_CRON=1",
+    },
+    {
+      id: "ai-explain", name: "AI 근거 설명(Claude)", envVars: ["ANTHROPIC_API_KEY"], configured: explainConfigured(), verified: false,
+      applyUrl: "https://console.anthropic.com/",
+      humanGate: "Anthropic API 키 발급 → .env. Claude는 엔진이 준 숫자를 '설명'만(날조 금지·출처는 우리 부착). 라이브 키로 실응답 1건 캡처해 출력가드 보정 후 승격(verified). UI는 배포·데이터 뒤.",
     },
   ];
 }

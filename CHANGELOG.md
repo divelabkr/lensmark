@@ -3,6 +3,11 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.76.8 — 2026-06-18 · AI 근거 설명(Claude) seam — 엔진 숫자를 평이하게 '설명'만
+> Anthropic 스택 접목 1차(백엔드 seam·키-게이트). Claude는 설명만, 숫자는 엔진이 준 것만(날조 금지·fail-closed).
+- `integrations/explain.ts`: 소득 P10/50/90·기후 근거 → 농민 친화 한국어. 출력가드(hasUnprovidedMoney)로 안 준 금액 새면 폐기. Perplexity와 동일 패턴(키-게이트·null 폴백·verified=false).
+- HUMAN GATE `ANTHROPIC_API_KEY` — 없으면 설명만 비활성(무중단). UI·라이브는 키+배포+데이터 뒤. tsc·vitest 588(+3)·arch 0.
+
 ## 0.76.7 — 2026-06-17 · 리팩토링 정리 — 죽은 레거시 엔진·고아 파일 제거(~800줄)
 - 레거시 소득엔진 island(core/simulator·yield·cost·revenue·income) 완전 제거 — 테스트/예제만 쓰던 죽은 코드. canonical=core/parcelSimulator.ts 단일화.
 - 고아 dashboard/lansmark_dashboard.html + 미사용 *.route.example.ts 2종 제거. featureMap legacy 비움. mockRun 데모 정리.

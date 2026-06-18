@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.76.8",
+    date: "2026-06-18",
+    title: "AI 근거 설명(Claude) seam — 엔진 숫자를 평이하게 '설명'만 (키-게이트·날조 금지)",
+    items: [
+      "Anthropic 스택 접목 1차(백엔드 seam): integrations/explain.ts — 엔진이 계산한 소득 P10/50/90·기후 근거를 Claude가 농민 친화 한국어로 풀어줌. 핵심 가드: Claude는 '설명'만, 숫자·작물·출처는 엔진이 준 것만(프롬프트 경성 지시 + 출력 후처리 hasUnprovidedMoney로 안 준 금액 새면 폐기·fail-closed). 외래작물 Perplexity seam과 동일 패턴(키-게이트·실패 null·verified=false).",
+      "HUMAN GATE: ANTHROPIC_API_KEY(console.anthropic.com) — 없으면 설명 기능만 비활성(무중단). listIntegrations 8종 추적. UI(결과카드 '쉽게 풀어보기/물어보기' 칩)·라이브 호출은 키+배포+실데이터 뒤(합의한 순서). 승격 전 실응답 1건으로 출력가드 보정.",
+      "tsc·vitest 588(+3: 프롬프트 빌더·금액 날조가드)·arch 0. 숫자 생성은 끝까지 결정적 엔진 — Claude는 언어층만(우리 1원칙 유지).",
+    ],
+  },
+  {
     version: "0.76.7",
     date: "2026-06-17",
     title: "리팩토링 정리 — 죽은 레거시 소득엔진·고아 파일 제거(~800줄)",

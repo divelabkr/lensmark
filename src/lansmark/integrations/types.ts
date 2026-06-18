@@ -13,7 +13,8 @@ export type IntegrationId =
   | "plant-detail"    // Trefle/Perenual 식물 재배정보(외래·키)
   | "public-support"  // 공공데이터포털 농업 지원금(서비스키)
   | "web-push"        // 브라우저 푸시(VAPID 자체생성)
-  | "monitor-cron";   // 모니터링 스케줄러(인프라)
+  | "monitor-cron"    // 모니터링 스케줄러(인프라)
+  | "ai-explain";     // Claude 근거 설명(ANTHROPIC_API_KEY · 숫자 설명만·날조 금지)
 
 /** 통합 준비 상태 — ops/체크리스트 노출용. 키 '값'은 담지 않고 '존재 여부'만. */
 export interface IntegrationStatus {

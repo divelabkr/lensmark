@@ -162,9 +162,9 @@ describe("모니터링 스케줄러 seam", () => {
 });
 
 describe("준비 현황 집계", () => {
-  it("7종 · 미승격 seam은 verified=false·KMA특보는 live(true) · 키 없으면 configured 전부 false", () => {
+  it("8종 · 미승격 seam은 verified=false·KMA특보는 live(true) · 키 없으면 configured 전부 false", () => {
     const list = listIntegrations();
-    expect(list.length).toBe(7);
+    expect(list.length).toBe(8);
     expect(list.find((x) => x.id === "kma-warning")!.verified).toBe(true);            // live 승격
     expect(list.filter((x) => x.id !== "kma-warning").every((x) => x.verified === false)).toBe(true); // 나머지 seam
     expect(list.every((x) => x.configured === false)).toBe(true); // beforeEach가 키 비움
