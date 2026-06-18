@@ -27,7 +27,9 @@ const TOKEN = process.env.LANSMARK_ADMIN_TOKEN || "";
       console.log(`[opsWatch ${new Date().toISOString()}] ${BASE}`);
       console.log(formatReport(report));
     }
-    process.exit(report.level === "ok" ? 0 : 1); // 0=정상 / 1=findings(스케줄러가 알림 트리거) / 2=접근 오류
+    // crit(실제 조치 필요)일 때만 잡 실패=알림(GitHub가 소유자에 메일). warn은 알려진/구조적이라 로그만 남기고 0으로
+    // 통과 → 매일 '경고만' 실패 메일이 쌓이는 스팸 방지. (criticals는 그대로 메일로 알림 유지.)
+    process.exit(report.level === "crit" ? 1 : 0); // 0=정상/경고(로그만) · 1=critical(알림) · 2=접근 오류
   } catch (e) {
     console.error("⛔ opsWatch 실패(서버 접근 불가?):", (e as Error)?.message ?? e);
     process.exit(2);
