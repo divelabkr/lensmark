@@ -987,12 +987,20 @@ function openAcctModal(){
       <div class="src" style="margin-bottom:11px;line-height:1.6">간편 로그인 — 가입하면 지금까지의 <b>재배일지가 계정에 연결</b>되어 다른 기기에서도 이어집니다.</div>
       <div id="acct-tabs" style="display:flex;gap:6px;margin-bottom:12px">
         <button class="btn acct-tab" data-m="phone" style="flex:1;font-weight:800">📱 휴대폰</button>
-        <button class="btn acct-tab" data-m="email" style="flex:1;font-weight:800">✉️ 이메일</button></div>
+        <button class="btn acct-tab" data-m="email" style="flex:1;font-weight:800">✉️ 이메일</button>
+        <button class="btn acct-tab" data-m="password" style="flex:1;font-weight:800">🔑 아이디</button></div>
       <div id="acct-phone-wrap">
         <input type="tel" id="acct-phone" placeholder="010-0000-0000" maxlength="13" inputmode="numeric" autocomplete="tel" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;letter-spacing:.5px;box-sizing:border-box">
         <div id="acct-code-row" style="display:none;margin-top:10px"><input type="text" id="acct-code" placeholder="인증번호 6자리" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:16px;letter-spacing:4px;text-align:center;box-sizing:border-box"></div></div>
       <div id="acct-email-wrap" style="display:none">
         <input type="email" id="acct-email" placeholder="you@example.com" maxlength="200" inputmode="email" autocomplete="email" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;box-sizing:border-box"></div>
+      <div id="acct-id-wrap" style="display:none">
+        <div id="acct-pwmode" style="display:flex;gap:6px;margin-bottom:8px">
+          <button type="button" class="btn pwmode-tab" data-pw="login" style="flex:1;font-size:13px;padding:8px">로그인</button>
+          <button type="button" class="btn pwmode-tab" data-pw="register" style="flex:1;font-size:13px;padding:8px">가입</button></div>
+        <input type="text" id="acct-id" placeholder="아이디(영문·숫자 4~20자)" maxlength="20" autocomplete="username" style="width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;box-sizing:border-box">
+        <input type="password" id="acct-pw" placeholder="비밀번호(8자 이상)" maxlength="200" autocomplete="current-password" style="width:100%;margin-top:8px;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;box-sizing:border-box">
+        <input type="password" id="acct-pw2" placeholder="비밀번호 확인" maxlength="200" autocomplete="new-password" style="width:100%;margin-top:8px;padding:11px 12px;border:1px solid var(--line2);border-radius:11px;font-family:inherit;font-size:15px;box-sizing:border-box;display:none"></div>
       <div id="acct-msg" style="font-size:12px;font-weight:700;margin-top:9px;min-height:16px"></div>
       <div style="display:flex;gap:8px;margin-top:4px"><button class="btn" id="acct-cancel" style="flex:1">닫기</button><button class="btn" id="acct-go" style="flex:1;background:var(--green);color:#fff;border-color:var(--green)">인증번호 받기</button></div>
       <div class="src" style="margin-top:10px">로그인은 개인정보(휴대폰/이메일) 수집·이용 동의를 포함합니다. 식별자는 해시로 저장되며 해지 시 파기됩니다. · <a href="/privacy" target="_blank" rel="noopener" style="color:var(--green-mid);font-weight:700">개인정보처리방침</a></div>
@@ -1002,6 +1010,8 @@ function openAcctModal(){
   document.getElementById("acct-cancel").addEventListener("click",close);
   const ph=document.getElementById("acct-phone"),msg=document.getElementById("acct-msg"),go=document.getElementById("acct-go"),codeRow=document.getElementById("acct-code-row");
   const emailEl=document.getElementById("acct-email"),phoneWrap=document.getElementById("acct-phone-wrap"),emailWrap=document.getElementById("acct-email-wrap");
+  const idWrap=document.getElementById("acct-id-wrap"),idEl=document.getElementById("acct-id"),pwEl=document.getElementById("acct-pw"),pw2El=document.getElementById("acct-pw2");
+  let pwMode="login"; // 🔑 탭 내 서브모드(login=비번만 / register=비번확인)
   ph.addEventListener("input",()=>{let v=ph.value.replace(/\D/g,"").slice(0,11);
     if(v.length>=11)v=v.replace(/(\d{3})(\d{4})(\d{4})/,"$1-$2-$3");
     else if(v.length>=7)v=v.replace(/(\d{3})(\d{3,4})(\d{0,4})/,"$1-$2-$3");
@@ -1012,16 +1022,36 @@ function openAcctModal(){
   let mode="phone",challengeId="";
   // 탭 전환(휴대폰↔이메일) — 입력 영역·버튼 문구·활성 스타일 갱신, 진행상태 초기화.
   function setMode(mm){mode=mm;challengeId="";msg.textContent="";go.disabled=false;go.style.display="";
-    phoneWrap.style.display=mm==="phone"?"":"none";emailWrap.style.display=mm==="email"?"":"none";codeRow.style.display="none";
-    go.textContent=mm==="phone"?"인증번호 받기":"로그인 링크 받기";
+    phoneWrap.style.display=mm==="phone"?"":"none";emailWrap.style.display=mm==="email"?"":"none";idWrap.style.display=mm==="password"?"":"none";codeRow.style.display="none";
+    go.textContent=mm==="phone"?"인증번호 받기":mm==="email"?"로그인 링크 받기":(pwMode==="register"?"가입":"로그인");
     Array.from(m.querySelectorAll(".acct-tab")).forEach(b=>{const on=b.getAttribute("data-m")===mm;b.style.background=on?"var(--green)":"";b.style.color=on?"#fff":"";b.style.borderColor=on?"var(--green)":"";});
     document.getElementById("acct-cancel").textContent="닫기";}
   Array.from(m.querySelectorAll(".acct-tab")).forEach(b=>b.addEventListener("click",()=>setMode(b.getAttribute("data-m"))));
+  // 🔑 아이디 탭 내 로그인↔가입 토글(가입만 비번확인 노출).
+  function setPwMode(pm){pwMode=pm;pw2El.style.display=pm==="register"?"":"none";go.textContent=pm==="register"?"가입":"로그인";
+    Array.from(m.querySelectorAll(".pwmode-tab")).forEach(b=>{const on=b.getAttribute("data-pw")===pm;b.style.background=on?"var(--green-soft)":"";b.style.borderColor=on?"var(--green)":"";b.style.fontWeight=on?"800":"";});}
+  Array.from(m.querySelectorAll(".pwmode-tab")).forEach(b=>b.addEventListener("click",()=>setPwMode(b.getAttribute("data-pw"))));
+  setPwMode("login");
   setMode("phone");
   // 모바일 키보드 '이동/완료'(Enter) → 다음 단계 진행(클릭 전용이면 무반응 — 폰 로그인 끊김 방지)
-  [ph,document.getElementById("acct-code"),emailEl].forEach(el=>{if(el)el.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();go.click();}});});
+  [ph,document.getElementById("acct-code"),emailEl,idEl,pwEl,pw2El].forEach(el=>{if(el)el.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();go.click();}});});
   go.addEventListener("click",async()=>{
     msg.style.color="#DA5237";
+    if(mode==="password"){ // 아이디/비밀번호 — 가입(비번확인) 또는 로그인(발송 0·1단계). 클라 검증은 UX용, 서버가 최종 가드.
+      const userId=(idEl.value||"").trim(),pw=pwEl.value||"",pw2=pw2El.value||"";
+      if(!/^[a-zA-Z0-9_]{4,20}$/.test(userId)){msg.textContent="아이디는 영문·숫자·밑줄 4~20자입니다.";return;}
+      if(pw.length<8){msg.textContent="비밀번호는 8자 이상입니다.";return;}
+      if(pwMode==="register"&&pw!==pw2){msg.textContent="비밀번호 확인이 일치하지 않습니다.";return;}
+      go.disabled=true;go.textContent="처리 중…";
+      try{
+        await jpost(pwMode==="register"?"/api/account/register":"/api/account/login",pwMode==="register"?{userId,password:pw,passwordConfirm:pw2}:{userId,password:pw}); // 서버가 httpOnly 세션 쿠키 발급
+        let linked=0;try{linked=(await jpost("/api/account/link-anon",{})).linked||0;}catch(_){} // 익명 일지 이관(있으면)
+        await syncAcct();
+        msg.style.color="var(--green-mid)";msg.innerHTML="✓ "+(pwMode==="register"?"가입":"로그인")+" 완료"+(linked?(" — 기존 일지 <b>"+linked+"</b>건이 계정에 연결되었습니다"):"");
+        go.style.display="none";document.getElementById("acct-cancel").textContent="확인";refreshAcctBtn();
+      }catch(e){msg.style.color="#DA5237";msg.textContent=(e&&e.message)||"실패했습니다.";go.disabled=false;go.textContent=pwMode==="register"?"가입":"로그인";}
+      return;
+    }
     if(mode==="email"){ // 이메일 매직링크 — 단일 단계(링크 발송). 링크 클릭은 ?lm_login 부트스트랩이 자동 검증.
       const email=(emailEl.value||"").trim();
       if(!emailOk(email)){msg.textContent="이메일 주소를 정확히 입력해 주세요.";return;}
