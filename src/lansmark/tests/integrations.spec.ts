@@ -15,7 +15,7 @@ import { listIntegrations, monitorCronEnabled } from "../integrations/index";
 
 // env를 결정적으로 통제(앰비언트 .env에 영향받지 않게) — 통합 키 전부 비우고 복원.
 const KEYS = ["KMA_API_KEY", "NCPMS_API_KEY", "NONGSARO_API_KEY", "PERENUAL_API_KEY", "TREFLE_TOKEN", "DATA_GO_KR_SERVICE_KEY",
-  "LANSMARK_VAPID_PUBLIC_KEY", "LANSMARK_VAPID_PRIVATE_KEY", "LANSMARK_MONITOR_CRON"];
+  "LANSMARK_VAPID_PUBLIC_KEY", "LANSMARK_VAPID_PRIVATE_KEY", "LANSMARK_MONITOR_CRON", "ANTHROPIC_API_KEY"];
 let saved: Record<string, string | undefined>;
 beforeEach(() => { saved = {}; for (const k of KEYS) { saved[k] = process.env[k]; delete process.env[k]; } });
 afterEach(() => { for (const k of KEYS) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } });
@@ -162,12 +162,13 @@ describe("모니터링 스케줄러 seam", () => {
 });
 
 describe("준비 현황 집계", () => {
-  it("8종 · 미승격 seam은 verified=false·KMA특보는 live(true) · 키 없으면 configured 전부 false", () => {
+  it("8종 · 승격 seam(KMA특보·AI설명)=verified · 나머지 미승격=false · 키 없으면 configured 전부 false", () => {
     const list = listIntegrations();
     expect(list.length).toBe(8);
-    expect(list.find((x) => x.id === "kma-warning")!.verified).toBe(true);            // live 승격
-    expect(list.filter((x) => x.id !== "kma-warning").every((x) => x.verified === false)).toBe(true); // 나머지 seam
-    expect(list.every((x) => x.configured === false)).toBe(true); // beforeEach가 키 비움
+    // verified=true는 실응답 검증·승격된 것만: kma-warning(특보 live)·ai-explain(2026-06-19 출력가드 보정·레드팀 후 승격)
+    const verifiedIds = list.filter((x) => x.verified).map((x) => x.id).sort();
+    expect(verifiedIds).toEqual(["ai-explain", "kma-warning"]);
+    expect(list.every((x) => x.configured === false)).toBe(true); // beforeEach가 키 비움(ANTHROPIC 포함)
     expect(monitorCronEnabled()).toBe(false);
   });
   it("키 주입 시 해당 통합만 configured=true(존재여부만·값 비노출)", () => {

@@ -46,15 +46,26 @@ function allowedMoneyTokens(input: ExplainInput): string[] {
   return [input.income.p10, input.income.p50, input.income.p90]
     .map((n) => Math.round(n).toLocaleString("en-US")); // "19,820,000" 형태(엔진 표기와 일치)
 }
-// 출력에 '제공되지 않은' 금액(만원/억원/원)이 있으면 true → 폐기(fail-closed). 제공된 값(부분일치)은 허용.
-const MONEY_RE = /([\d,]{2,})\s*(원|만원|억원|천원)/g;
+// 출력에 '제공되지 않은' 금액이 있으면 true → 폐기(fail-closed). 단위(억/만/천)를 '원'으로 정규화해 엔진값과 대조.
+//   왜 정규화(2026-06-19 갭 보강): Claude는 "1,200만 원"처럼 만/억 단위로 환산해 쓴다(농민 친화).
+//   단위 무시·문자열 정확일치만 하면 ① 엔진값 환산("500만 원")을 over-reject 하거나
+//   ② "9,999만 원"(만·원 사이 공백)을 옛 정규식이 놓쳐 날조를 통과시킨다(라이브 캡처로 실증된 갭).
+//   해법: '숫자×단위'를 원으로 환산한 뒤 allowed(원 단위)와 비교 — 환산 가능한 모든 표기를 같은 잣대로 본다.
+const MONEY_RE = /([\d,]+(?:\.\d+)?)\s*(억|만|천)?\s*원/g;
+/** "1,200"+"만" → 12,000,000. 단위 없으면 원 그대로. 파싱 불가=NaN. */
+function moneyToWon(numStr: string, unit?: string): number {
+  const n = Number(numStr.replace(/,/g, ""));
+  if (!Number.isFinite(n)) return NaN;
+  const mult = unit === "억" ? 1e8 : unit === "만" ? 1e4 : unit === "천" ? 1e3 : 1;
+  return Math.round(n * mult);
+}
 export function hasUnprovidedMoney(text: string, allowed: string[]): boolean {
+  const allowedWon = new Set(allowed.map((a) => Number(a.replace(/,/g, "")))); // 엔진값 → 원 단위 정수 집합
   for (const m of text.matchAll(MONEY_RE)) {
-    const num = m[1].replace(/,/g, "");
-    if (num.length < 4) continue; // 소액 표현 무시(자릿수 적은 일반 숫자)
-    // 정확 일치만 허용(부분일치는 50,000,000⊃5,000,000 오허용) — 보수적·fail-closed. 만원/억원 환산 표현은 over-reject될 수 있어 verified=false(실샘플로 보정 후 승격).
-    const ok = allowed.some((a) => a.replace(/,/g, "") === num);
-    if (!ok) return true; // 엔진이 준 적 없는 금액 → 날조 의심
+    const won = moneyToWon(m[1], m[2]);
+    if (!Number.isFinite(won)) continue;
+    if (won < 10_000) continue; // 1만원 미만 일반 표현 무시(엔진 소득값은 백만원대 — 작은 숫자는 본문 서술)
+    if (!allowedWon.has(won)) return true; // 엔진이 준 적 없는 금액 → 날조 의심(fail-closed)
   }
   return false;
 }

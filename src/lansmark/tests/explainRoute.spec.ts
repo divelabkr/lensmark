@@ -35,8 +35,9 @@ const BODY = {
 
 describe("ai-explain 라우트 — 유료게이트·무중단·고지", () => {
   it("키 없으면 configured:false·explanation:null + 라벨/고지 노출(무중단)", async () => {
-    const prev = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;
+    // ⚠ loadConfig()가 loadDotenv로 .env의 키를 주입(undefined인 것만) → '키 없음'은 loadConfig '후' 제거해야 결정적(아니면 .env 키 부활→실호출).
     const ctx = createContext({ ...loadConfig(), requireEntitlement: false });
+    const prev = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;
     const s = mockRes();
     await route(ctx, mockReq("POST", {}, BODY), s, U("/api/explain"));
     expect(s.captured.code).toBe(200);

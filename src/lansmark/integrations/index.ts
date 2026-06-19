@@ -1,6 +1,6 @@
 /**
  * 외부연동(HUMAN GATE) 준비 현황 집계 — '키 존재 여부'만 노출(값 절대 금지). ops/체크리스트·테스트용.
- *   각 통합의 configured()를 모아 IntegrationStatus[] 반환. 파서 검증 전이라 verified는 전부 false.
+ *   각 통합의 configured()를 모아 IntegrationStatus[] 반환. verified는 실응답 검증·승격된 통합만 true(나머지는 false).
  *   상세 발급 절차는 HUMAN_GATE.md, seam 코드는 같은 폴더 모듈 참조.
  */
 import type { IntegrationStatus } from "./types";
@@ -19,7 +19,7 @@ export function monitorCronEnabled(): boolean {
   return (process.env.LANSMARK_MONITOR_CRON || "") === "1";
 }
 
-/** 통합 준비 현황 — configured만 환경 따라 변하고, verified는 승격 전(실샘플 검증 전) false. */
+/** 통합 준비 현황 — configured는 env 따라, verified는 실샘플 검증·승격된 통합만 true. */
 export function listIntegrations(): IntegrationStatus[] {
   return [
     {
@@ -58,9 +58,9 @@ export function listIntegrations(): IntegrationStatus[] {
       humanGate: "외부 키 불필요 — 데이터 seam(특보·예찰) 승격 후 작업 등록 + LANSMARK_MONITOR_CRON=1",
     },
     {
-      id: "ai-explain", name: "AI 근거 설명(Claude)", envVars: ["ANTHROPIC_API_KEY"], configured: explainConfigured(), verified: false,
+      id: "ai-explain", name: "AI 근거 설명(Claude)", envVars: ["ANTHROPIC_API_KEY"], configured: explainConfigured(), verified: true,
       applyUrl: "https://console.anthropic.com/",
-      humanGate: "Anthropic API 키 발급 → .env. Claude는 엔진이 준 숫자를 '설명'만(날조 금지·출처는 우리 부착). 라이브 키로 실응답 1건 캡처해 출력가드 보정 후 승격(verified). UI는 배포·데이터 뒤.",
+      humanGate: "✓ 라이브 실응답 캡처·출력가드(만/억 환산 정규화) 보정·인젝션 레드팀 3/3 통과 — verified 승격(2026-06-19). Claude는 엔진 숫자 '설명'만(날조 폐기·출처는 우리 부착). UI는 배포·데이터 뒤.",
     },
   ];
 }
