@@ -4,8 +4,10 @@
  *   ⚠ 인증 검증(OTP/소셜/이메일)은 verifier seam(HUMAN GATE) — 여기 타입은 검증 방식과 무관(코어).
  */
 export interface AuthRef {
-  method: string;       // 검증기 종류(mock|phone|kakao|email)
-  subjectHash: string;  // 외부 식별자(전화/이메일/소셜ID)의 keyed-hash — 평문 PII 미저장, 계정 조회는 해시로
+  method: string;       // 검증기 종류(mock|phone|kakao|email|password)
+  subjectHash: string;  // 외부 식별자(전화/이메일/소셜ID/아이디)의 keyed-hash — 평문 PII 미저장, 계정 조회는 해시로
+  passwordHash?: string; // password method 전용: scrypt(비밀번호, salt)·hex — 평문 비밀번호 절대 미저장
+  salt?: string;         // password method 전용: 무작위 salt(hex)
 }
 export interface Account {
   id: string;           // "acct_" + 무작위
