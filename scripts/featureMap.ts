@@ -104,7 +104,7 @@ export const FEATURES: Feature[] = [
     endpoints: ["/api/simulate"],
     files: ["src/lansmark/core/parcelSimulator.ts", "src/lansmark/core/factors.ts", "src/lansmark/core/terrain.ts",
       "src/lansmark/core/satellite.ts", "src/lansmark/core/uncertainty.ts", "src/lansmark/data/rdaIncome.ts", "src/lansmark/data/rdaRealLoader.ts", "src/lansmark/data/rdaIncome.real.ts", "src/lansmark/api/parcelRequest.ts"],
-    tests: ["src/lansmark/tests/parcelEngine.spec.ts", "src/lansmark/tests/engineInputs.spec.ts", "src/lansmark/tests/uncertainty.spec.ts", "src/lansmark/tests/parcelRequest.spec.ts", "src/lansmark/tests/rdaReal.spec.ts"],
+    tests: ["src/lansmark/tests/parcelEngine.spec.ts", "src/lansmark/tests/engineInputs.spec.ts", "src/lansmark/tests/uncertainty.spec.ts", "src/lansmark/tests/parcelRequest.spec.ts", "src/lansmark/tests/rdaReal.spec.ts", "src/lansmark/tests/cropGuardrailSweep.spec.ts"],
     guardrails: ["P10·P50·P90 필수", "단일값 금지", "토양검정 게이팅", "base 출처·연도", "수익보장 금지", "면책", "온난화=KMA SSP 근사·외삽 면책", "실자료 폭 유도 시 '(폭 추정)' 정직 병기"], status: "live",
     notes: "⚠ 파이프라인 live · 소득 base=RDA 데모(verified:false) — **실자료 파이프라인 사전 구축 완료**: 농진청 소득조사 CSV → `npm run rda:build <csv>` → rdaIncome.real.ts 재생성 → getRdaBase 실값 우선(verified:true·연도·출처 표기). 자료 수령=HUMAN GATE · 가격=KAMIS(apple만 검증) · 지구온난화 ΔT(climateScenario): 시설 냉난방·냉량성 고온페널티 반영(데모·외삽) · heatTolerance 정밀화는 seam",
   },
