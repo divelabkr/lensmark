@@ -185,8 +185,8 @@ export const FEATURES: Feature[] = [
     endpoints: [],
     files: ["src/lansmark/core/climateEvidence.ts"],
     tests: ["src/lansmark/tests/climateEvidence.spec.ts"],
-    guardrails: ["실측·출처(평년값 아님 명시)", "작물별 임계값 날조 금지(데이터 확보 후)", "면책"], status: "seam",
-    notes: "⚠ 데이터=최근접 ASOS·최근 1년(평년값 아님). UI 노출(필지 카드 '기후 근거')·API 노출은 다음 슬라이스. 전국 색지도·작물별 GDD 충분/부족 판정은 KMA 격자 평년값 + 농진청 작물 base 확보 후(HUMAN GATE).",
+    guardrails: ["실측·출처(평년값 아님 명시)", "작물별 임계값 날조 금지(데이터 확보 후)", "면책"], status: "live",
+    notes: "데이터=최근접 ASOS·최근 1년(평년값 아님). **노출 완료**: /api/recommend 응답에 climateEvidence 합류(analysis.ts) → 대시보드 추천 카드 '🌤 이 땅 기후 · 추천 근거' + 지도 핀 팝업(lansmark_app.html). 별도 엔드포인트 미생성=의도적 UX(추가 호출 회피·version.ts). ⚠ 전국 색지도·작물별 GDD 충분/부족 판정은 KMA 격자 평년값 + 농진청 작물 base 확보 후(HUMAN GATE).",
   },
   {
     id: "agri-alerts", name: "병충해·재난 알람", stage: "operate",
