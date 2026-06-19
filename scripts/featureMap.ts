@@ -63,7 +63,7 @@ export const FEATURES: Feature[] = [
     files: ["dashboard/lansmark_app.html", "server/routes/geo.ts", "server/routes/meta.ts",
       "src/lansmark/geo/vworld.ts", "src/lansmark/geo/crs.ts", "src/lansmark/geo/dem.ts", "src/lansmark/geo/terrainFromDem.ts"],
     tests: ["src/lansmark/tests/geo.spec.ts", "src/lansmark/tests/geoCrs.spec.ts", "src/lansmark/tests/vworld.spec.ts", "src/lansmark/tests/terrainFromDem.spec.ts"],
-    guardrails: [], status: "live", notes: "geocode/parcel/타일 live · DEM(terrain) seam",
+    guardrails: [], status: "live", notes: "geocode/parcel/타일 live · 지형=Open-Meteo 실측(무키·~90m·실패 시 mock 폴백·⚠비상업 티어=상업 전환 시 Google Elevation 등 교체)",
   },
   {
     id: "land-class", name: "토지유형 분류(강·바다·도시·농경지)", stage: "land",
@@ -287,7 +287,7 @@ export const FEATURES: Feature[] = [
       "src/lansmark/data/providers/runtimeHealth.ts",
       "src/lansmark/geo/kma.ts", "src/lansmark/geo/kamis.ts", "src/lansmark/geo/fetchSafe.ts", "src/lansmark/data/providers/kamisItemCodes.ts"],
     tests: ["src/lansmark/tests/autoProviders.spec.ts", "src/lansmark/tests/runtimeHealth.spec.ts", "src/lansmark/tests/kamis.spec.ts", "src/lansmark/tests/kmaClimate.spec.ts", "src/lansmark/tests/kmaGrid.spec.ts"],
-    guardrails: ["추측 금지(공식 docs)", "live↔mock 동일 타입", "런타임 폴백 기록 — 거짓 녹색 차단(키=live 아님)"], status: "live", notes: "geocode/parcel/KMA/KAMIS live · DEM/RDA seam · pick()이 연동별 live/폴백 집계(runtimeHealth) → ops 정직 표시",
+    guardrails: ["추측 금지(공식 docs)", "live↔mock 동일 타입", "런타임 폴백 기록 — 거짓 녹색 차단(키=live 아님)"], status: "live", notes: "geocode/parcel/KMA/KAMIS·지형(Open-Meteo) live · RDA seam · pick()이 연동별 live/폴백 집계(runtimeHealth) → ops 정직 표시",
   },
   {
     id: "integrations-seam", name: "외부연동 준비(HUMAN GATE)", stage: "platform",
@@ -301,7 +301,7 @@ export const FEATURES: Feature[] = [
       "src/lansmark/integrations/explain.ts", "server/routes/explain.ts"],
     tests: ["src/lansmark/tests/integrations.spec.ts", "src/lansmark/tests/explain.spec.ts", "src/lansmark/tests/explainRoute.spec.ts"],
     guardrails: ["추측 금지(파서는 실샘플 검증 후)", "키 값 비노출(존재여부만)", "거짓 live 라벨 금지", "미설정→unconfigured 폴백", "AI설명=유료게이트·sensitive 레이트리밋·숫자/URL 날조 폐기·입력 인젝션 무력화"], status: "seam",
-    notes: "준비층(listIntegrations 8종 추적) — 미승격 seam: NCPMS(키)·농사로 국내(키·HTTP실측)·Perenual/Trefle 외래(키·무료=분류뿐)·data.go.kr 지원금(serviceKey)·VAPID 푸시·크론·**AI설명(ai-explain)**. **KMA 특보는 live 승격(agri-alerts)으로 졸업**. AI설명 = POST /api/explain(유료게이트+sensitive 레이트리밋, key-pending·UI는 배포·데이터 뒤·verified는 실응답 보정 후) — 가드는 docs/AI_SECURITY.md. 실응답 파서는 키 확보 후 한 슬라이스씩 승격(SHAPE_UNVERIFIED 해제) · 발급=HUMAN_GATE.md",
+    notes: "준비층(listIntegrations 8종 추적) — 미승격 seam: NCPMS(키)·농사로 국내(키·HTTP실측)·Perenual/Trefle 외래(키·무료=분류뿐)·data.go.kr 지원금(serviceKey)·VAPID 푸시·크론. **KMA 특보·AI설명(ai-explain)은 live 승격으로 졸업**. AI설명 = POST /api/explain(유료게이트+sensitive 레이트리밋·verified 승격 2026-06-19: 라이브 실응답 캡처+출력가드(만/억 환산 정규화)+인젝션 레드팀 3/3·UI는 배포·데이터 뒤) — 가드는 docs/AI_SECURITY.md. 나머지 실응답 파서는 키 확보 후 한 슬라이스씩 승격(SHAPE_UNVERIFIED 해제) · 발급=HUMAN_GATE.md",
   },
   {
     id: "security", name: "보안 미들웨어", stage: "platform",
