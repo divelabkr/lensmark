@@ -1,0 +1,22 @@
+# LENSMARK Lighthouse CI — 접근성·성능·SEO·모범사례 점수(농민·모바일 사용자). warn-only(비차단·추세).
+#   ⚠ CI 전용: 서버 기동 + headless Chrome 필요 → 로컬 검증 불가. GitHub Actions 탭에서 결과 확인·임계 조정.
+#   무의존 철학 유지(앱 런타임 deps 0 · lhci는 CI 개발툴).
+name: lighthouse
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  lhci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: 의존성
+        run: npm ci
+      - name: Lighthouse CI (autorun · lighthouserc.json)
+        run: npx -y @lhci/cli@0.13.x autorun

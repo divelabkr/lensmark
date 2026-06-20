@@ -1,0 +1,22 @@
+{
+  "//": "LENSMARK Lighthouse CI 설정 — 접근성·성능·SEO·모범사례 점수(농민·모바일 사용자 중심). warn-only(추세 추적·비차단). PWA는 localhost http에서 저평가되어 제외(실 https 배포서 별도).",
+  "ci": {
+    "collect": {
+      "startServerCommand": "PORT=8801 LANSMARK_REQUIRE_ENTITLEMENT=false LANSMARK_ALLOW_OPEN_PAID=1 npm start",
+      "startServerReadyPattern": "dev: http",
+      "startServerReadyTimeout": 30000,
+      "url": ["http://localhost:8801/app"],
+      "numberOfRuns": 1,
+      "settings": { "preset": "desktop" }
+    },
+    "assert": {
+      "assertions": {
+        "categories:accessibility": ["warn", { "minScore": 0.9 }],
+        "categories:best-practices": ["warn", { "minScore": 0.8 }],
+        "categories:seo": ["warn", { "minScore": 0.85 }],
+        "categories:performance": ["warn", { "minScore": 0.7 }]
+      }
+    },
+    "upload": { "target": "temporary-public-storage" }
+  }
+}
