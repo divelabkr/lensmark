@@ -1,0 +1,28 @@
+# LENSMARK CodeQL — 보안 SAST(GitHub 네이티브·무료·의존성 0). JS/TS 취약점(인젝션·XSS·경로주입·시크릿 등) 자동 검출.
+#   왜: 1원칙(날조 금지)·결제·인증·LLM seam이 있는 제품 → 보안 회귀를 PR·주간으로 막는다(로컬 guardrail-scan 보완·코드레벨 취약점).
+#   라이브러리 도입 아님(GitHub Action만) → 무의존 철학 유지.
+name: codeql
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 0 * * 1" # 매주 월요일 00:00 UTC — 신규 룰 반영(코드 변경 없어도)
+jobs:
+  analyze:
+    name: CodeQL 분석 (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: CodeQL 초기화
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality # 보안 + 품질 룰셋
+      - name: 분석
+        uses: github/codeql-action/analyze@v3
