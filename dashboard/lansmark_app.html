@@ -751,12 +751,16 @@ function simCardHtml(sim,terr,opts){
    ${!validated&&sim.confidence!=='A'?`<div class="upsell">💡 <span><b>토양 검정서(pH)</b>를 넣으면 정밀도·신뢰도가 올라가고 <b>'검증'</b> 라벨에 가까워집니다.</span></div>`:""}
    <div class="card"><div class="sectt" style="margin-bottom:6px">출처 · 면책</div><div class="src">base: ${esc(sim.baseSource)}</div>${(sim.disclaimers||[]).map(d=>`<div class="src">• ${esc(d)}</div>`).join("")}</div>`;
 }
-/* 동반 패널 탭 전환(레이아웃 정리) — CSP 안전(addEventListener). */
+/* UX: View Transition 헬퍼 — DOM 변경을 크로스페이드(브라우저 네이티브 API·의존성 0). prefers-reduced-motion 존중(접근성)·미지원 브라우저는 즉시 폴백(가용성). */
+function vt(apply){ try{ if(document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches){ document.startViewTransition(apply); return; } }catch(_){} apply(); }
+/* 동반 패널 탭 전환(레이아웃 정리) — CSP 안전(addEventListener) · 전환은 vt로 부드럽게. */
 function bindOpTabs(){
   document.querySelectorAll(".optab").forEach(t=>t.addEventListener("click",()=>{
     const id=t.getAttribute("data-pane");
-    document.querySelectorAll(".optab").forEach(x=>x.classList.toggle("active",x===t));
-    document.querySelectorAll(".oppane").forEach(p=>p.classList.toggle("active",p.id===id));
+    vt(()=>{
+      document.querySelectorAll(".optab").forEach(x=>x.classList.toggle("active",x===t));
+      document.querySelectorAll(".oppane").forEach(p=>p.classList.toggle("active",p.id===id));
+    });
   }));
 }
 function bindSim(st,rerender){
