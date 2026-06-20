@@ -1361,6 +1361,28 @@ async function renderBudget(st){
   });
 }
 
+/* 누적 현금흐름 곡선(무의존 SVG) — 투자(음수)→회수(양수) 여정을 한눈에: 0원 기준선 + 회수 수직선 + 끝값 부호 색(회수 완료=초록/미회수=주황). 아이덴티티: '언제 본전 넘나'를 정직하게. */
+function cashflowCurve(B){
+  const ys=(B&&B.years)||[];if(ys.length<2)return"";
+  const cum=ys.map(y=>(y.cumulativeNetCashKrw&&y.cumulativeNetCashKrw.p50)||0);
+  const W=560,H=140,pL=6,pR=6,pT=12,pB=20;
+  const min=Math.min(0,...cum),max=Math.max(0,...cum),sp=(max-min)||1;
+  const X=i=>pL+(i/(ys.length-1))*(W-pL-pR),Y=v=>pT+(1-(v-min)/sp)*(H-pT-pB);
+  const y0=Y(0),pts=cum.map((v,i)=>[X(i),Y(v)]);
+  const poly=pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+  const area="M"+pts[0][0].toFixed(1)+","+y0.toFixed(1)+" "+pts.map(p=>"L"+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")+" L"+pts[pts.length-1][0].toFixed(1)+","+y0.toFixed(1)+" Z";
+  const be=B.metrics&&B.metrics.breakEvenYearP50;
+  const beLine=(be!=null&&be>=1&&be<=ys.length)?`<line x1="${X(be-1).toFixed(1)}" y1="${pT}" x2="${X(be-1).toFixed(1)}" y2="${H-pB}" stroke="var(--green-mid)" stroke-width="1.4" stroke-dasharray="4 3"/><text x="${X(be-1).toFixed(1)}" y="${pT+8}" font-size="10" fill="var(--green-mid)" text-anchor="middle" font-weight="700">회수 ${be}년차</text>`:"";
+  const col=cum[cum.length-1]>=0?"var(--green)":"var(--warn)";
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin:2px 0 4px">
+    <path d="${area}" fill="${col}" opacity="0.12"/>
+    <line x1="${pL}" y1="${y0.toFixed(1)}" x2="${W-pR}" y2="${y0.toFixed(1)}" stroke="var(--line2)" stroke-width="1"/>
+    <text x="${pL+1}" y="${(y0-3).toFixed(1)}" font-size="9" fill="var(--ink3)">손익분기(0원)</text>
+    <polyline points="${poly}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${beLine}
+    <text x="${pL}" y="${H-6}" font-size="9" fill="var(--ink3)">1년차</text><text x="${W-pR}" y="${H-6}" font-size="9" fill="var(--ink3)" text-anchor="end">${ys.length}년차</text>
+  </svg>`;
+}
 /* 예산 결과 카드(표시 전용 · 서버유래 문자열 esc). free=teaser / paid=다년 정밀. */
 function budResultHtml(B){
   const won=n=>fmt(n)+"원";
@@ -1384,7 +1406,9 @@ function budResultHtml(B){
      <div class="kbox"><div class="kl">자기부담</div><div class="kv num">${fmt(B.initialEquityOutlayKrw)}<small>원</small></div></div>
      <div class="kbox"><div class="kl">손익분기</div><div class="kv num">${m.breakEvenYearP50!=null?m.breakEvenYearP50+'<small>년차</small>':'—'}</div></div></div>
      <div class="fsum" style="margin:9px 0"><span class="fl">투자 회수율(자기자본 대비) — 나쁠 때·보통·좋을 때</span><span class="fv num">${roi(m.roiPctP10)} · ${roi(m.roiPctP50)} · ${roi(m.roiPctP90)}</span></div>
-     <div class="sectt" style="margin:6px 0 5px">연차별 현금흐름(P50)</div>
+     <div class="sectt" style="margin:6px 0 5px">누적 현금흐름 — 투자→회수 곡선(P50)</div>
+     ${cashflowCurve(B)}
+     <div class="sectt" style="margin:9px 0 5px">연차별 상세(P50)</div>
      <div style="display:flex;flex-direction:column;gap:5px">${yrs}</div>${more}</div>
    ${warns?`<div class="card">${warns}</div>`:''}
    ${funds?`<div class="card"><div class="sectt" style="margin-bottom:5px">융자·보조 확인 경로</div>${funds}</div>`:''}
