@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # 시크릿 유무 확인 — 없으면 명확히 안내하고 스킵(빨간 X로 겁주지 않기)
       - name: 서비스계정 시크릿 확인
         id: guard
