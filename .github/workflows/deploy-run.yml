@@ -46,7 +46,7 @@ jobs:
           node-version: 20
       # GCP 인증 — 서비스계정 키로 gcloud 활성화(deploy.sh가 gcloud를 그대로 사용)
       - if: steps.guard.outputs.ready == 'true'
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LENSMARK_DEV }}
       - if: steps.guard.outputs.ready == 'true'
