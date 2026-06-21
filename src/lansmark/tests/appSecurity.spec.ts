@@ -47,8 +47,8 @@ describe("frontend XSS hardening (lansmark_app.html)", () => {
 
 // 결과 카드 시각화 — 소득 확률 밴드 + 6축 토네이도(회귀가드: 업그레이드 배선 + '정직성' 매핑 고정)
 describe("result card visualization (probability band + factor tornado)", () => {
-  it("소득 확률 밴드: P50 농도 피크 그라디언트 + 분위 눈금", () => {
-    expect(html).toContain("linear-gradient(90deg,${edge} 0%,${peak}"); // P50에서 가장 진한 농도(밴드)
+  it("소득 확률 밴드: 위험~기대 색계조(P50 위치 초록 피크) + 분위 눈금", () => {
+    expect(html).toContain("linear-gradient(90deg,#E8943B 0%,var(--green) ${rel.toFixed(1)}%,#2E9BD6 100%)"); // 주황(나쁨)→P50(rel%) 초록→청록(좋음)
     expect(html).toContain('class="qtick"');                            // P10·P90 분위 눈금
   });
   it("6축 토네이도: 발산 막대 배선 + 소득방향(수율↑·비용↓=+) 정직 매핑", () => {

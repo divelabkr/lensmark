@@ -15,6 +15,7 @@ import { anonSubmitterId, assertPaidEntitlement } from "../../src/lansmark/polic
 import { isObject } from "../../src/lansmark/api/parcelRequest";
 import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
 import { sessionTokenFrom, sessionCookie, clearSessionCookie } from "../cookies";
+import { hashPassword, verifyPassword, isValidUserId, isValidPassword, DUMMY_CRED } from "../../src/lansmark/account/password";
 import type { RouteFn } from "../context";
 
 const SESSION_TTL_MS = 30 * 24 * 3_600_000; // 30일
@@ -77,6 +78,56 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     res.setHeader("Set-Cookie", sessionCookie(token, SESSION_TTL_MS / 1000, ctx.config.isProd)); // writeHead(json)와 병합 보존(다른 헤더명)
     ctx.logOps("계정", `로그인 ${isNew ? "신규" : "기존"} ${acct.id.slice(0, 12)}…`);
     json(res, 200, { ok: true, session: token, accountId: acct.id, isNew });
+    return true;
+  }
+
+  // ── 아이디/비밀번호 가입 — 발송 인프라 0(가벼움) · 무한생성 금지(rate limit[sensitive]+중복차단+scrypt 비용) ──
+  if (p === "/api/account/register" && req.method === "POST") {
+    let b: any = {};
+    try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    const userId = typeof b.userId === "string" ? b.userId.trim() : "";
+    const password = typeof b.password === "string" ? b.password : "";
+    const passwordConfirm = typeof b.passwordConfirm === "string" ? b.passwordConfirm : "";
+    if (!isValidUserId(userId)) { json(res, 400, { error: "아이디는 영문·숫자·밑줄 4~20자입니다.", code: "BAD_USERID" }); return true; }
+    if (!isValidPassword(password)) { json(res, 400, { error: "비밀번호는 8자 이상입니다.", code: "BAD_PASSWORD" }); return true; }
+    if (password !== passwordConfirm) { json(res, 400, { error: "비밀번호 확인이 일치하지 않습니다.", code: "PASSWORD_MISMATCH" }); return true; }
+    const h = subjectHash("password", userId.toLowerCase()); // 대소문자 무시(중복·로그인 일관) · 아이디 원문 미저장(해시만)
+    if (ctx.accounts.findByAuthRef("password", h)) { json(res, 409, { error: "이미 사용 중인 아이디입니다.", code: "USERID_TAKEN" }); return true; } // 중복·무한생성 차단
+    const { hash, salt } = hashPassword(password); // scrypt — 평문 비밀번호 미저장
+    const acct = { id: "acct_" + crypto.randomBytes(12).toString("hex"), createdAt: new Date().toISOString(), authRefs: [{ method: "password", subjectHash: h, passwordHash: hash, salt }] };
+    ctx.accounts.create(acct);
+    ctx.analytics.signup("password");
+    const token = crypto.randomBytes(24).toString("hex");
+    const now = Date.now();
+    ctx.sessions.create({ token, accountId: acct.id, createdAt: new Date(now).toISOString(), expiresAt: new Date(now + SESSION_TTL_MS).toISOString() });
+    res.setHeader("Set-Cookie", sessionCookie(token, SESSION_TTL_MS / 1000, ctx.config.isProd));
+    ctx.logOps("계정", `가입(ID/PW) ${acct.id.slice(0, 12)}…`);
+    json(res, 200, { ok: true, session: token, accountId: acct.id, isNew: true });
+    return true;
+  }
+
+  // ── 아이디/비밀번호 로그인 — 아이디 없음·비번 불일치 모두 동일 401(계정 열거 방지) ──
+  if (p === "/api/account/login" && req.method === "POST") {
+    let b: any = {};
+    try { const _p = JSON.parse((await readBody(req)) || "{}"); b = isObject(_p) ? _p : {}; } catch { json(res, 400, { error: "잘못된 JSON" }); return true; }
+    const userId = typeof b.userId === "string" ? b.userId.trim() : "";
+    const password = typeof b.password === "string" ? b.password : "";
+    if (!userId || !password) { json(res, 400, { error: "아이디·비밀번호가 필요합니다.", code: "BAD_INPUT" }); return true; }
+    const h = subjectHash("password", userId.toLowerCase());
+    const acct = ctx.accounts.findByAuthRef("password", h);
+    const ref = acct?.authRefs.find((r) => r.method === "password" && r.subjectHash === h);
+    // 타이밍 평탄화(계정 열거 차단) — 계정/자격이 없어도 DUMMY_CRED로 '동일 비용' scrypt를 돌린 뒤 실패 처리.
+    //   응답시간 차이로 아이디 존재 여부를 추론하는 사이드채널을 막는다. valid=true면 acct·ref 존재 보장.
+    const valid = ref?.passwordHash && ref.salt
+      ? verifyPassword(password, ref.passwordHash, ref.salt)
+      : (verifyPassword(password, DUMMY_CRED.hash, DUMMY_CRED.salt), false);
+    if (!valid || !acct) { json(res, 401, { error: "아이디 또는 비밀번호가 올바르지 않습니다.", code: "AUTH_FAILED" }); return true; }
+    const token = crypto.randomBytes(24).toString("hex");
+    const now = Date.now();
+    ctx.sessions.create({ token, accountId: acct.id, createdAt: new Date(now).toISOString(), expiresAt: new Date(now + SESSION_TTL_MS).toISOString() });
+    res.setHeader("Set-Cookie", sessionCookie(token, SESSION_TTL_MS / 1000, ctx.config.isProd));
+    ctx.logOps("계정", `로그인(ID/PW) ${acct.id.slice(0, 12)}…`);
+    json(res, 200, { ok: true, session: token, accountId: acct.id, isNew: false });
     return true;
   }
 

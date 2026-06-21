@@ -1,0 +1,18 @@
+# LENSMARK Dependabot — devDeps(tsx·typescript·vitest·@types/node) + GitHub Actions 버전·보안 자동 PR.
+#   런타임 의존성은 0(무의존)이라 표면은 작지만, 개발툴 CVE·Action 버전 고정(supply-chain)을 자동 추적.
+#   PR 상한 낮게(노이즈 억제) · 묶음 업데이트로 그린게이트(CI) 한 번에 통과 확인.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      dev-tooling:
+        patterns: ["*"] # devDeps만(런타임 0) → 한 PR로 묶어 CI 일괄 검증
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3

@@ -48,6 +48,7 @@ CLAUDE.md 읽고 8에이전트(.claude/agents) 활성화 → ARCHITECTURE.md(기
 7. **모든 코드에 주석** — 파일 머리(책임 1줄)·섹션·비자명 로직에 한국어 주석("무엇"보다 "왜"). 새로 쓰거나 만지는 코드는 이 기준을 만족시킨다.
 8. **기능 지도 우선·동기화** — 코딩 전 `ARCHITECTURE.md`/`featureMap.ts`로 위치 확인. 기능·엔드포인트·파일 추가 시 **featureMap에 즉시 등록**(아니면 `npm run arch` 실패).
 9. **프런트 반영 확인(제도화·2026-06-13)** — `dashboard/*.html` 편집 후 사용자에게 "반영됨" 보고 **전**, preview 서버가 *실제로 현재 파일을 서빙*하는지 확인한다. PostToolUse 훅 `scripts/preview-check.sh`가 자동 점검(무응답/0바이트=좀비 ⛔, 정상=✓). **무응답이면 보고 금지 → 좀비 정리(`lsof -ti tcp:<port>|xargs kill -9`) 후 `preview_start` 재호출.** 배경: 죽은/좀비 서버가 캐시된 옛 페이지를 보여 "뭐가 다르니" 혼선난 사건 재발 방지. (서버는 요청마다 파일 fresh read라 살아만 있으면 즉시 반영 — 죽음/멈춤만 위험.)
+10. **용량 가드(제도화·2026-06-18)** — git엔 소스만. 큰 바이너리(PDF·zip·db·xlsx·mp4…)는 **절대 커밋 금지**(git history는 append-only — 한번 들어가면 영구 비대, 제거는 history 재작성=협업깨짐). 실데이터·원본은 `.data/`·`samples/`(gitignore)·외부보관. `scripts/sizeGuard.ts`(`npm run size`)가 verify·Stop 훅에서 강제: 추적 바이너리 블롭=차단, 단일파일 1MB↑=차단, 250KB↑/소스총합12MB↑=경고. 비대 체감 시 정책·압축 시나리오는 **`docs/CAPACITY.md`**(S1 node_modules→S2 데이터 중복·압축→S3 git gc→S4 최후수단 history 재작성). append-only(RELEASES·CHANGELOG)는 임계 초과 시 archive 분할.
 
 ## 🤖 로컬 qwen 무료 근육 (1차 리뷰 · 잡일 오프로드)
 > 도구: `/Users/yongj/Documents/Playground/qwen`(로컬 `qwen3-coder:30b`·Ollama, 토큰 0·오프라인·프라이빗). 규칙·역할은 그곳 `AGENTS.md`/`CLAUDE.md`. ※ qwen은 **명시 스크립트 호출 시에만** 동작 — Claude·기본 codex 모델은 안 바뀜.

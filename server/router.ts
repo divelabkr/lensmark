@@ -9,6 +9,7 @@ import type { Ctx, RouteFn } from "./context";
 import { metaRoutes } from "./routes/meta";
 import { geoRoutes } from "./routes/geo";
 import { analysisRoutes } from "./routes/analysis";
+import { explainRoutes } from "./routes/explain";
 import { assessRoutes } from "./routes/assess";
 import { cropsRoutes } from "./routes/crops";
 import { regionFitRoutes } from "./routes/regionFit";
@@ -29,7 +30,7 @@ import { backupRoutes } from "./routes/backup";
 import { telemetryRoutes } from "./routes/telemetry";
 import { pageRoutes } from "./routes/pages";
 
-const ROUTES: RouteFn[] = [metaRoutes, geoRoutes, assessRoutes, analysisRoutes, cropsRoutes, regionFitRoutes, journalRoutes, accountRoutes, marketRoutes, budgetRoutes, guideRoutes, foreignRoutes, notifyRoutes, pushRoutes, alertsRoutes, monitorRoutes, supportRoutes, paymentRoutes, opsRoutes, backupRoutes, telemetryRoutes, pageRoutes];
+const ROUTES: RouteFn[] = [metaRoutes, geoRoutes, assessRoutes, analysisRoutes, explainRoutes, cropsRoutes, regionFitRoutes, journalRoutes, accountRoutes, marketRoutes, budgetRoutes, guideRoutes, foreignRoutes, notifyRoutes, pushRoutes, alertsRoutes, monitorRoutes, supportRoutes, paymentRoutes, opsRoutes, backupRoutes, telemetryRoutes, pageRoutes];
 
 export async function route(ctx: Ctx, req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<void> {
   for (const handler of ROUTES) {

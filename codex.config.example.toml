@@ -1,0 +1,26 @@
+# codex.config.example.toml — LANSMARK용 Codex CLI 설정 템플릿
+# ─────────────────────────────────────────────────────────────────────────────
+# 사용법(맥북): 설치·로그인 후 이 파일을 복사만 하면 끝.
+#   1) npm install -g @openai/codex      # 또는: brew install codex
+#   2) codex login                        # 또는: export OPENAI_API_KEY=sk-...
+#   3) mkdir -p ~/.codex && cp codex.config.example.toml ~/.codex/config.toml
+#   4) cd <repo> && codex                 # AGENTS.md를 자동으로 읽음
+#
+# ⚠️ 추측 금지(CLAUDE.md #4): Codex CLI는 버전마다 키 이름이 바뀐다.
+#    적용 전 반드시 `codex --help` 와 https://github.com/openai/codex 로 키 이름을 확인하라.
+#    아래 값이 인식 안 되면 해당 줄을 지우고 공식 문서의 현재 키로 교체.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 모델: OpenAI 코딩 모델 사용(Codex는 Claude를 쓰지 않음).
+#   정확한 모델 id는 `codex --help`/문서에서 현재 사용 가능한 것으로 확인 후 설정.
+# model = "gpt-5-codex"
+
+# 승인 모드: 위험한 작업(쉘 실행·쓰기) 전 사람 확인을 받게 한다(가드레일 보존).
+#   LANSMARK는 가드레일이 핵심 — 자동 전권(full-auto)보다 확인 모드 권장.
+# approval_policy = "on-request"
+
+# 샌드박스: 파일 쓰기를 작업 디렉터리로 제한(저장소 밖 변경 방지).
+# sandbox_mode = "workspace-write"
+
+# 참고: 프로젝트 규칙은 저장소 루트 AGENTS.md → CLAUDE.md(SSOT)에서 자동 로드된다.
+#       이 설정 파일에 규칙을 중복 기재하지 말 것(드리프트 방지).

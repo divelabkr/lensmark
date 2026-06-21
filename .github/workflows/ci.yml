@@ -24,5 +24,7 @@ jobs:
         run: npm test
       - name: 아키텍처 지도 대조 (featureMap ↔ 코드 드리프트 차단)
         run: npm run arch
+      - name: 용량 가드 (바이너리 블롭·하드캡 차단 — 로컬 그린게이트와 동일)
+        run: npm run size
       - name: 가드레일 위험어 차단 (보장·매입추천·흙토람 신규 유입)
         run: GUARDRAIL_STRICT=1 CLAUDE_PROJECT_DIR=. bash scripts/guardrail-scan.sh
