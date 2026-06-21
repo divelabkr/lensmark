@@ -1037,6 +1037,8 @@ function openAcctModal(){
   function setPwMode(pm){pwMode=pm;pw2El.style.display=pm==="register"?"":"none";go.textContent=pm==="register"?"가입":"로그인";
     Array.from(m.querySelectorAll(".pwmode-tab")).forEach(b=>{const on=b.getAttribute("data-pw")===pm;b.style.background=on?"var(--green-soft)":"";b.style.borderColor=on?"var(--green)":"";b.style.fontWeight=on?"800":"";});}
   Array.from(m.querySelectorAll(".pwmode-tab")).forEach(b=>b.addEventListener("click",()=>setPwMode(b.getAttribute("data-pw"))));
+  // UX: 가입 시 비밀번호 확인 실시간 일치 피드백(제출 전에 불일치를 테두리 색으로 인지)
+  pw2El.addEventListener("input",()=>{ pw2El.style.borderColor=(pw2El.value&&pwEl.value!==pw2El.value)?"var(--warn)":"var(--line2)"; });
   setPwMode("login");
   setMode("phone");
   // 모바일 키보드 '이동/완료'(Enter) → 다음 단계 진행(클릭 전용이면 무반응 — 폰 로그인 끊김 방지)
@@ -1376,15 +1378,17 @@ function cashflowCurve(B){
   const poly=pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
   const area="M"+pts[0][0].toFixed(1)+","+y0.toFixed(1)+" "+pts.map(p=>"L"+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")+" L"+pts[pts.length-1][0].toFixed(1)+","+y0.toFixed(1)+" Z";
   const be=B.metrics&&B.metrics.breakEvenYearP50;
-  const beLine=(be!=null&&be>=1&&be<=ys.length)?`<line x1="${X(be-1).toFixed(1)}" y1="${pT}" x2="${X(be-1).toFixed(1)}" y2="${H-pB}" stroke="var(--green-mid)" stroke-width="1.4" stroke-dasharray="4 3"/><text x="${X(be-1).toFixed(1)}" y="${pT+8}" font-size="10" fill="var(--green-mid)" text-anchor="middle" font-weight="700">회수 ${be}년차</text>`:"";
+  // 라벨 겹침 방지: 회수 수직선이 좌/우 가장자리면 text-anchor를 안쪽으로(start/end), 가운데면 middle. '손익분기 0원'은 우측 0선 끝에 배치해 회수 라벨과 분리.
+  const beX=(be!=null)?X(be-1):0, beAnchor=beX<W*0.2?"start":beX>W*0.8?"end":"middle";
+  const beLine=(be!=null&&be>=1&&be<=ys.length)?`<line x1="${beX.toFixed(1)}" y1="${pT}" x2="${beX.toFixed(1)}" y2="${H-pB}" stroke="var(--green-mid)" stroke-width="1.4" stroke-dasharray="4 3"/><text x="${beX.toFixed(1)}" y="${pT+9}" font-size="10" fill="var(--green-mid)" text-anchor="${beAnchor}" font-weight="700">회수 ${be}년차</text>`:"";
   const col=cum[cum.length-1]>=0?"var(--green)":"var(--warn)";
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin:2px 0 4px">
     <path d="${area}" fill="${col}" opacity="0.12"/>
     <line x1="${pL}" y1="${y0.toFixed(1)}" x2="${W-pR}" y2="${y0.toFixed(1)}" stroke="var(--line2)" stroke-width="1"/>
-    <text x="${pL+1}" y="${(y0-3).toFixed(1)}" font-size="9" fill="var(--ink3)">손익분기(0원)</text>
+    <text x="${(W-pR).toFixed(1)}" y="${(y0-3).toFixed(1)}" font-size="9" fill="var(--ink3)" text-anchor="end">손익분기 0원</text>
     <polyline points="${poly}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     ${beLine}
-    <text x="${pL}" y="${H-6}" font-size="9" fill="var(--ink3)">1년차</text><text x="${W-pR}" y="${H-6}" font-size="9" fill="var(--ink3)" text-anchor="end">${ys.length}년차</text>
+    <text x="${pL}" y="${H-6}" font-size="9" fill="var(--ink3)">1년차</text><text x="${(W-pR).toFixed(1)}" y="${H-6}" font-size="9" fill="var(--ink3)" text-anchor="end">${ys.length}년차</text>
   </svg>`;
 }
 /* 예산 결과 카드(표시 전용 · 서버유래 문자열 esc). free=teaser / paid=다년 정밀. */

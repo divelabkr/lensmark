@@ -15,7 +15,7 @@ import { anonSubmitterId, assertPaidEntitlement } from "../../src/lansmark/polic
 import { isObject } from "../../src/lansmark/api/parcelRequest";
 import { sessionAccountUserId } from "../../src/lansmark/account/sessionStore";
 import { sessionTokenFrom, sessionCookie, clearSessionCookie } from "../cookies";
-import { hashPassword, verifyPassword, isValidUserId, isValidPassword } from "../../src/lansmark/account/password";
+import { hashPassword, verifyPassword, isValidUserId, isValidPassword, DUMMY_CRED } from "../../src/lansmark/account/password";
 import type { RouteFn } from "../context";
 
 const SESSION_TTL_MS = 30 * 24 * 3_600_000; // 30일
@@ -116,7 +116,12 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     const h = subjectHash("password", userId.toLowerCase());
     const acct = ctx.accounts.findByAuthRef("password", h);
     const ref = acct?.authRefs.find((r) => r.method === "password" && r.subjectHash === h);
-    if (!acct || !ref || !verifyPassword(password, ref.passwordHash, ref.salt)) { json(res, 401, { error: "아이디 또는 비밀번호가 올바르지 않습니다.", code: "AUTH_FAILED" }); return true; }
+    // 타이밍 평탄화(계정 열거 차단) — 계정/자격이 없어도 DUMMY_CRED로 '동일 비용' scrypt를 돌린 뒤 실패 처리.
+    //   응답시간 차이로 아이디 존재 여부를 추론하는 사이드채널을 막는다. valid=true면 acct·ref 존재 보장.
+    const valid = ref?.passwordHash && ref.salt
+      ? verifyPassword(password, ref.passwordHash, ref.salt)
+      : (verifyPassword(password, DUMMY_CRED.hash, DUMMY_CRED.salt), false);
+    if (!valid || !acct) { json(res, 401, { error: "아이디 또는 비밀번호가 올바르지 않습니다.", code: "AUTH_FAILED" }); return true; }
     const token = crypto.randomBytes(24).toString("hex");
     const now = Date.now();
     ctx.sessions.create({ token, accountId: acct.id, createdAt: new Date(now).toISOString(), expiresAt: new Date(now + SESSION_TTL_MS).toISOString() });
