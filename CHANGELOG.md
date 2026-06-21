@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.77.0 — 2026-06-22 · 데이터 시각화·UX 강화(라이브) + AI설명 검증승격·아이디/비번 인증(코드) + CI 자동화
+> 시각화·UX·약관·CI는 라이브 반영. AI설명·인증은 코드 완성, 라이브 활성화는 각각 키 주입·개인정보방침 확정(HUMAN GATE).
+- **시각화·아이덴티티(라이브)** — 결과카드 '숫자표→읽는 그래프': 소득 확률밴드(위험~기대 색계조·P50 분위눈금)·6축 근거 토네이도(정직매핑)·누적 현금흐름 곡선(손익분기)·신뢰도 배지(A~D)·View Transitions(reduce 존중·무의존).
+- **AI 근거설명 검증승격(코드)** — 출력가드 보정(억/만/천→원 정규화로 안 준 금액 누설 차단)·주입 레드팀 후 verified. ⚠ 라이브는 ANTHROPIC_API_KEY 주입 후(현재 무키 무중단 비활성).
+- **아이디/비번 인증(코드)** — scrypt·timingSafeEqual·계정열거 타이밍 평탄화·무한생성 억제·임의ID·복구없음(베타). ⚠ 라이브 활성화는 개인정보방침 확정 후 ANON_ONLY 해제(법무) — 현재 익명 PII-0 유지.
+- **운영 자동화·약관** — CodeQL·Lighthouse·Dependabot·size 게이트 + 약관 6~11조. tsc·vitest 612·arch·size 그린.
+
 ## 0.76.8 — 2026-06-18 · AI 근거 설명(Claude) seam — 엔진 숫자를 평이하게 '설명'만
 > Anthropic 스택 접목 1차(백엔드 seam·키-게이트). Claude는 설명만, 숫자는 엔진이 준 것만(날조 금지·fail-closed).
 - `integrations/explain.ts`: 소득 P10/50/90·기후 근거 → 농민 친화 한국어. 출력가드(hasUnprovidedMoney)로 안 준 금액 새면 폐기. Perplexity와 동일 패턴(키-게이트·null 폴백·verified=false).

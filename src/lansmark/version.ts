@@ -13,6 +13,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.0",
+    date: "2026-06-22",
+    title: "유료 베타 채비 — 데이터 시각화·UX 강화(라이브) + AI설명 검증승격·아이디/비번 인증(코드·활성화 게이트) + CI 자동화",
+    items: [
+      "데이터 시각화·아이덴티티(라이브 반영): 결과카드를 '숫자표→읽는 그래프'로 — 소득 확률밴드(위험~기대 색계조 주황→초록(P50)→청록 + P10·P90 분위눈금)·6축 근거 토네이도(중앙0 발산막대, 수율↑·비용↓=소득+ 정직매핑, 가짜 income% 날조 X)·누적 현금흐름 곡선(손익분기점)·신뢰도 배지(A~D). 전환은 View Transitions(prefers-reduced-motion 존중·무의존 브라우저 네이티브).",
+      "AI 근거설명 '검증' 승격(코드): 실응답 1건으로 출력가드 보정 — 금액 단위 정규화(억/만/천→원)로 '엔진이 안 준 금액'이 새면 폐기(fail-closed) 강화 + 프롬프트 주입 레드팀 통과 후 verified. ⚠ 라이브 활성화는 ANTHROPIC_API_KEY를 Secret Manager에 주입해야(현재 deploy SECRETS 미포함 — 무키라 라이브선 설명만 무중단 비활성).",
+      "아이디/비밀번호 인증(코드·가벼운 가입): 아이디·비번·비번확인 + scrypt 해시·timingSafeEqual·계정열거 타이밍 평탄화(DUMMY_CRED로 미존재 아이디도 동일 비용)·무한생성 억제(중복차단+rate limit)·임의ID·복구없음(베타). ⚠ 라이브 활성화는 개인정보처리방침 확정 후 LANSMARK_ANON_ONLY 해제(법무 HUMAN GATE) — 현재 라이브는 익명 PII-0(account 404) 유지.",
+      "운영 자동화·약관·검증: CodeQL(보안 정적분석)·Lighthouse(접근성/성능 추세)·Dependabot(의존성)·size 게이트(CI) + 이용약관 6~11조(계정·해지·서비스중단·지재권·만14세·약관개정) 보강. tsc·vitest 612·arch·size 그린.",
+    ],
+  },
+  {
     version: "0.76.8",
     date: "2026-06-18",
     title: "AI 근거 설명(Claude) seam — 엔진 숫자를 평이하게 '설명'만 (키-게이트·날조 금지)",
