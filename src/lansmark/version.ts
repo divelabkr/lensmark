@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.8",
+    date: "2026-06-23",
+    title: "먹통 해결 — 콜드스타트 시 캐시 쉘 즉시(SW v4·stale-while-revalidate)",
+    items: [
+      "근본 수정: min=0 콜드스타트가 SW 재시도(3.6s)보다 길면 navigation이 '연결 실패'에 갇히던 먹통(사파리·크롬 공통) → SW v4가 짧은 재시도 후 콜드스타트 지속 시 캐시된 앱 쉘을 즉시 보여주고(먹통 0) 백그라운드로 서버를 깨워 다음 로드를 최신화(SWR). 서버·DNS·Cloudflare는 정상이었고 SW만 갇혔던 것.",
+      "null 금지 원칙 유지(모든 분기 유효 Response — WebKit 하드실패 방지). CACHE v3→v4(옛 SW 교체). tsc·vitest 626·arch·size 그린.",
+    ],
+  },
+  {
     version: "0.77.7",
     date: "2026-06-23",
     title: "작물 전환 로드맵 엔진·API(G-2) — 온난화 시점별 작물 변화('지금 사과 → 2060엔 ○○')",

@@ -3,6 +3,11 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.77.8 — 2026-06-23 · 먹통 해결 — 콜드스타트 시 캐시 쉘 즉시(SW v4·SWR)
+> 사파리·크롬 먹통 = min=0 콜드스타트에 SW가 '연결 실패'로 갇힘. 서버·DNS·Cloudflare는 정상이었음.
+- **SW v4** — navigation 짧은 재시도 후 콜드스타트 지속 시 캐시된 앱 쉘 즉시(먹통 0) + 백그라운드 서버 깨우기(stale-while-revalidate). CACHE v3→v4.
+- null 금지 유지(모든 분기 유효 Response). tsc·vitest 626·arch·size 그린.
+
 ## 0.77.7 — 2026-06-23 · 작물 전환 로드맵 엔진·API(G-2) — 온난화 시점별 작물 변화
 > 차별점(경쟁앱 부재). climateScenario×cropSuitability 합성 — 새 도메인 수치 없이 결정적·외삽 면책 내장.
 - **G-2** /api/crop-transition — 현재·2040·2060 시점별 적합 작물 + 새로 유망(newcomers)/이탈(fadeouts). ΔT=KMA/IPCC 근사 demo(SSP2-4.5).
