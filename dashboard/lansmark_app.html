@@ -589,6 +589,7 @@ async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
 /* 작물 선택 → 실엔진 시뮬 (캐시 st.sim) */
 async function ensureSim(st,cropId){
   st.crop=cropId;
+  if(st.opts.fullArea==null&&st.opts.area)st.opts.fullArea=st.opts.area; // 비율 기준=전체 필지 면적(첫 설정 후 고정 — 일부만 재배 시 비율 조정용)
   if(!cropId||st.tier!=="parcel"||!st.terr){st.sim=null;st.simBusy=false;return;}
   if(!SAFE_CROP.test(cropId)){st.sim=null;st.simErr="알 수 없는 작물입니다.";st.simBusy=false;return;} // 비신뢰 cropId 차단
   if(!isPro()&&!FREEBETA){st.sim=null;st.simErr=null;st.simBusy=false;return;} // 유료 잠금 — 결제 전엔 엔진 미호출(무료 베타 FREEBETA=true면 해제)
@@ -688,6 +689,7 @@ function simCardHtml(sim,terr,opts){
   const neg=sim.incomeKrw.p50<0,validated=sim.dataLabel==="validated",baseDemo=/데모|미검증/.test(sim.baseSource||"");
   const cdot={A:"#10B95C",B:"#5a9b3f",C:"#F2B33D",D:"#D98E1B"}[sim.confidence]||"#D98E1B";
   const calF=sim.factors.find(f=>f.axis==="실측보정");
+  const fullA=opts.fullArea||opts.area||sim.areaM2,ratioPct=Math.min(100,Math.max(5,Math.round((opts.area/fullA)*100))); // 재배 비율(전체 필지 면적 대비) — 일부만 농사지을 때
   const aspText=terr.aspect==='flat'?'평지':(ASPECT_KO[terr.aspect]||terr.aspect)+'향('+terr.aspect+')'; // "남향(S)" — 영문 약어 단독 금지
   return `
    ${FREEBETA?`<div class="src" style="background:#F1F8EE;border:1px solid var(--green-line);border-radius:9px;padding:8px 10px;margin-bottom:8px;font-weight:700;color:var(--green-mid)">🎁 무료 베타 — 정밀 분석을 <b>무료</b>로 제공 중입니다 <span style="font-weight:600;color:var(--ink2)">(유료 전환은 추후 오픈 예정)</span></div>`:''}
@@ -735,6 +737,7 @@ function simCardHtml(sim,terr,opts){
        <div class="fc"><label>표고(m)</label><input type="number" id="e-alt" value="${terr.altitudeM}"></div>
        <div class="fc"><label>배수</label><select id="e-drain"><option value="good" ${opts.drain==='good'?'selected':''}>양호</option><option value="normal" ${opts.drain==='normal'?'selected':''}>보통</option><option value="poor" ${opts.drain==='poor'?'selected':''}>불량</option></select></div>
        <div class="fc"><label>재배유형</label><select id="e-cultivation">${[["open_field","노지"],["greenhouse","시설(온실)"],["semi_facility","반시설(비가림)"]].map(o=>`<option value="${o[0]}" ${(opts.cultivation||"open_field")===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
+       <div class="fc" style="grid-column:1/-1"><label>재배 비율 <span class="rv" id="e-ratiov">${ratioPct}%</span> <span style="font-weight:600;color:var(--ink3);font-size:10.5px">— 전체 ${fmt(fullA)}㎡ 중 <b id="e-ratio-area">${fmt(opts.area)}㎡</b> 재배(전부 농사 안 지으면 조정 → 소득 비례)</span></label><input type="range" id="e-ratio" min="5" max="100" step="5" value="${ratioPct}"></div>
        <div class="fc"><label>면적(㎡) <span class="rv" id="e-area-py">≈${fmt(opts.area/3.3058)}평</span></label><input type="number" id="e-area" value="${opts.area}"></div>
        <div class="fc"><label>판로</label><select id="e-sales">${[["wholesale","도매"],["direct","직거래"],["mixed","혼합"],["processed","가공"],["experience_farm","체험"]].map(o=>`<option value="${o[0]}" ${opts.sales===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
        <div class="fc"><label>재배 연차</label><select id="e-year">${[["mature","성숙기"],["year1","1년차(정착)"],["year2","2년차"],["year3","3년차"]].map(o=>`<option value="${o[0]}" ${(opts.year||"mature")===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
@@ -772,6 +775,8 @@ function bindSim(st,rerender){
   const reSim=async()=>{st.simBusy=true;rerender();await ensureSim(st,st.crop);rerender();};
   const apply=()=>{st.terr.slopeDegree=Number(document.getElementById("e-slope").value);st.terr.aspect=document.getElementById("e-aspect").value;st.terr.altitudeM=Number(document.getElementById("e-alt").value)||0;st.opts.drain=document.getElementById("e-drain").value;st.opts.area=Math.max(1,Number(document.getElementById("e-area").value)||3300);st.opts.sales=document.getElementById("e-sales").value;st.opts.year=document.getElementById("e-year").value;st.opts.cultivation=document.getElementById("e-cultivation").value;const ph=document.getElementById("e-ph").value;st.opts.ph=ph===""?null:Number(ph);reSim();};
   ["e-slope","e-aspect","e-alt","e-drain","e-area","e-sales","e-year","e-ph","e-cultivation"].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener("change",apply);});
+  // 재배 비율 슬라이더 — 전체 필지 면적의 X% → 재배 면적 산출(면적칸 동기화) → 놓으면 재시뮬(소득 비례 스케일)
+  const er=document.getElementById("e-ratio");if(er){er.addEventListener("input",function(){const pct=Number(this.value)||100,fa=st.opts.fullArea||st.opts.area,area=Math.max(1,Math.round(fa*pct/100));const rv=document.getElementById("e-ratiov");if(rv)rv.textContent=pct+"%";const ra=document.getElementById("e-ratio-area");if(ra)ra.textContent=fmt(area)+"㎡";const e2=document.getElementById("e-area");if(e2)e2.value=area;const pv=document.getElementById("e-area-py");if(pv)pv.textContent="≈"+fmt(area/3.3058)+"평";});er.addEventListener("change",apply);}
   bindClimCtl('clim-sim',reSim); // 기후 시점(온난화) 변경 → 재시뮬(소득·시설 냉난방 반영)
   const tg=(id,k)=>{const el=document.getElementById(id);if(el)el.addEventListener("click",()=>{st.opts.sat[k]=!st.opts.sat[k];if(k!=="on"&&st.opts.sat[k])st.opts.sat.on=true;reSim();});};
   tg("e-sat","on");tg("e-ndvi","ndviLow");tg("e-frost","frost");tg("e-wet","wet");
