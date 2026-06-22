@@ -97,6 +97,18 @@ export function buildExplainMessages(input: ExplainInput): { system: string; use
   return { system, user };
 }
 
+/**
+ * 소득 P50을 '설명 톤이 바뀌는 규모 구간'으로 버킷팅 — 캐시 키를 정확수치 대신 규모대로 묶어 hit율↑.
+ *   왜: 같은 작물·지역이면 P50이 ±소액 달라도 설명문이 거의 같다 → 정확수치 키는 불필요한 캐시 미스(LLM 재호출=비용).
+ *   단위: <1천만 = 100만 / 1천만~1억 = 500만 / 1억+ = 2천만 (만원 단위 반환). 음수(적자)도 동일 규칙.
+ *   ⚠ 버킷이라 ±소액 다른 입력이 같은 키일 수 있다 → hit 시 '현재' 입력 금액과 정합 재확인(fetchExplanation)으로 1원칙 보존.
+ */
+export const incomeTier = (won: number): number => {
+  const m = Math.round(won / 10000);                                         // 만원 단위
+  const step = Math.abs(m) < 1000 ? 100 : Math.abs(m) < 10000 ? 500 : 2000;  // 100만/500만/2천만원
+  return Math.round(m / step) * step;
+};
+
 const CACHE = new Map<string, { at: number; v: ExplainResult | null }>();
 const TTL_MS = 24 * 3600 * 1000, NEG_TTL_MS = 10 * 60 * 1000, CAP = 500;
 
@@ -104,9 +116,15 @@ const TTL_MS = 24 * 3600 * 1000, NEG_TTL_MS = 10 * 60 * 1000, CAP = 500;
 export async function fetchExplanation(input: ExplainInput): Promise<ExplainResult | null> {
   const key = process.env.ANTHROPIC_API_KEY || "";
   if (!key || !input.cropNameKo) return null;
-  const ck = `${input.cropNameKo}|${input.region ?? ""}|${input.income.p50}`;
+  // 캐시 키 = 작물·지역·소득버킷(정확수치 대신 규모대 → hit율↑·LLM 재호출 절감).
+  const ck = `${input.cropNameKo}|${input.region ?? ""}|${incomeTier(input.income.p50)}`;
   const hit = CACHE.get(ck);
-  if (hit && Date.now() - hit.at < (hit.v ? TTL_MS : NEG_TTL_MS)) return hit.v;
+  if (hit && Date.now() - hit.at < (hit.v ? TTL_MS : NEG_TTL_MS)) {
+    if (!hit.v) return null;                                                       // 실패(음성) 캐시 — 재시도 억제
+    // 버킷 키라 ±소액 다른 입력이 같은 키일 수 있다 → 캐시된 설명이 '현재' 입력 금액과 어긋나면 재사용 금지(1원칙).
+    if (!hasUnprovidedMoney(hit.v.text, allowedMoneyTokens(input))) return hit.v;  // 금액 정합 → 재사용
+    // 금액 불일치 → 아래에서 재생성
+  }
 
   const { system, user } = buildExplainMessages(input);
   let out: ExplainResult | null = null;
