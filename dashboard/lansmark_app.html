@@ -61,6 +61,10 @@
   /* decision summary */
   .decide{border-radius:14px;padding:13px 15px;color:#fff;background:linear-gradient(120deg,var(--bn2),var(--bn1) 70%,#1ED073);box-shadow:0 10px 24px rgba(8,154,77,.24)}
   .decide.neg{background:linear-gradient(120deg,#c2452e,#da5237)}
+  /* UX-1: 작물 클릭 직후 소득카드 강조(클릭 피드백 — 모달 대신 스크롤+펄스). prefers-reduced-motion 존중(접근성). */
+  @keyframes lmJustPick{0%{box-shadow:0 0 0 0 rgba(16,185,92,.55),0 10px 24px rgba(8,154,77,.24)}100%{box-shadow:0 0 0 14px rgba(16,185,92,0),0 10px 24px rgba(8,154,77,.24)}}
+  .decide.just-picked{animation:lmJustPick 1.1s ease-out 1}
+  @media(prefers-reduced-motion:reduce){.decide.just-picked{animation:none;outline:2px solid #fff;outline-offset:2px}}
   .decide .dl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;opacity:.92}
   .decide .dv{font-size:21px;font-weight:800;margin:5px 0 2px;letter-spacing:-.4px}
   .decide .dmeta{font-size:11.5px;opacity:.93;font-weight:600}
@@ -190,7 +194,10 @@
     .panel.half{transform:translateY(calc(100% - 50vh))} /* 중간 스냅 — 지도+정보 둘 다 보임(기본) */
     .panel.exp{transform:translateY(0)} /* 전체 — 지도 14vh 슬리버 유지(완전 증발 방지) */
     .sheet-handle{display:block;height:22px;flex:none;position:relative;cursor:grab}
-    .sheet-handle::before{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:40px;height:4px;border-radius:2px;background:var(--line2)}
+    .sheet-handle::before{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:40px;height:4px;border-radius:2px;background:var(--line2);transition:background .2s,width .2s}
+  /* UX-5: 모바일 시트 핸들이 '끌어올릴 수 있음'을 펄스로 암시(처음 3회). prefers-reduced-motion 존중(접근성). */
+  @keyframes lmHandleHint{0%,100%{background:var(--line2);width:40px}50%{background:var(--green);width:56px}}
+  @media(prefers-reduced-motion:no-preference){.sheet-handle::before{animation:lmHandleHint 1.7s ease-in-out 3}}
     .plist{max-height:none}.livefeed{display:none}
     /* 헤더 정리: 보조 액션을 '⋯ 더보기' 드롭다운으로(줄바꿈 클러터 제거) */
     #morebtn{display:inline-flex}
@@ -250,7 +257,7 @@
       <div class="sheet-handle" id="sheetHandle" title="끌어올리기/내리기"></div>
       <div class="ptop"><h2 id="ptitle">🌱 땅을 선택하세요</h2><div class="sub" id="psub">땅 → 추천 작물 → 정밀 소득 시뮬</div></div>
       <div class="plist" id="plist">
-        <div class="empty"><span class="ic">🗺</span>지도를 탭해 시작.<br/>줌에 따라 <b>전국=대표작물 · 시군=특산물 · 필지=실제 재배가능</b><br/><br/>📍핀=한 곳 · ▦토지선택=여러 곳 비교<br/><br/><button class="btn" id="assess-open" style="font-size:12px;padding:7px 12px">🧭 귀농 자가진단(무료)</button><div style="font-size:11px;color:var(--ink3);margin-top:5px">땅 고르기 전, 준비도 30초 점검</div></div>
+        <div class="empty"><span class="ic">🗺</span>지도를 탭해 시작.<br/>줌에 따라 <b>전국=대표작물 · 시군=특산물 · 필지=실제 재배가능</b><br/><br/>📍핀=한 곳 · ▦토지선택=여러 곳 비교<br/><br/><button class="btn" id="empty-geo" style="font-size:12px;padding:7px 12px;background:var(--green);color:#fff;border-color:var(--green)">📍 내 위치로 바로(실데이터)</button> <button class="btn" id="assess-open" style="font-size:12px;padding:7px 12px">🧭 귀농 자가진단(무료)</button><div style="font-size:11px;color:var(--ink3);margin-top:5px">📍 내 위치로 가면 <b>필지 단계 실제 추천</b>을 바로 봅니다 · 자가진단은 땅 고르기 전 30초 점검</div></div>
       </div>
       <div class="disc">의사결정 보조용이며 수익·재배성공 보장이나 매입추천이 아닙니다. 모든 수치는 범위(P10–P50–P90)로 제시됩니다. 필지·지형·기후·가격·소득은 실데이터 기반 계산이며, 일부 연결 전 항목은 <b>추정값</b>으로 표시됩니다. 정밀 토양계수는 <b>토양검정 인증</b> 후 해금됩니다. · <a href="/terms" target="_blank" rel="noopener" style="color:var(--green-mid);font-weight:700">이용약관</a> · <a href="/privacy" target="_blank" rel="noopener" style="color:var(--green-mid);font-weight:700">개인정보처리방침</a></div>
     </aside>
@@ -732,19 +739,24 @@ function simCardHtml(sim,terr,opts){
    </div>
    <div class="card"><div class="sectt" style="display:flex;align-items:center;gap:7px;margin-bottom:5px"><span style="font-weight:800">📝 내 값으로 조정</span><span style="font-weight:600;color:var(--ink3);font-size:11px">— 면적·토양·판로 직접 입력하면 더 정확</span></div><div class="auto-note">🏔 지형은 <b>위치 기반 자동(DEM ${esc(terr.source||'mock')})</b> — 직접 수정 → 실엔진 재계산. 토양·위성 추가 시 정밀↑</div>
      <div class="edit">
+       <div class="fc" style="grid-column:1/-1"><label>재배 비율 <span class="rv" id="e-ratiov">${ratioPct}%</span> <span style="font-weight:600;color:var(--ink3);font-size:10.5px">— 전체 ${fmt(fullA)}㎡ 중 <b id="e-ratio-area">${fmt(opts.area)}㎡</b> 재배(전부 농사 안 지으면 조정 → 소득 비례)</span></label><input type="range" id="e-ratio" min="5" max="100" step="5" value="${ratioPct}"></div>
+       <div class="fc"><label>면적(㎡) <span class="rv" id="e-area-py">≈${fmt(opts.area/3.3058)}평</span></label><input type="number" id="e-area" value="${opts.area}"></div>
+       <div class="fc"><label>판로</label><select id="e-sales">${[["wholesale","도매"],["direct","직거래"],["mixed","혼합"],["processed","가공"],["experience_farm","체험"]].map(o=>`<option value="${o[0]}" ${opts.sales===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
+     </div>
+     <!-- EL-1: 점진적 공개 — 자주 쓰는 비율·면적·판로만 기본 노출, 나머지는 자동값으로 충분하니 고급에 접음(인지부하↓). bindSim id는 닫혀도 DOM에 존재해 동작 유지. -->
+     <details class="adv-edit" style="margin-top:7px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--ink2);padding:4px 2px;list-style:revert">⚙ 고급 조정 — 지형·토양·재배유형·위성·기후시점 <span style="font-weight:600;color:var(--ink3)">(자동값으로도 충분)</span></summary>
+     <div class="edit" style="margin-top:7px">
        <div class="fc"><label>경사 <span class="rv" id="e-slopev">${terr.slopeDegree}°</span></label><input type="range" id="e-slope" min="0" max="35" step="0.5" value="${terr.slopeDegree}"></div>
        <div class="fc"><label>향</label><select id="e-aspect">${["S","SE","SW","E","W","N","NE","NW","flat"].map(a=>`<option value="${a}" ${a===terr.aspect?'selected':''}>${a==='flat'?'평지':(ASPECT_KO[a]||a)+'향 ('+a+')'}</option>`).join("")}</select></div>
        <div class="fc"><label>표고(m)</label><input type="number" id="e-alt" value="${terr.altitudeM}"></div>
        <div class="fc"><label>배수</label><select id="e-drain"><option value="good" ${opts.drain==='good'?'selected':''}>양호</option><option value="normal" ${opts.drain==='normal'?'selected':''}>보통</option><option value="poor" ${opts.drain==='poor'?'selected':''}>불량</option></select></div>
        <div class="fc"><label>재배유형</label><select id="e-cultivation">${[["open_field","노지"],["greenhouse","시설(온실)"],["semi_facility","반시설(비가림)"]].map(o=>`<option value="${o[0]}" ${(opts.cultivation||"open_field")===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
-       <div class="fc" style="grid-column:1/-1"><label>재배 비율 <span class="rv" id="e-ratiov">${ratioPct}%</span> <span style="font-weight:600;color:var(--ink3);font-size:10.5px">— 전체 ${fmt(fullA)}㎡ 중 <b id="e-ratio-area">${fmt(opts.area)}㎡</b> 재배(전부 농사 안 지으면 조정 → 소득 비례)</span></label><input type="range" id="e-ratio" min="5" max="100" step="5" value="${ratioPct}"></div>
-       <div class="fc"><label>면적(㎡) <span class="rv" id="e-area-py">≈${fmt(opts.area/3.3058)}평</span></label><input type="number" id="e-area" value="${opts.area}"></div>
-       <div class="fc"><label>판로</label><select id="e-sales">${[["wholesale","도매"],["direct","직거래"],["mixed","혼합"],["processed","가공"],["experience_farm","체험"]].map(o=>`<option value="${o[0]}" ${opts.sales===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
        <div class="fc"><label>재배 연차</label><select id="e-year">${[["mature","성숙기"],["year1","1년차(정착)"],["year2","2년차"],["year3","3년차"]].map(o=>`<option value="${o[0]}" ${(opts.year||"mature")===o[0]?'selected':''}>${o[1]}</option>`).join("")}</select></div>
        <div class="fc"><label>토양 pH</label><input type="number" step="0.1" id="e-ph" value="${opts.ph??''}" placeholder="검정값"></div>
      </div>
      <div class="sat-row" style="margin-top:9px"><span class="tg ${opts.sat.on?'on':''}" id="e-sat">🛰 위성 ON</span><span class="tg ${opts.sat.ndviLow?'on':''}" id="e-ndvi" title="위성으로 본 생육 활력(NDVI)이 주변보다 낮음 — 수율을 보수적으로 반영">생육 낮음(NDVI↓)</span><span class="tg ${opts.sat.frost?'on':''}" id="e-frost">서리골</span><span class="tg ${opts.sat.wet?'on':''}" id="e-wet">과습</span></div>
      <div class="auto-note" style="margin-top:9px">🌡 지구온난화 시점 — 미래로 바꾸면 소득(냉량성 작물↓·따뜻한 작물 저온피해↓)·시설 냉난방비가 달라집니다(KMA 근사·미검증).</div>${climCtlHtml('clim-sim')}
+     </details>
    </div>
    <div class="card"><div class="conf"><span class="d" style="background:${cdot}"></span>신뢰도 <b>&nbsp;${esc(sim.confidence)}</b> — ${({A:'토양검정+기후 확보',B:'기후/위성 일부',C:'자가신고',D:'데이터 부족(전국 표준)'})[sim.confidence]||'데이터 부족'} <span class="badge ${validated?'b-val':'b-paid'}" style="margin-left:auto">${esc(sim.dataLabel)}</span></div></div>
    <div class="card"><div class="ch"><span class="cname">📋 실측 입력 → 예측 보정</span>${calF?`<span class="badge b-val">보정중</span>`:''}</div>
@@ -1153,6 +1165,7 @@ function assessResultHtml(a){
 document.addEventListener("click",async(e)=>{
   const el=(e.target&&e.target.closest)?e.target.closest("button"):null; if(!el)return;
   if(el.id==="assess-open"){ openAssess(); return; }
+  if(el.id==="empty-geo"){ const g=document.getElementById("srch-geo"); if(g)g.click(); return; } // UX-2: 빈 상태 → 내 위치(필지 단계 실데이터)로 바로 — 첫 클릭이 전국 예시 시드에 머무는 이탈 방지
   if(el.id==="as-cancel"||el.id==="as-tomap"){ assessGoLanding(); return; }
   if(el.id==="as-run"){
     const v=id=>{const x=document.getElementById(id);return x?x.value:"";};
@@ -1520,9 +1533,11 @@ function renderDetailPin(){const st=pinState;if(!st)return;
   else if(!isPro()&&!FREEBETA){plist.innerHTML=lcB+recHead+guideSlot+(st.entLost?errCard("이전 구매 권한이 종료되었습니다 — "+st.entLost):"")+paywallCard();bindPay(async()=>{st.simBusy=true;renderDetailPin();await ensureSim(st,st.crop);renderDetailPin();});renderGuide(st);} // 권한 만료/소진 사유를 페이월 위에 명시(말없는 회귀 금지)
   else{plist.innerHTML=lcB+recHead+guideSlot+(st.simBusy?loading("실엔진 시뮬레이션 중…"):st.simErr?errCard(st.simErr):simCardHtml(st.sim,st.terr,st.opts));if(st.sim&&!st.simBusy){bindSim(st,renderDetailPin);saveLast();}renderGuide(st);} // 시뮬 완료 시 이어보기 스냅샷 저장
   bindReconfirm(st,renderDetailPin);
-  const pickCrop=async(cropId)=>{st.crop=cropId;st.simBusy=true;renderDetailPin();await ensureSim(st,cropId);renderDetailPin();};
+  const pickCrop=async(cropId)=>{st.crop=cropId;st.simBusy=true;st.justPicked=true;renderDetailPin();await ensureSim(st,cropId);renderDetailPin();}; // justPicked → 결과 렌더 후 소득카드로 스크롤+하이라이트(UX-1)
   bindChips(plist,pickCrop);
   bindAllCrops(plist,pickCrop);
+  // UX-1: 작물 클릭 후 소득카드(.decide)로 부드럽게 스크롤 + 펄스 하이라이트 — "눌렀는데 뭐 바뀌었지?" 마찰 제거(모달 대신).
+  if(st.justPicked&&st.sim&&!st.simBusy){st.justPicked=false;requestAnimationFrame(()=>{const dc=document.querySelector(".plist .decide");if(dc){try{dc.scrollIntoView({behavior:"smooth",block:"nearest"});}catch(_){dc.scrollIntoView();}dc.classList.add("just-picked");setTimeout(()=>{dc.classList.remove("just-picked");},1200);}});}
 }
 /* ===== SELECT (단일/다중) ===== */
 function renderSelect(){const items=[...SEL.values()];document.getElementById("cnt").innerHTML=`선택 <b>${items.length}</b>`;const plist=document.getElementById("plist");
