@@ -254,9 +254,9 @@ export const FEATURES: Feature[] = [
   {
     id: "crop-transition", name: "작물 전환 로드맵(온난화 재결정)", stage: "recommend",
     flow: "현재 작목 + 온난화 시나리오 → '지금 사과 → 2050엔 ○○' 전환 후보·시기 → 재방문/재결정 트리거(저빈도 보완)",
-    endpoints: [], files: [], tests: [],
-    guardrails: ["외삽·미검증 면책", "수익보장 금지"], status: "seam",
-    notes: "climate-scenario(온난화) 재사용 확장 — 차별점(경쟁앱 부재)·B2B/지자체 정책·PR 무기. 미래 유망작물=region-fit 역탐색 × 온난화 격자(seam).",
+    endpoints: ["/api/crop-transition"], files: ["src/lansmark/core/cropTransition.ts", "server/routes/analysis.ts"], tests: ["src/lansmark/tests/cropTransition.spec.ts"],
+    guardrails: ["외삽·미검증 면책", "수익보장 금지"], status: "live",
+    notes: "climate-scenario(applyWarming)×cropSuitability(rankCropCandidates) 합성 — 현재·2040·2060 시점별 적합 작물 + newcomers/fadeouts. /api/crop-transition. 차별점(경쟁앱 부재)·B2B/지자체 PR. ΔT=KMA/IPCC 근사 demo(외삽·SSP2-4.5). UI 노출은 추후 슬라이스(필지 카드).",
   },
   {
     id: "sales-connect", name: "판로·계약 연결(직거래·수매·계약재배)", stage: "act",

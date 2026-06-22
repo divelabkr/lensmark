@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.7",
+    date: "2026-06-23",
+    title: "작물 전환 로드맵 엔진·API(G-2) — 온난화 시점별 작물 변화('지금 사과 → 2060엔 ○○')",
+    items: [
+      "G-2 차별점(경쟁앱 부재): climateScenario(applyWarming)×cropSuitability(rankCropCandidates) 합성으로 현재·2040·2060 시점별 적합 작물 + 새로 유망(newcomers)/이탈(fadeouts) 산출. GET/POST /api/crop-transition(무인증·무료). 새 도메인 수치 없이 기존 엔진 합성이라 결정적이고, ΔT는 climateScenario가 외삽·미검증 면책(KMA/IPCC 근사 demo·SSP2-4.5)을 내장.",
+      "엔진·라우트·featureMap(seam→live) 완료. UI 노출(필지 카드)은 dashboard 큰 작업이라 다음 슬라이스로 분리. tsc·vitest 626(+4 엔진)·arch·size 그린.",
+    ],
+  },
+  {
     version: "0.77.6",
     date: "2026-06-23",
     title: "재계산 디바운스 + 재해복구 런북(중기)",

@@ -61,7 +61,7 @@ flowchart LR
 | **무료 작물추천** | 필지 → 적합도 상대점수 작물후보(무료·매입추천 아님) + 전체 작물 카탈로그(추천 밖 작물 직접 선택) | `/api/recommend` `/api/crops` `/api/retail-price` | 6 | 4 | 🟢 live | — |
 | **지원금·지자체·농협 혜택** | 지역·작물 → 대표 지원 제도(정부/지자체/농협) 안내 + 공식 확인 경로 + 작물 관련도 | `/api/support` | 3 | 2 | 🟢 live | Phase A: 대표 제도 큐레이션(공개 사실)+공식 확인 경로 · 무료 · ⚠ 공공데이터포털 농림사업·지자체 보조·농협 혜택 실시간 큐레이션은 Phase B seam(데이터 운영=HUMAN GATE) |
 | **기후 근거(필지 기후 프로필)** | 필지/지점 → KMA 실측 기후(연평균기온·적산온도GDD·강수·겨울최저·여름최고·일조) → 평이한 '기후 근거' 문장 + 출처(평년값 아님)·면책 | — | 1 | 1 | 🟢 live | 데이터=최근접 ASOS·최근 1년(평년값 아님). **노출 완료**: /api/recommend 응답에 climateEvidence 합류(analysis.ts) → 대시보드 추천 카드 '🌤 이 땅 기후 · 추천 근거' + 지도 핀 팝업(lansmark_app.html). 별도 엔드포인트 미생성=의도적 UX(추가 호출 회피·version.ts). ⚠ 전국 색지도·작물별 GDD 충분/부족 판정은 KMA 격자 평년값 + 농진청 작물 base 확보 후(HUMAN GATE). |
-| **작물 전환 로드맵(온난화 재결정)** | 현재 작목 + 온난화 시나리오 → '지금 사과 → 2050엔 ○○' 전환 후보·시기 → 재방문/재결정 트리거(저빈도 보완) | — | 0 | 0 | 🟠 seam | climate-scenario(온난화) 재사용 확장 — 차별점(경쟁앱 부재)·B2B/지자체 정책·PR 무기. 미래 유망작물=region-fit 역탐색 × 온난화 격자(seam). |
+| **작물 전환 로드맵(온난화 재결정)** | 현재 작목 + 온난화 시나리오 → '지금 사과 → 2050엔 ○○' 전환 후보·시기 → 재방문/재결정 트리거(저빈도 보완) | `/api/crop-transition` | 2 | 1 | 🟢 live | climate-scenario(applyWarming)×cropSuitability(rankCropCandidates) 합성 — 현재·2040·2060 시점별 적합 작물 + newcomers/fadeouts. /api/crop-transition. 차별점(경쟁앱 부재)·B2B/지자체 PR. ΔT=KMA/IPCC 근사 demo(외삽·SSP2-4.5). UI 노출은 추후 슬라이스(필지 카드). |
 
 ### 💳 결제·권한
 

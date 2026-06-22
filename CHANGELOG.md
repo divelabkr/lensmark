@@ -3,6 +3,11 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.77.7 — 2026-06-23 · 작물 전환 로드맵 엔진·API(G-2) — 온난화 시점별 작물 변화
+> 차별점(경쟁앱 부재). climateScenario×cropSuitability 합성 — 새 도메인 수치 없이 결정적·외삽 면책 내장.
+- **G-2** /api/crop-transition — 현재·2040·2060 시점별 적합 작물 + 새로 유망(newcomers)/이탈(fadeouts). ΔT=KMA/IPCC 근사 demo(SSP2-4.5).
+- 엔진·라우트·featureMap(seam→live). UI 노출은 다음 슬라이스(필지 카드). tsc·vitest 626·arch·size 그린.
+
 ## 0.77.6 — 2026-06-23 · 재계산 디바운스 + 재해복구 런북(중기)
 > 종합분석 중기 일부. 미묘한 것(EL-2 비율발견성·EL-5 온난화전역)은 가치 대비 위험으로 정직히 보류.
 - **UX-6** 시뮬입력 재계산 디바운스(420ms) — 느린 회선 스피너 폭주 방지·race-safe.

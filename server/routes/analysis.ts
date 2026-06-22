@@ -8,6 +8,7 @@ import { json, badInput, readBody } from "../respond";
 import { finiteParam } from "../../src/lansmark/api/httpUtil";
 import { validateLandInput, clampCandidateLimit } from "../../src/lansmark/core/validate";
 import { rankCropCandidates } from "../../src/lansmark/core/cropSuitability";
+import { buildCropTransition } from "../../src/lansmark/core/cropTransition";
 import { climateEvidence } from "../../src/lansmark/core/climateEvidence";
 import { buildParcelInput, sanitizeTerrain, isObject } from "../../src/lansmark/api/parcelRequest";
 import { runParcelSimulationWithProviders, type ParcelInput } from "../../src/lansmark/core/parcelSimulator";
@@ -48,6 +49,19 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
       try { climate = await ctx.providers.land.climate({ lat: land.lat, lng: land.lng }); if (climate) climateEv = climateEvidence(climate); } catch { /* 폴백: 기후 미반영 */ }
     }
     json(res, 200, { ok: true, mode: "free", paywallAfter: "crop_candidate_top", candidates: rankCropCandidates(land, limit, climate), climateEvidence: climateEv });
+    return true;
+  }
+
+  // ── 작물 전환 로드맵(G-2) — 온난화 시점별 적합 작물 변화. 좌표 기후 조회(recommend와 동일·fail-soft) → buildCropTransition(외삽 면책 내장). 무인증·무료. ──
+  if (p === "/api/crop-transition") {
+    let land: LandInput, limit: number;
+    try {
+      if (req.method === "POST") { const body = JSON.parse((await readBody(req)) || "{}"); land = validateLandInput({ areaM2: 3300, ...(isObject(body.land) ? body.land : {}) }); limit = clampCandidateLimit(body.limit, 5); }
+      else { land = validateLandInput({ areaM2: num(q.get("area")) ?? 3300, lat: num(q.get("lat")), lng: num(q.get("lng")) }); limit = clampCandidateLimit(q.get("limit"), 5); }
+    } catch (e) { badInput(res, e); return true; }
+    let climate;
+    if (land.lat != null && land.lng != null) { try { climate = await ctx.providers.land.climate({ lat: land.lat, lng: land.lng }); } catch { /* 폴백: 기후 미반영 → transition null(프론트 생략) */ } }
+    json(res, 200, { ok: true, transition: buildCropTransition(land, climate, limit) });
     return true;
   }
 
