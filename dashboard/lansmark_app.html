@@ -1704,8 +1704,9 @@ document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;const m=docum
 /* 오프라인 배너 — 시골 모바일 회선 직결. navigator.onLine + online/offline 이벤트로 상단 띠 표시(연결되면 자동 사라짐). */
 (function(){var b=document.createElement("div");b.id="offbar";b.style.cssText="position:fixed;left:0;right:0;top:0;z-index:4000;background:#b5321c;color:#fff;font-size:12px;font-weight:800;text-align:center;padding:6px 10px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.25)";b.textContent="📡 오프라인 — 인터넷 연결을 확인해 주세요(연결되면 자동 복구)";document.body.appendChild(b);
   var upd=function(){b.style.display=navigator.onLine?"none":"block";};window.addEventListener("online",upd);window.addEventListener("offline",upd);upd();})();
-/* PWA: 서비스워커 등록(설치형·오프라인 쉘). 실패는 무시(앱은 정상 동작). */
-if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}
+/* PWA: 서비스워커 등록(설치형·오프라인 쉘). 실패는 무시(앱은 정상 동작).
+   updateViaCache:'none' — 브라우저가 sw.js를 HTTP 캐시(CF 4시간 엣지캐시) 거치지 않고 항상 네트워크에서 받아 업데이트 체크. 옛 SW에 갇혀 먹통나던 핵심 원인 차단. */
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});});}
 </script>
 </body>
 </html>

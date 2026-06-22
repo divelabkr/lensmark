@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.9",
+    date: "2026-06-23",
+    title: "먹통 근본 수정 — '렌즈마크만 유독' 원인 2개 제거(SW 갇힘·빈 캐시)",
+    items: [
+      "원인①(메타장애): Cloudflare가 sw.js를 4시간 엣지캐시(max-age=14400 덮어씀·오리진은 no-cache 확인)해 옛 서비스워커에 갇히던 것 — '고쳐서 배포해도 또 먹통'의 정체. → 앱 SW 등록에 updateViaCache:'none'(브라우저가 sw.js를 HTTP캐시 우회·항상 네트워크에서 받아 업데이트 체크) + 오리진 Cache-Control no-store. (CF 대시보드 sw.js 캐시 Bypass는 운영 작업으로 별도.)",
+      "원인②(빈 캐시 버그): SW install이 /app 캐시에 실패해도(콜드스타트) allSettled라 성공 처리 → activate가 옛 캐시를 무조건 삭제 → 빈 새 캐시 + 옛 캐시 소멸로 navigation 폴백을 잃고 503. → install에서 /app 필수화(실패 시 install 거부=옛 SW 유지가 빈 캐시보다 안전) + activate는 새 캐시에 /app 실재 검증 후에만 옛 캐시 삭제(이중 안전). CACHE v4→v5. min=0(무료) 유지하면서 코드만으로 먹통 근본 제거.",
+    ],
+  },
+  {
     version: "0.77.8",
     date: "2026-06-23",
     title: "먹통 해결 — 콜드스타트 시 캐시 쉘 즉시(SW v4·stale-while-revalidate)",

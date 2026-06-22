@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.77.9 — 2026-06-23 · 먹통 근본 수정 — '렌즈마크만 유독' 원인 2개 제거(SW 갇힘·빈 캐시)
+> "다른 사이트는 멀쩡한데 렌즈마크만" 먹통의 진짜 원인 = 렌즈마크 고유 서비스워커 버그 2개. 콜드스타트는 방아쇠일 뿐.
+- **원인①(메타장애)**: Cloudflare가 `sw.js`를 4시간 엣지캐시(`max-age=14400` 덮어씀·오리진은 `no-cache` 확인)해 옛 SW에 갇힘 — '고쳐 배포해도 또 먹통'의 정체. → SW 등록 `updateViaCache:'none'`(브라우저가 HTTP캐시 우회·항상 네트워크에서 sw.js 받아 업데이트 체크) + 오리진 `no-store`. CF 대시보드 sw.js Bypass는 운영 작업으로 별도(HUMAN GATE).
+- **원인②(빈 캐시 버그)**: install이 `/app` 캐시에 실패해도(콜드스타트) `allSettled`라 성공 처리 → activate가 옛 캐시를 무조건 삭제 → 빈 새 캐시 + 옛 캐시 소멸로 navigation 폴백 상실 503. → install에서 `/app` 필수화(실패 시 install 거부=옛 SW 유지) + activate는 새 캐시에 `/app` 검증 후에만 삭제(이중 안전). CACHE v4→v5.
+- min=0(무료) 유지하면서 코드만으로 먹통 근본 제거. tsc·vitest·arch·size 그린.
+
 ## 0.77.8 — 2026-06-23 · 먹통 해결 — 콜드스타트 시 캐시 쉘 즉시(SW v4·SWR)
 > 사파리·크롬 먹통 = min=0 콜드스타트에 SW가 '연결 실패'로 갇힘. 서버·DNS·Cloudflare는 정상이었음.
 - **SW v4** — navigation 짧은 재시도 후 콜드스타트 지속 시 캐시된 앱 쉘 즉시(먹통 0) + 백그라운드 서버 깨우기(stale-while-revalidate). CACHE v3→v4.

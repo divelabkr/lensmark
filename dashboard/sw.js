@@ -1,5 +1,5 @@
 /* LENSMARK 서비스워커 — 앱 쉘 캐시(오프라인·설치형 PWA). API는 항상 네트워크(동적·캐시 금지). */
-const CACHE = "lensmark-shell-v4"; // v3→v4: navigation 콜드스타트 견고화 — 짧은 재시도 후 캐시 쉘 즉시(먹통 0)+백그라운드 갱신(stale-while-revalidate). '연결 실패' 갇힘 해소
+const CACHE = "lensmark-shell-v5"; // v4→v5: activate 빈캐시 버그 수정(install 핵심쉘 필수 + 삭제 전 새캐시 검증) — 콜드스타트 시 폴백 상실 방지. SW 등록 updateViaCache:'none'로 CF의 sw.js 4시간 캐시 우회(옛 SW 갇힘 해소).
 const SHELL = [
   "/app", "/manifest.webmanifest", "/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
@@ -15,13 +15,24 @@ const OFFLINE_HTML =
   "</body></html>";
 
 self.addEventListener("install", (e) => {
-  // 개별 캐시(allSettled) — CDN 1개가 실패해도 로컬 쉘(/app 등)은 캐시된다(addAll은 하나라도 실패하면 전체 거부→빈 캐시→오프라인 폴백 불가 버그).
-  e.waitUntil(caches.open(CACHE).then((c) => Promise.allSettled(SHELL.map((u) => c.add(u)))));
+  // 핵심 로컬 쉘(/app)은 반드시 캐시 — 실패하면 install 거부→옛 SW 유지(빈 캐시로 활성화돼 navigation 폴백을 잃는 먹통 차단).
+  //   나머지(manifest·icon·CDN leaflet)는 allSettled(1개 실패해도 무방·런타임 재요청). addAll은 하나라도 실패하면 전체 거부라 안 씀.
+  e.waitUntil(caches.open(CACHE).then(async (c) => {
+    await c.add("/app");                                  // 필수(throw 시 install 거부 — 빈 캐시 활성화 방지)
+    await Promise.allSettled(SHELL.filter((u) => u !== "/app").map((u) => c.add(u)));
+  }));
   self.skipWaiting();
 });
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))));
-  self.clients.claim();
+  // 옛 캐시 삭제는 새 캐시에 핵심 쉘(/app)이 실재할 때만(이중 안전) — 빈 새 캐시 + 옛 캐시 소멸로 폴백을 잃는 것 방지.
+  e.waitUntil((async () => {
+    const hasShell = await caches.match("/app", { cacheName: CACHE });
+    if (hasShell) {
+      const ks = await caches.keys();
+      await Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+    }
+    await self.clients.claim();
+  })());
 });
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;                 // 변경요청(POST 등)은 SW 미개입

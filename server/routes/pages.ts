@@ -24,7 +24,8 @@ export const pageRoutes: RouteFn = (ctx, req, res, url) => {
     const [file, ct] = map[p];
     try {
       const body = readFileSync(join(ctx.config.dashboardDir, file));
-      const headers: Record<string, string> = { "Content-Type": ct, "Cache-Control": p === "/sw.js" ? "no-cache" : "public, max-age=3600" };
+      // sw.js는 no-store(CF가 no-cache는 엣지캐시해도 no-store는 존중) — updateViaCache:'none'(앱 등록)과 함께 옛 SW 갇힘 이중 차단.
+      const headers: Record<string, string> = { "Content-Type": ct, "Cache-Control": p === "/sw.js" ? "no-store, no-cache, must-revalidate" : "public, max-age=3600" };
       if (p === "/sw.js") headers["Service-Worker-Allowed"] = "/"; // 루트 스코프 허용(앱 전체 제어)
       res.writeHead(200, headers); res.end(body);
     } catch { json(res, 404, { error: "not found", path: p }); }
