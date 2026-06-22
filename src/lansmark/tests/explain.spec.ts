@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildExplainMessages, hasUnprovidedMoney, explainConfigured, sanitizeForPrompt, hasFabricatedUrl, type ExplainInput } from "../integrations/explain";
+import { buildExplainMessages, hasUnprovidedMoney, explainConfigured, sanitizeForPrompt, hasFabricatedUrl, incomeTier, type ExplainInput } from "../integrations/explain";
 
 const input: ExplainInput = {
   cropNameKo: "사과",
@@ -82,5 +82,19 @@ describe("hasUnprovidedMoney — 만/억 단위 환산 정규화(2026-06-19 갭 
   });
   it("1만원 미만 일반 숫자/소액은 무시", () => {
     expect(hasUnprovidedMoney("3년차, 5,000원 안팎의 부대비용이 듭니다", allowed)).toBe(false);
+  });
+});
+
+describe("incomeTier — 캐시 키 소득 버킷팅(LLM 재호출 절감)", () => {
+  it("같은 규모대의 ±소액은 같은 버킷(캐시 hit → LLM 1회)", () => {
+    expect(incomeTier(1_234_567)).toBe(incomeTier(1_239_000));     // <1천만: 100만 단위
+    expect(incomeTier(12_010_000)).toBe(incomeTier(12_240_000));   // 1천만~1억: 500만 단위
+    expect(incomeTier(152_000_000)).toBe(incomeTier(158_000_000)); // 1억+: 2천만 단위
+  });
+  it("규모가 다르면 다른 버킷(설명 톤 구분 보존)", () => {
+    expect(incomeTier(3_000_000)).not.toBe(incomeTier(50_000_000));
+  });
+  it("적자(음수)도 규모대로 버킷", () => {
+    expect(incomeTier(-2_340_000)).toBe(incomeTier(-2_360_000));   // -234만 vs -236만 = 같은 100만대
   });
 });
