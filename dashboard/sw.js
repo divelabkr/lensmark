@@ -1,5 +1,5 @@
 /* LENSMARK 서비스워커 — 앱 쉘 캐시(오프라인·설치형 PWA). API는 항상 네트워크(동적·캐시 금지). */
-const CACHE = "lensmark-shell-v2"; // v1→v2: null-응답 버그 수정 + 빈/손상 캐시 강제 재구성(activate가 v1 삭제)
+const CACHE = "lensmark-shell-v3"; // v2→v3: 콜드스타트(min=0) 완화 — navigation 연결실패/5xx 시 재시도 후 폴백('연결 실패' 즉시폴백 제거)
 const SHELL = [
   "/app", "/manifest.webmanifest", "/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
@@ -29,22 +29,29 @@ self.addEventListener("fetch", (e) => {
   if (u.origin === location.origin && u.pathname.startsWith("/api/")) return; // API는 네트워크 직통(캐시 금지)
   const isNav = e.request.mode === "navigate";            // 페이지 내비게이션(문서 로드)
   // 앱 쉘: 네트워크 우선(최신성) → 실패 시 캐시(오프라인). nonce는 캐시된 응답 내에서 자가일관.
-  e.respondWith(
-    fetch(e.request).then((r) => {
-      // 성공(2xx) + basic/cors 응답만 캐시 — opaque(cross-origin)·에러 응답은 캐시 금지(poisoned/stale 영속 방지).
-      if (r && r.ok && (r.type === "basic" || r.type === "cors")) {
-        const cp = r.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, cp)).catch(() => {});
-      }
-      return r;
-    }).catch(async () => {
-      // ⚠ 네트워크 실패 폴백 — **절대 null/undefined 반환 금지**(respondWith(null)=WebKit "Returned response is null"로 페이지 하드 실패).
-      const cached = (await caches.match(e.request)) || (isNav ? await caches.match("/app") : null);
-      if (cached) return cached;                            // 캐시 있으면 오프라인 제공(쉘 로드)
-      if (isNav) return new Response(OFFLINE_HTML, { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } }); // 내비=오프라인 페이지
-      return Response.error();                              // 서브리소스=정상 네트워크 에러(유효 Response·null 아님)
-    })
-  );
+  e.respondWith((async () => {
+    // 앱 쉘: 네트워크 우선(최신성). 콜드스타트(min=0) 완화 — navigation은 연결실패/5xx 시 짧게 재시도(서버 깨는 동안)해 '연결 실패'를 줄인다.
+    const tries = isNav ? 4 : 1;                            // 내비=콜드스타트 대기(최대 ~3.6s 백오프) / 서브리소스=1회
+    for (let i = 0; i < tries; i++) {
+      try {
+        const r = await fetch(e.request);
+        // 성공(2xx) + basic/cors만 캐시 — opaque·에러 응답은 캐시 금지(poisoned/stale 영속 방지).
+        if (r && r.ok && (r.type === "basic" || r.type === "cors")) {
+          const cp = r.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, cp)).catch(() => {});
+          return r;
+        }
+        if (r && r.status < 500) return r;                  // 4xx 등은 재시도 무의미 → 그대로 반환
+        // 5xx(콜드스타트 503 등) → 재시도로 진행
+      } catch (_) { /* 네트워크 실패(연결 거부) → 재시도 */ }
+      if (i < tries - 1) await new Promise((s) => setTimeout(s, 600 * (i + 1))); // 0.6/1.2/1.8s 백오프
+    }
+    // 끝까지 실패 → 캐시 → 오프라인 폴백. ⚠ 절대 null/undefined 금지(respondWith(null)=WebKit 하드 실패).
+    const cached = (await caches.match(e.request)) || (isNav ? await caches.match("/app") : null);
+    if (cached) return cached;                              // 캐시 있으면 오프라인 제공
+    if (isNav) return new Response(OFFLINE_HTML, { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } });
+    return Response.error();                                // 서브리소스=유효 Response(null 아님)
+  })());
 });
 
 /* ===== 웹푸시(M1) — 수확기·특보 알림 표시 + 클릭 시 앱 포커스 ===== */

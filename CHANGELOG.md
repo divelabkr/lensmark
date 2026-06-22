@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.77.2 — 2026-06-22 · 콜드스타트 완화(SW 재시도) + LIVE 데모 피드 제거
+> min=0 콜드스타트 503('연결 실패') 완화: SW가 navigation 실패/5xx 시 짧게 재시도(0.6/1.2/1.8s)해 서버 깨는 동안 버팀. LIVE 데모 피드(가짜 예시·타이머)는 제거.
+- **콜드스타트 완화** — sw.js: navigation 연결실패/5xx 즉시 오프라인폴백 → 4회 재시도 후 폴백. CACHE v2→v3(옛 SW 교체).
+- **LIVE 피드 제거** — 데모 트리거(가짜 시세/서리·4.2초 setInterval) 폐지. openAt(핀/주소검색 공용) 유지. EVT 레이어·feedpp/feedhide 제거.
+- tsc·vitest 621·arch·size 그린. ⚠ 지도 VWorld 타일은 별개(도메인 등록 HUMAN GATE).
+
 ## 0.77.1 — 2026-06-22 · 성능·비용 — 외부조회 TTL 캐시 + AI설명 캐시 버킷(반복분석 재사용·LLM 재호출 절감)
 > 측정 가능한 절감(LLM·외부호출)만. feedback 인덱싱/클라 캐시는 조기최적화라 보류. 진짜 최대 비용(Cloud Run 상주)은 트래픽 분석 후.
 - **provider 외부조회 캐시** — KAMIS·KMA·VWorld·Open-Meteo를 격자/작물 버킷 TTL 캐시(기후12h·시세6h·표고/필지/지오코딩 30일). 반복분석 시 외부호출 1회 + in-flight 병합(stampede 차단). 무의존 Map(단일 인스턴스라 Redis 불필요).

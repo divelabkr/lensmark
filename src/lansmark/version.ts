@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.2",
+    date: "2026-06-22",
+    title: "콜드스타트 완화(SW 재시도) + LIVE 데모 피드 제거",
+    items: [
+      "min=0 scale-to-zero 콜드스타트 503('연결 실패') 완화 — 서비스워커가 navigation 연결실패/5xx 시 즉시 오프라인폴백 대신 짧게 재시도(0.6/1.2/1.8s 백오프, 서버 깨는 동안)해 사용자가 '연결 실패'를 덜 보게. CACHE v2→v3(옛 SW 교체).",
+      "LIVE 이벤트 피드 제거 — 데모 트리거(가짜 예시 시세·서리, 4.2초 setInterval)라 가치 없고 리소스만 소모. 실데이터 이벤트는 KAMIS/KMA 실연동 후 별도 도입. openAt(핀/주소검색/에러재시도 공용)은 유지.",
+      "tsc·vitest 621·arch·size 그린. (지도 타일 VWorld 도메인 등록은 별개 HUMAN GATE)",
+    ],
+  },
+  {
     version: "0.77.1",
     date: "2026-06-22",
     title: "성능·비용 — 외부조회 TTL 캐시 + AI설명 캐시 버킷(반복분석 재사용·LLM 재호출 절감)",

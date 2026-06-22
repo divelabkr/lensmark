@@ -243,7 +243,8 @@
   </div>
   <div class="body">
     <div class="mapcol"><div id="map"></div><div class="mapsw" id="mapsw"><button type="button" data-bm="sat">위성</button><button type="button" data-bm="base">일반</button><button type="button" data-bm="topo">지형</button></div><div class="hint" id="hint">① 지도에서 땅을 탭하면 ② 추천 작물이 뜨고 ③ 작물을 누르면 소득 시뮬</div>
-      <div class="livefeed" id="livefeed"><div class="lh"><span class="dot"></span>LIVE 이벤트<span class="seam">데모 트리거 · 실연동: KAMIS/KMA/위성</span><button class="pp" id="feedhide" title="이벤트 숨김">👁</button><button class="pp" id="feedpp" title="일시정지/재생">⏸</button></div><div class="feed" id="feed"><div class="empty2">실시간 이벤트 수집 중…</div></div></div>
+      <!-- LIVE 이벤트 피드 제거(2026-06-22) — 데모 트리거(가짜 예시)라 가치 없고 4.2초 타이머만 돌아 리소스 낭비 -->
+
     </div>
     <aside class="panel">
       <div class="sheet-handle" id="sheetHandle" title="끌어올리기/내리기"></div>
@@ -488,7 +489,7 @@ async function recommend(lat,lng,tier){
 }
 
 /* ===== 상태/지도 ===== */
-let MAP,GRID=L.layerGroup(),SELLAYER=L.layerGroup(),PARCEL=L.layerGroup(),EVT=L.layerGroup(),REGION=L.layerGroup(),PIN=null,MODE="select",VIEW="sep"; // 기본 모드=필지 선택
+let MAP,GRID=L.layerGroup(),SELLAYER=L.layerGroup(),PARCEL=L.layerGroup(),REGION=L.layerGroup(),PIN=null,MODE="select",VIEW="sep"; // 기본 모드=필지 선택 (EVT 레이어 제거 — LIVE 피드 폐지)
 const SEL=new Map(); let FOCUS=null; const CHOSEN={};
 let pinState=null;
 let pinGen=0; // 핀 요청 세대 — 빠른 연속 탭/복원 시 stale await가 현재 상태를 오염시키지 않게(레드팀 M10·L5)
@@ -539,8 +540,8 @@ async function init(){
   let _bm="base";try{_bm=localStorage.getItem("lansmark_basemap")||"base";}catch(_){}if(!BASEMAPS[_bm])_bm="base"; // 토지선택엔 경계·라벨 보이는 일반맵이 기본
   setBasemap(_bm);
   document.querySelectorAll("#mapsw button").forEach(b=>b.addEventListener("click",()=>setBasemap(b.dataset.bm)));
-  GRID.addTo(MAP);SELLAYER.addTo(MAP);PARCEL.addTo(MAP);EVT.addTo(MAP);REGION.addTo(MAP);
-  MAP.on("zoomend moveend",()=>{tierBadge();});MAP.on("click",onClick);tierBadge();startEvents();bindSearch();checkVersion();if(MODE==="select")renderSelect(); // 기본 필지선택 패널 초기 표시
+  GRID.addTo(MAP);SELLAYER.addTo(MAP);PARCEL.addTo(MAP);REGION.addTo(MAP);
+  MAP.on("zoomend moveend",()=>{tierBadge();});MAP.on("click",onClick);tierBadge();bindSearch();checkVersion();if(MODE==="select")renderSelect(); // 기본 필지선택 패널 초기 표시 (startEvents 제거 — LIVE 피드 폐지)
 }
 
 async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
@@ -1565,29 +1566,8 @@ async function renderCompare(items){document.getElementById("ptitle").textConten
   plist.querySelectorAll(".cx").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.key,it=SEL.get(k);if(it){it.rect.remove();SEL.delete(k);delete CHOSEN[k];if(FOCUS===k)FOCUS=[...SEL.keys()].pop()||null;renderSelect();}}));
 }
 
-/* ===== 이벤트 레이어 + LIVE 피드 (C3) — mock 트리거, 실연동: KAMIS/KMA/위성 ===== */
-const EVT_TYPES=[ // ⚠ 데모 트리거(무작위 생성) — 실데이터 오인 금지: 항목마다 '연동 예정/예시' 명시(정직성 — 가짜 시세로 작물 선택 오도 차단)
-  {k:"price_up",ic:"📈",color:"#089A4D",ec:"가격↑",tpl:c=>`<b>${c}</b> 도매가 상승 — KAMIS 연동 예정`},
-  {k:"price_down",ic:"📉",color:"#DA5237",ec:"가격↓",tpl:c=>`<b>${c}</b> 도매가 하락 — KAMIS 연동 예정`},
-  {k:"frost",ic:"❄️",color:"#3E92C4",ec:"서리",tpl:_=>`서리 주의 예시 — KMA 연동 예정`},
-  {k:"demand",ic:"🛒",color:"#D98E1B",ec:"수요",tpl:c=>`<b>${c}</b> 수요 급증 신호(예시)`},
-  {k:"satellite",ic:"🛰",color:"#6f93c4",ec:"위성",tpl:_=>`위성 영상 갱신(예시) — NDVI 재계산`},
-];
-const EVT_CROPS=["고구마","마늘","양파","사과","블루베리","딸기","배추","감자","참깨","도라지"];
-let evtTimer=null,evtPaused=false,evtSeq=0;
-function pickPt(){const pool=Math.random()<0.6?SIGUNGU_PT:SIDO_PT;const p=pool[Math.floor(Math.random()*pool.length)];return[p[1]+(Math.random()-0.5)*0.06,p[2]+(Math.random()-0.5)*0.06];}
-function emitEvent(){
-  const t=EVT_TYPES[Math.floor(Math.random()*EVT_TYPES.length)],pt=pickPt(),crop=EVT_CROPS[Math.floor(Math.random()*EVT_CROPS.length)];
-  const m=L.marker(pt,{icon:L.divIcon({className:"",html:`<div class="evtm" style="color:${t.color}"></div>`,iconSize:[14,14],iconAnchor:[7,7]})}).addTo(EVT);
-  setTimeout(()=>{try{EVT.removeLayer(m);}catch(_){}},16000);
-  const feed=document.getElementById("feed");if(!feed)return;
-  if(feed.querySelector(".empty2"))feed.innerHTML="";
-  const div=document.createElement("div");div.className="fitem";
-  div.innerHTML=`<span class="ei">${t.ic}</span><span class="et">${t.tpl(crop)} <small>· 방금 · 예시</small></span><span class="ec" style="background:${t.color}22;color:${t.color}">${t.ec}</span>`;
-  div.addEventListener("click",()=>{MAP.flyTo(pt,13,{duration:.8});setTimeout(()=>openAt(pt[0],pt[1]),850);});
-  feed.prepend(div);while(feed.children.length>24)feed.removeChild(feed.lastChild);
-}
-function startEvents(){if(evtTimer)clearInterval(evtTimer);evtTimer=setInterval(()=>{if(!evtPaused)emitEvent();},4200);setTimeout(()=>{if(!evtPaused)emitEvent();},900);}
+/* (LIVE 이벤트 레이어·피드 제거 2026-06-22 — 데모 트리거(가짜 예시 시세/서리)라 가치 없고 4.2초 setInterval만 돌아 리소스 낭비.
+   실데이터 이벤트는 KAMIS/KMA 실연동 후 별도 도입. openAt(핀/주소검색/에러재시도 공용)은 아래 유지. */
 async function openAt(lat,lng){
   if(window.__rgnShown){clearRegionMarkers();window.__rgnShown=false;} // 주소검색·이벤트 진입 시에도 작물→지역 마커 정리
   if(MODE!=="pin"){MODE="pin";[...document.getElementById("mode").children].forEach(x=>x.classList.toggle("on",x.dataset.m==="pin"));SELLAYER.clearLayers();SEL.clear();GRID.clearLayers();document.getElementById("hint").textContent="📍 핀 — 한 곳 탭 → 추천 → 작물 누르면 소득 시뮬";}
@@ -1604,11 +1584,7 @@ async function openAt(lat,lng){
 }
 
 /* ===== 컨트롤 ===== */
-document.getElementById("feedpp").addEventListener("click",function(){evtPaused=!evtPaused;this.textContent=evtPaused?"▶":"⏸";this.title=evtPaused?"재생":"일시정지";});
-document.getElementById("feedhide").addEventListener("click",function(){ // 라이브 이벤트 숨김/표시 — 피드 본문 + 지도 이벤트 마커 토글
-  const fd=document.getElementById("feed"),hidden=document.getElementById("livefeed").classList.toggle("ev-hidden");
-  fd.style.display=hidden?"none":"";if(hidden){evtPaused=true;EVT.clearLayers();}else{evtPaused=false;}
-  this.textContent=hidden?"🙈":"👁";this.title=hidden?"이벤트 표시":"이벤트 숨김";});
+/* (LIVE 피드 컨트롤 feedpp/feedhide 제거 — 피드 자체 폐지) */
 document.getElementById("acctbtn").addEventListener("click",openAcctModal); syncAcct(); // 로그인 · 내 계정(httpOnly 쿠키 세션 → /me로 상태 동기화 → 익명 일지 이관)
 consumeMagicLink(); // 이메일 매직링크로 들어온 경우 자동 로그인 처리
 /* 모바일 바텀시트: 3단 스냅(작게·중간·전체) + 손가락 드래그. 핸들 탭=순환·드래그=따라옴, 땅 탭=중간(지도 증발 방지) */
