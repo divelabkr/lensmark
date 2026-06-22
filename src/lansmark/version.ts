@@ -13,6 +13,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.1",
+    date: "2026-06-22",
+    title: "성능·비용 — 외부조회 TTL 캐시 + AI설명 캐시 버킷(반복분석 재사용·LLM 재호출 절감)",
+    items: [
+      "provider 외부조회(KAMIS·KMA·VWorld·Open-Meteo) 격자/작물 버킷 TTL 캐시 — 같은 땅·작물 반복분석 시 외부호출 1회로(무료 API라 비용보다 7초 타임아웃·쿼터·체감 개선). in-flight 병합으로 동시 동일요청을 1회로(stampede 차단). 무의존 Map — 단일 인스턴스(min=max=1)라 Redis 불필요.",
+      "AI 근거설명 캐시 키를 P50 정확수치→규모 버킷(100만/500만/2천만)으로 — ±소액 차이로 인한 캐시 미스 제거로 LLM 재호출 절감. 버킷 hit 시 현재 입력 금액과 정합을 재확인(옛 설명의 P10/90 숫자 노출 차단·1원칙 보존).",
+      "측정 가능한 절감(LLM·외부호출)만 반영 — feedback 인덱싱/클라 캐시는 query가 이미 cropId 필터+2만 행 캡이라 조기최적화로 보류. 진짜 최대 비용(Cloud Run 상주)은 트래픽 분석 후. tsc·vitest 621·arch·size 그린.",
+    ],
+  },
+  {
     version: "0.77.0",
     date: "2026-06-22",
     title: "유료 베타 채비 — 데이터 시각화·UX 강화(라이브) + AI설명 검증승격·아이디/비번 인증(코드·활성화 게이트) + CI 자동화",
