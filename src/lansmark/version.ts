@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.10",
+    date: "2026-06-23",
+    title: "SW install 견고화 — c.add→fetch+put 우회 + CDN best-effort (PWA 정상화)",
+    items: [
+      "실브라우저 진단(Chrome MCP): 사용자가 옛 v4 SW의 빈 캐시(/app 없음)에 갇혀 '연결 실패'. 서버·DNS·CF는 200 정상(/api/는 SW 우회라 200, /app navigation만 빈 캐시로 503). SW 해제+v5 로드로 즉시 복구. 추가 발견: v5 install의 c.add('/app')이 SW 컨텍스트에서 실패(redundant)해 SW 미설치 — 단 앱은 서버 직접 로드로 정상·먹통 0(fail-safe).",
+      "수정: install의 /app 캐시를 c.add→fetch+put로 교체(zstd 인코딩/Vary 응답에서 c.add가 install을 redundant로 만들던 것 우회) + CDN leaflet은 개별 .catch best-effort(CSP connect-src 'self'에 막혀 실패해도 install 안 깨짐·런타임 <script>로 로드되므로 캐시는 보너스). CACHE v5→v6. 빈캐시 fail-safe·updateViaCache:'none'·no-store 유지. min=0(무료) 유지.",
+    ],
+  },
+  {
     version: "0.77.9",
     date: "2026-06-23",
     title: "먹통 근본 수정 — '렌즈마크만 유독' 원인 2개 제거(SW 갇힘·빈 캐시)",

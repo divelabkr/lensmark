@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.77.10 — 2026-06-23 · SW install 견고화 — c.add→fetch+put 우회 + CDN best-effort (PWA 정상화)
+> 실브라우저(Chrome) 진단으로 사용자 갇힘 즉시 복구 + install redundant 버그 수정. 먹통은 이미 0(SW 미설치=서버 직접 로드 fail-safe)이고, 이건 PWA 정상화.
+- **진단**: 사용자가 옛 v4 SW의 빈 캐시(/app 없음)에 갇혀 "연결 실패". 서버·DNS·CF 200 정상(/api/는 SW 우회라 200, /app만 빈 캐시로 503). SW 해제+v5 로드로 즉시 복구.
+- **수정**: install /app 캐시를 `c.add`→`fetch+put`로 교체(zstd 인코딩/Vary 응답에서 c.add가 install을 redundant로 만들던 것 우회) + CDN leaflet 개별 `.catch` best-effort(CSP `connect-src 'self'`에 막혀도 install 안 깨짐). CACHE v5→v6.
+- 빈캐시 fail-safe·updateViaCache:'none'·no-store 유지. min=0(무료). tsc·vitest·arch·size 그린.
+
 ## 0.77.9 — 2026-06-23 · 먹통 근본 수정 — '렌즈마크만 유독' 원인 2개 제거(SW 갇힘·빈 캐시)
 > "다른 사이트는 멀쩡한데 렌즈마크만" 먹통의 진짜 원인 = 렌즈마크 고유 서비스워커 버그 2개. 콜드스타트는 방아쇠일 뿐.
 - **원인①(메타장애)**: Cloudflare가 `sw.js`를 4시간 엣지캐시(`max-age=14400` 덮어씀·오리진은 `no-cache` 확인)해 옛 SW에 갇힘 — '고쳐 배포해도 또 먹통'의 정체. → SW 등록 `updateViaCache:'none'`(브라우저가 HTTP캐시 우회·항상 네트워크에서 sw.js 받아 업데이트 체크) + 오리진 `no-store`. CF 대시보드 sw.js Bypass는 운영 작업으로 별도(HUMAN GATE).

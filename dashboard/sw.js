@@ -1,5 +1,5 @@
 /* LENSMARK 서비스워커 — 앱 쉘 캐시(오프라인·설치형 PWA). API는 항상 네트워크(동적·캐시 금지). */
-const CACHE = "lensmark-shell-v5"; // v4→v5: activate 빈캐시 버그 수정(install 핵심쉘 필수 + 삭제 전 새캐시 검증) — 콜드스타트 시 폴백 상실 방지. SW 등록 updateViaCache:'none'로 CF의 sw.js 4시간 캐시 우회(옛 SW 갇힘 해소).
+const CACHE = "lensmark-shell-v6"; // v5→v6: install의 /app 캐시를 c.add→fetch+put로 교체(c.add가 SW 컨텍스트서 install을 redundant로 만들던 것 우회) + CDN은 개별 .catch best-effort(cross-origin이 CSP connect-src에 막혀도 install 안 깨짐). 빈캐시 fail-safe·updateViaCache 유지.
 const SHELL = [
   "/app", "/manifest.webmanifest", "/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
@@ -15,11 +15,14 @@ const OFFLINE_HTML =
   "</body></html>";
 
 self.addEventListener("install", (e) => {
-  // 핵심 로컬 쉘(/app)은 반드시 캐시 — 실패하면 install 거부→옛 SW 유지(빈 캐시로 활성화돼 navigation 폴백을 잃는 먹통 차단).
-  //   나머지(manifest·icon·CDN leaflet)는 allSettled(1개 실패해도 무방·런타임 재요청). addAll은 하나라도 실패하면 전체 거부라 안 씀.
+  // 핵심 로컬 쉘(/app)은 반드시 캐시 — 실패하면 install 거부→SW 미설치(앱은 서버 직접 로드로 정상 동작·빈 캐시로 활성화돼 폴백 잃는 먹통을 원천 차단하는 fail-safe).
+  //   /app은 c.add 대신 fetch+put: c.add가 일부 환경(zstd 인코딩/Vary 응답)에서 SW install을 redundant로 만드는 것을 우회.
+  //   나머지(manifest·icon·CDN leaflet)는 개별 .catch best-effort — cross-origin CDN이 CSP connect-src('self')에 막혀 실패해도 install이 안 깨지게(leaflet은 런타임 <script>로 로드되므로 SW 캐시는 보너스).
   e.waitUntil(caches.open(CACHE).then(async (c) => {
-    await c.add("/app");                                  // 필수(throw 시 install 거부 — 빈 캐시 활성화 방지)
-    await Promise.allSettled(SHELL.filter((u) => u !== "/app").map((u) => c.add(u)));
+    const r = await fetch("/app", { cache: "reload" });
+    if (!r || !r.ok) throw new Error("shell fetch " + (r && r.status)); // 핵심 쉘 실패 → install 거부(fail-safe)
+    await c.put("/app", r.clone());
+    await Promise.allSettled(SHELL.filter((u) => u !== "/app").map((u) => c.add(u).catch(() => {})));
   }));
   self.skipWaiting();
 });
