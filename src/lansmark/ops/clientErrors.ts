@@ -26,7 +26,7 @@ export class ClientErrorStore {
     const src = trunc(e.source, FIELD_MAX);
     const key = msg + "|" + (src || "");
     const ex = this.map.get(key);
-    if (ex) { ex.n++; ex.lastAt = now; return null; } // 디듀프 — 같은 에러는 카운트만(경보 스팸 방지)
+    if (ex) { ex.n++; ex.lastAt = now; return ex.n % 50 === 0 ? ex : null; } // 디듀프(카운트만) — 단 같은 에러가 50회 배수에 도달하면 재트리거(OP-3: 조용한 '볼륨 폭증'도 경보·스팸 없이)
     const row: ClientErrorRow = { key, msg, src, n: 1, firstAt: now, lastAt: now, uaSample: trunc(e.ua, FIELD_MAX), urlSample: trunc(e.url, FIELD_MAX) };
     this.map.set(key, row);
     if (this.map.size > CAP) { const k = this.map.keys().next().value as string | undefined; if (k) this.map.delete(k); } // FIFO 축출

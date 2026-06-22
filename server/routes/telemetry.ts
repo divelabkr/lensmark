@@ -20,9 +20,10 @@ export const telemetryRoutes: RouteFn = async (ctx, req, res, url) => {
     url: typeof b.url === "string" ? b.url : undefined,
     ua,
   });
-  if (row) { // 새 distinct 에러만 → 활동로그 + 실시간 경보(채널 설정 시). 같은 에러 반복은 카운트만(스팸 0)
-    ctx.logOps("클라이언트에러", `${row.msg.slice(0, 80)}${row.src ? " @ " + row.src.slice(0, 60) : ""}`);
-    void notifyAlertWebhook(`⚠ [LENSMARK] 새 클라이언트 에러\n${row.msg.slice(0, 160)}${row.src ? "\n  ↳ " + row.src.slice(0, 120) : ""}`);
+  if (row) { // 새 distinct 또는 같은 에러 '볼륨 폭증'(50회 배수, OP-3) → 활동로그 + 실시간 경보. 그 외 반복은 카운트만(스팸 0)
+    const surge = row.n >= 50; // n≥50 = 조용히 대량 반복되던 에러(폭증)
+    ctx.logOps("클라이언트에러", `${surge ? `폭증 ${row.n}회 · ` : ""}${row.msg.slice(0, 80)}${row.src ? " @ " + row.src.slice(0, 60) : ""}`);
+    void notifyAlertWebhook(`⚠ [LENSMARK] ${surge ? `클라이언트 에러 폭증(${row.n}회)` : "새 클라이언트 에러"}\n${row.msg.slice(0, 160)}${row.src ? "\n  ↳ " + row.src.slice(0, 120) : ""}`);
   }
   res.writeHead(204); res.end();
   return true;

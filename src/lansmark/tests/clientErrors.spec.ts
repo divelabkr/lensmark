@@ -34,6 +34,15 @@ describe("ClientErrorStore — 디듀프·집계·상한", () => {
     for (let i = 0; i < 130; i++) s.record({ message: "e" + i });
     expect(s.distinct()).toBeLessThanOrEqual(100);
   });
+
+  it("같은 에러 50회 배수마다 재트리거(OP-3: 조용한 볼륨 폭증도 경보)", () => {
+    const s = new ClientErrorStore();
+    let triggers = 0;
+    for (let i = 0; i < 100; i++) { if (s.record({ message: "boom", source: "a.js:1" })) triggers++; }
+    expect(triggers).toBe(3);     // 1회(새 distinct) + 50·100회(폭증 배수) = 3회만 경보(스팸 없이)
+    expect(s.total()).toBe(100);
+    expect(s.distinct()).toBe(1); // 같은 에러 — distinct는 1
+  });
 });
 
 // 라우트 — 가짜 req/res

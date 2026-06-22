@@ -6,7 +6,7 @@
 name: ops-watch
 on:
   schedule:
-    - cron: "0 0 * * *" # 매일 00:00 UTC(=09:00 KST) — 저트래픽 베타는 1일 1회로 충분(필요 시 상향)
+    - cron: "0 0,6,12,18 * * *" # 6시간마다(00·06·12·18 UTC) — 서버다운·키만료·스토어 sealed를 반나절 늦게 인지하던 사각 축소(OP-1). 저트래픽이라 실행비용 무관
   workflow_dispatch: {} # 수동 실행(Run workflow)
 jobs:
   watch:

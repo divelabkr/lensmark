@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.5",
+    date: "2026-06-23",
+    title: "운영 관측성 — ops-watch 주기↑·유료게이트 오작동 방지·에러 폭증 경보",
+    items: [
+      "OP-1 ops-watch cron 1일1회→6시간(00·06·12·18 UTC) — 서버다운·키만료·스토어 sealed를 반나절 늦게 인지하던 사각 축소(저트래픽이라 비용 무관). OP-2 ops 콘솔 유료게이트 켤 때 'PAID' 타이핑 확인 — 무료베타 중 운영 실수로 페이월 켜는 사고 차단. OP-3 클라이언트 에러 — 새 distinct뿐 아니라 같은 에러 50회 배수 '볼륨 폭증'도 경보(조용한 장애 폭증 가시화·스팸 없이).",
+      "tsc·vitest 622(+1: 폭증 재트리거)·arch·size 그린. 종합 UX/운영 분석 즉시구간(운영) 반영.",
+    ],
+  },
+  {
     version: "0.77.4",
     date: "2026-06-23",
     title: "사용자 흐름 개선(즉시구간) — 클릭 피드백·내위치 유도·시트 힌트·입력 점진공개",
