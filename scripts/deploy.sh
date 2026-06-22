@@ -101,11 +101,11 @@ case "${1:-deploy}" in
     FB_SVC="$(node -e "const j=require('./firebase.json');const r=(j.hosting.rewrites||[]).find(x=>x.run);process.stdout.write((r&&r.run&&r.run.serviceId)||'')" 2>/dev/null || true)"
     [ "$FB_SVC" = "$SERVICE" ] || { echo "  ✗ firebase.json serviceId('$FB_SVC') ≠ SERVICE('$SERVICE') — lensmark/lansmark 철자 불일치 → 배포 중단(과거 전체 장애 원인)"; exit 1; }
     # 안정화(2026-06): memory 512Mi→1Gi(Node/tsx OOM 재시작 방지) + --cpu-boost(시작/재시작 시 CPU 부스트로 빠르고 안정적 부팅).
-    #   ⚠ max=1 유지(정합) · min=0(scale-to-zero, 2026-06-22) — firestore blob 어댑터는 단일 인스턴스 정합 전제(동시 인스턴스 1=max). min=0은 무트래픽 비용 절감:
-    #     트래픽 분석상 사용자 호출 0(provider live:0)인데 min=1+no-cpu-throttling=24/7 풀CPU 상주($30~50/월 낭비) → idle 시 0으로 내려가고 요청 시 콜드스타트(cpu-boost로 완화).
-    #     no-cpu-throttling 유지: 인스턴스 살아있는 동안 Firestore 비동기 drain·백그라운드 쓰기 보장. 트래픽 상시화되면 min=1 복귀(콜드스타트 0).
+    #   ⚠ min=max=1 — 먹통 회귀 방지(2026-06-23). firestore blob 어댑터는 단일 인스턴스 정합 전제(동시 1=max).
+    #     배경: min=0(scale-to-zero, 06-22)으로 무트래픽 비용절감을 시도했으나 → 콜드스타트가 SW navigation 재시도(3.6s)보다 길어 사파리·크롬이 '연결 실패'(OFFLINE_HTML)에 갇히는 먹통이 자꾸 재발(curl 200·DNS·CF 다 정상인데 SW만 갇힘). SW v4(캐시 쉘 SWR·0.77.8)로 완화했으나 첫방문 콜드스타트·지연은 잔존.
+    #     → min=1로 인스턴스 상시 가동 = 콜드스타트 0 = 먹통 회귀 0(사용자 결정: "자꾸 먹통, 회귀 안 하게"). 비용 ~$30~50/월은 '안 됨'보다 우선. no-cpu-throttling·cpu-boost 유지(빠른 응답·drain 보장). 트래픽 상시화 전까지 min=0 재시도 금지.
     gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
-      --allow-unauthenticated --min-instances 0 --max-instances 1 \
+      --allow-unauthenticated --min-instances 1 --max-instances 1 \
       --memory 1Gi --cpu 1 --concurrency 80 --no-cpu-throttling --cpu-boost \
       --set-env-vars "$ENV_VARS" \
       --set-secrets "$SECRETS" \
