@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.6",
+    date: "2026-06-23",
+    title: "재계산 디바운스 + 재해복구 런북(중기)",
+    items: [
+      "UX-6 '내 값으로 조정' 재시뮬 디바운스(420ms) — 여러 입력을 빠르게 바꿔도 마지막 한 번만 서버 호출(느린 시골 회선의 스피너 폭주 방지). 항상 최신 st 기준이라 race-safe. OP-5 docs/DR_RUNBOOK.md 신설 — 배포롤백·Layer1 blob스냅샷·Layer2 GCP PITR·키만료 복구 절차 1장(재해 시 우왕좌왕 방지).",
+      "tsc·vitest 622·arch·size 그린. 종합분석 중기 일부 — EL-2(비율 발견성)·EL-5(온난화 전역)는 가치 대비 위험으로 보류, OP-4는 deploy-run 권한(HUMAN GATE) 후, G-2(작물전환)는 별도 신중 진행.",
+    ],
+  },
+  {
     version: "0.77.5",
     date: "2026-06-23",
     title: "운영 관측성 — ops-watch 주기↑·유료게이트 오작동 방지·에러 폭증 경보",

@@ -3,6 +3,12 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.77.6 — 2026-06-23 · 재계산 디바운스 + 재해복구 런북(중기)
+> 종합분석 중기 일부. 미묘한 것(EL-2 비율발견성·EL-5 온난화전역)은 가치 대비 위험으로 정직히 보류.
+- **UX-6** 시뮬입력 재계산 디바운스(420ms) — 느린 회선 스피너 폭주 방지·race-safe.
+- **OP-5** docs/DR_RUNBOOK.md — 배포롤백·Layer1 blob·Layer2 GCP PITR·키만료 복구 절차 1장.
+- tsc·vitest 622·arch·size 그린.
+
 ## 0.77.5 — 2026-06-23 · 운영 관측성 — ops-watch 주기↑·유료게이트 오작동 방지·에러 폭증 경보
 > 종합 분석의 운영 즉시구간. 저트래픽 베타 관측성 강화.
 - **OP-1** ops-watch cron 1일1회→6시간(서버다운·키만료·sealed 사각 축소).
