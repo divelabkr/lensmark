@@ -711,7 +711,7 @@ function simCardHtml(sim,terr,opts){
      ${neg?`<div class="src">※ 보통값이 음수 — 현 base는 농진청 소득자료 <b>구조 데모(미검증)</b>. 실 RDA 소득자료 연결 시 정상화(HUMAN GATE).</div>`:""}
    </div>
    ${(sim.retail||sim.priceKrwPerKg)?`<div class="card"><div class="ch"><span class="cname">🏷 시세 비교 <span style="font-weight:600;color:var(--ink3);font-size:11px">(1kg 기준)</span></span></div>
-     ${sim.priceKrwPerKg?`<div class="fsum"><span class="fl">농가 도매가 <span style="color:var(--ink3);font-weight:600">받는 값</span></span><span class="fv num">${fmt(sim.priceKrwPerKg.p50)}<small>원</small></span></div>`:''}
+     ${sim.priceKrwPerKg?`<div class="fsum"><span class="fl">농가 도매가 <span style="color:var(--ink3);font-weight:600">받는 값</span></span><span class="fv num">${fmt(sim.priceKrwPerKg.p50)}<small>원</small></span></div>${sim.priceAsOf?`<div class="src" style="margin:-3px 0 2px">↳ ${esc(sim.priceAsOf)} 분포의 중앙값(오늘 단일 시세 아님)</div>`:''}`:''}
      ${sim.retail?`<div class="fsum" style="margin-top:6px"><span class="fl">마트 소비자가 <span style="color:var(--ink3);font-weight:600">주간 평균</span></span><span class="fv num">${fmt(sim.retail.avg)}<small>원</small></span></div>
      <div class="src" style="margin-top:7px">마트 <b>${fmt(sim.retail.min)}~${fmt(sim.retail.max)}</b>원/kg · ${/mock/.test(sim.retail.source||'')?'<b>추정(데모)</b> — KAMIS 코드 연결 전':'KAMIS 소매 실데이터'}${sim.priceKrwPerKg&&sim.priceKrwPerKg.p50?` · 도매 대비 <b>약 ${(sim.retail.avg/sim.priceKrwPerKg.p50).toFixed(1)}배</b>`:''}</div>`:`<div class="src" style="margin-top:7px">마트 소비자가는 일부 작물만 제공됩니다(KAMIS 품목코드 연결 중).</div>`}
    </div>`:''}
@@ -765,7 +765,7 @@ function simCardHtml(sim,terr,opts){
      <div style="margin-top:9px;display:flex;gap:7px;flex-wrap:wrap"><button class="btn" id="e-rec" style="background:var(--green);color:#fff;border-color:var(--green);font-weight:800">＋ 실측 기록</button>${(location.hostname==="localhost"||location.hostname==="127.0.0.1")?`<button class="btn" id="e-demo">데모: 실측 5건(+20%) — 보정만(검증은 다농가)</button>`:""}</div>
    </div>
    ${!validated&&sim.confidence!=='A'?`<div class="upsell">💡 <span><b>토양 검정서(pH)</b>를 넣으면 정밀도·신뢰도가 올라가고 <b>'검증'</b> 라벨에 가까워집니다.</span></div>`:""}
-   <div class="card"><div class="sectt" style="margin-bottom:6px">출처 · 면책</div><div class="src">base: ${esc(sim.baseSource)}</div>${(sim.disclaimers||[]).map(d=>`<div class="src">• ${esc(d)}</div>`).join("")}</div>`;
+   <div class="card"><div class="sectt" style="margin-bottom:6px">출처 · 면책</div><div class="src">base: ${esc(sim.baseSource)}</div>${sim.priceSource?`<div class="src">시세: ${esc(sim.priceSource)}${sim.priceAsOf?` · ${esc(sim.priceAsOf)} 기준`:''}</div>`:''}${(sim.disclaimers||[]).map(d=>`<div class="src">• ${esc(d)}</div>`).join("")}</div>`;
 }
 /* UX: View Transition 헬퍼 — DOM 변경을 크로스페이드(브라우저 네이티브 API·의존성 0). prefers-reduced-motion 존중(접근성)·미지원 브라우저는 즉시 폴백(가용성). */
 function vt(apply){ try{ if(document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches){ document.startViewTransition(apply); return; } }catch(_){} apply(); }

@@ -28,7 +28,12 @@ export function climateEvidence(climate?: ClimateResult): ClimateEvidence {
   if (climate.summerMaxTempC != null) facts.push(`여름 최고 ${Math.round(climate.summerMaxTempC)}℃`);
   if (climate.sunlightLevel && climate.sunlightLevel !== "unknown") facts.push(`일조 ${SUN[climate.sunlightLevel]}`);
   if (!facts.length) facts.push("표시할 기후 측정값이 부족해요.");
-  // 정직성: '평년값 아님'을 출처에 명시(최근 1년 관측이라 연·시기 따라 변동).
-  const sourceLabel = (climate.stationName ? `${climate.stationName} 관측소` : "최근접 관측소") + "·최근 1년(평년값 아님)";
+  // 정직성: mock(데모 폴백)이면 '실측 아님'을 명시(가격 mock과 대칭) — KMA 미연동 구간에 데모 고정값(예: 해남 -7℃)이 '이 땅 실측 근거'로 오인되는 것 차단.
+  //   live면 '평년값 아님'(최근 1년 관측이라 연·시기 따라 변동) + asOf(관측 기간) 표기.
+  const isDemo = !!climate.source && /mock/.test(climate.source);
+  const asOf = climate.asOf ? ` · ${climate.asOf} 기준` : "";
+  const sourceLabel = isDemo
+    ? "데모 예시값 — 실측 기후 아님(KMA 관측 미연동)"
+    : (climate.stationName ? `${climate.stationName} 관측소` : "최근접 관측소") + "·최근 1년(평년값 아님)" + asOf;
   return { facts, sourceLabel, disclaimer };
 }

@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.11",
+    date: "2026-06-23",
+    title: "4축 빈틈 5종 보강 — 데이터 기준일·mock기후 정직성·Dream 배선·explain dedup",
+    items: [
+      "정직성(1원칙): ① 가격·기후에 '기준일(asOf)' 추가 — KAMIS 도매가는 '최근 30일 분포'·KMA 기후는 실관측 기간(rows 날짜 min~max)을 명시(캐시된 값이 '오늘 실시세'로 오인되던 갭). 농가 도매가 옆에 '↳ …분포의 중앙값(오늘 단일 시세 아님)' 노출. ② mock 기후가 '실측 관측소'로 위장하던 것 차단 — source:'mock-kma' 표식 → climateEvidence가 '데모 예시값(실측 아님)' 라벨(가격 mock과 대칭·KMA 미연동 구간 오인 방지).",
+      "해자·효율: ③ Dream(consolidate) 정리층을 프로덕션 simulate에 배선 — 코드만 있고 미호출이던 이상치격리·recency·버킷승격을 store별 TTL 스냅샷 캐시(WeakMap·lazy·자기치유·피드백 시 무효화)로 연결. 동일입력 재계산도 회피(재활용). ④ explain LLM 캐시에 in-flight dedup — 동시 동일버킷 LLM 호출 1회로 합쳐 stampede·실과금 N배 차단. 콜드/신규는 raw 폴백(회귀 0). tsc·vitest 654(+4)·arch·size 그린. (비용축은 진단상 이미 최적이라 무변경.)",
+    ],
+  },
+  {
     version: "0.77.10",
     date: "2026-06-23",
     title: "SW install 견고화 — c.add→fetch+put 우회 + CDN best-effort (PWA 정상화)",

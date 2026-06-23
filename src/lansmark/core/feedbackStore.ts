@@ -19,6 +19,7 @@ export interface OutcomeRecord {
 export interface FeedbackStore {
   add(rec: OutcomeRecord): void | Promise<void>;
   query(cropId: string, region?: string): OutcomeRecord[] | Promise<OutcomeRecord[]>;
+  all(): OutcomeRecord[] | Promise<OutcomeRecord[]>;   // 전체 실측 조회 — Dream consolidate(정리)·ops 통계용. InMemory·Firestore 모두 구현.
 }
 
 export class InMemoryFeedbackStore implements FeedbackStore {

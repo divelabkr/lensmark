@@ -106,5 +106,9 @@ export async function fetchClimate(lat: number, lng: number, authKey: string): P
   if (text == null) return { frostRisk: "unknown", sunlightLevel: "unknown" };           // 실패 → auto가 mock 폴백
   const rows = parseAsosDaily(text);
   if (rows.length < 60) return { frostRisk: "unknown", sunlightLevel: "unknown" };        // 표본 부족(부분/단기 응답) → 폴백(레드팀 M5)
-  return { ...climateFromAsos(rows), stationName: st.name }; // 출처 관측소명 부착(근거 정직성)
+  // 정직성: 실제 관측 데이터 기간(rows 날짜 min~max)을 asOf로 — '최근 1년'이 구체적으로 언제~언제인지 명시(평년값 아님).
+  const ds = rows.map((r) => r.date).filter((d) => /^\d{8}$/.test(d)).sort();
+  const isoOf = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+  const asOf = ds.length ? `${isoOf(ds[0])}~${isoOf(ds[ds.length - 1])}` : undefined;
+  return { ...climateFromAsos(rows), stationName: st.name, asOf }; // 출처 관측소명·관측기간 부착(근거 정직성)
 }

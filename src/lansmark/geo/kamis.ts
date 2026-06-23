@@ -1,5 +1,5 @@
 import type { SigmaRange } from "../types";
-import type { RetailWeekly } from "../data/providers/types";
+import type { PriceResult, RetailWeekly } from "../data/providers/types";
 import { getKamisCode } from "../data/providers/kamisItemCodes";
 import { fetchJsonSafe } from "./fetchSafe";
 
@@ -37,7 +37,7 @@ export function pricesFromKamisItems(items: unknown): number[] {
   return rows.map((it: any) => Number(String(it.price ?? it.dpr1 ?? "").replace(/[^0-9.]/g, ""))).filter((n) => Number.isFinite(n) && n > 0);
 }
 /** cropId → 최근 도매가 범위(원/kg). 코드 미검증/오류면 null → 엔진은 base 단가로 폴백. */
-export async function fetchWholesale(cropId: string, certKey: string, certId: string): Promise<{ priceKrwPerKg: SigmaRange; source: string } | null> {
+export async function fetchWholesale(cropId: string, certKey: string, certId: string): Promise<PriceResult | null> {
   const code = getKamisCode(cropId);
   if (!code || !code.verified || !code.itemCode) return null;
   const end = new Date(), start = new Date(end.getTime() - 30 * 86400000);
@@ -46,7 +46,8 @@ export async function fetchWholesale(cropId: string, certKey: string, certId: st
   const j: any = await fetchJsonSafe(url); // 타임아웃·비JSON → null
   if (!j || (j?.data?.error_code && j.data.error_code !== "000")) return null; // 실패/KAMIS 오류코드 → 폴백
   const range = priceRangeFromSamples(pricesFromKamisItems(j?.data?.item));
-  return range ? { priceKrwPerKg: range, source: "KAMIS 일별 도매(원/kg)" } : null;
+  // 정직성: 표시값이 '오늘 실시세'가 아니라 '최근 30일 분포'임을 asOf로 명시(조회 종료일=오늘 기준 윈도우).
+  return range ? { priceKrwPerKg: range, source: "KAMIS 일별 도매(원/kg)", asOf: `~${fmt(end)}·최근 30일` } : null;
 }
 
 /** 가격 표본 → 주간 min·평균·max(원/kg). percentile이 아닌 '실최저~최고'(소비자 체감 시세는 직관적 폭이 적합). */
@@ -67,5 +68,5 @@ export async function fetchRetailWeekly(cropId: string, certKey: string, certId:
   const j: any = await fetchJsonSafe(url); // 타임아웃·비JSON → null
   if (!j || (j?.data?.error_code && j.data.error_code !== "000")) return null; // 실패/KAMIS 오류코드 → 표시 안 함
   const stats = retailStatsFromSamples(pricesFromKamisItems(j?.data?.item));
-  return stats ? { ...stats, source: "KAMIS 소매 주간(원/kg)" } : null;
+  return stats ? { ...stats, source: "KAMIS 소매 주간(원/kg)", asOf: `~${fmt(end)}·최근 7일` } : null;
 }

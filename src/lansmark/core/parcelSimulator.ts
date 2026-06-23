@@ -40,6 +40,8 @@ export interface ParcelInput extends SimulationInput {
   region?: string;
   context?: FactorContext;
   kamisPriceKrwPerKg?: SigmaRange;
+  kamisPriceAsOf?: string;          // KAMIS 단가 기준 시점(윈도우) — 결과로 노출(정직성: 30일 분포를 '실시세'로 오인 방지).
+  kamisPriceSource?: string;        // KAMIS 단가 출처 라벨.
   calibration?: CalibrationResult; // 실측 보정(플라이휠). 미주입 시 콜드스타트
 }
 export interface ParcelResult {
@@ -47,6 +49,8 @@ export interface ParcelResult {
   yieldKg: SigmaRange; costKrw: SigmaRange; priceKrwPerKg: SigmaRange;
   revenueKrw: SigmaRange; incomeKrw: SigmaRange; breakEvenPriceKrwPerKg: number;
   factors: Factor[]; confidence: ConfidenceGrade; dataLabel: "validated" | "estimated"; disclaimers: string[];
+  priceSource?: string;   // 단가 출처(KAMIS 라이브 주입 시만) — 없으면 base.refPrice(baseSource로 표기).
+  priceAsOf?: string;     // 단가 기준 시점(KAMIS 윈도우) — 정직성: '실시세'가 아니라 최근 N일 분포임 명시.
 }
 
 export function runParcelSimulation(input: ParcelInput): ParcelResult {
@@ -95,6 +99,9 @@ export function runParcelSimulation(input: ParcelInput): ParcelResult {
     cropId: input.cropId, cropNameKo: base.cropNameKo, baseSource: base.source, areaM2: input.land.areaM2,
     yieldKg, costKrw, priceKrwPerKg, revenueKrw, incomeKrw, breakEvenPriceKrwPerKg,
     factors: fb.all, confidence, dataLabel, disclaimers: getDefaultDisclaimers(),
+    // KAMIS 라이브 단가 주입 시만 출처·시점 노출(아니면 baseSource·baseYears가 표기). 정직성: 표시 단가가 '최근 N일 분포'임.
+    priceSource: input.kamisPriceKrwPerKg ? input.kamisPriceSource : undefined,
+    priceAsOf: input.kamisPriceKrwPerKg ? input.kamisPriceAsOf : undefined,
   };
 }
 
@@ -114,11 +121,12 @@ export async function runParcelSimulationWithProviders(input: ParcelInput, provi
   } catch { /* 폴백: climate 없이 진행(신뢰도 하향) */ }
 
   let kamisPriceKrwPerKg = input.kamisPriceKrwPerKg;
+  let kamisPriceAsOf = input.kamisPriceAsOf, kamisPriceSource = input.kamisPriceSource;
   // 실 시세(KAMIS)만 base.refPrice를 덮어쓴다 — mock 폴백 단가(source "mock-…")는 실 RDA 농가수취가보다 신뢰도가 낮아 주입하지 않음.
   //   (미검증 작물의 mock 단가가 실 RDA 단가를 깎아 소득을 음수로 만들던 오류 차단 — 예: 블루베리 mock 8,200 vs 실 RDA 23,706원/kg.)
-  try { const p = await providers.price.recentWholesale(input.cropId); if (p && !p.source.startsWith("mock")) kamisPriceKrwPerKg = p.priceKrwPerKg; } catch { /* 폴백: base 단가 */ }
+  try { const p = await providers.price.recentWholesale(input.cropId); if (p && !p.source.startsWith("mock")) { kamisPriceKrwPerKg = p.priceKrwPerKg; kamisPriceAsOf = p.asOf; kamisPriceSource = p.source; } } catch { /* 폴백: base 단가 */ }
 
-  return runParcelSimulation({ ...input, context: ctx, kamisPriceKrwPerKg });
+  return runParcelSimulation({ ...input, context: ctx, kamisPriceKrwPerKg, kamisPriceAsOf, kamisPriceSource });
 }
 
 /** ⑧ 플라이휠 러너: 저장소의 실측 보정(지형버킷 부분풀링)을 적용해 시뮬레이션. */

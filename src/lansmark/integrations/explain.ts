@@ -110,6 +110,7 @@ export const incomeTier = (won: number): number => {
 };
 
 const CACHE = new Map<string, { at: number; v: ExplainResult | null }>();
+const INFLIGHT = new Map<string, Promise<ExplainResult | null>>(); // 동시 동일버킷 LLM 호출을 1회로 합침(stampede·실과금 N배 차단 — provider cache의 in-flight 방어를 비용경로 explain에도)
 const TTL_MS = 24 * 3600 * 1000, NEG_TTL_MS = 10 * 60 * 1000, CAP = 500;
 
 /** 엔진 결과 → 평이한 설명. 키 없거나 실패 시 null(무중단). 날조 금액 새면 폐기. */
@@ -126,31 +127,43 @@ export async function fetchExplanation(input: ExplainInput): Promise<ExplainResu
     // 금액 불일치 → 아래에서 재생성
   }
 
-  const { system, user } = buildExplainMessages(input);
-  let out: ExplainResult | null = null;
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 15000);
-    // Anthropic Messages API(문서 형태: content[].text). 모델=claude-opus-4-8(기본).
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: "claude-opus-4-8", max_tokens: 400, system, messages: [{ role: "user", content: user }] }),
-      signal: ctrl.signal,
-    });
-    clearTimeout(t);
-    if (r.ok) {
-      const j = (await r.json()) as { content?: { type?: string; text?: string }[]; stop_reason?: string };
-      if (j?.stop_reason !== "refusal") {
-        const text = (Array.isArray(j?.content) ? j.content.filter((b) => b?.type === "text").map((b) => String(b.text ?? "")).join("").trim() : "").slice(0, 1200);
-        // 채택 조건(fail-closed): 텍스트 존재 + 엔진 미제공 금액 없음 + 날조 URL 없음. 출처는 입력 통과(Claude가 만들지 않음).
-        if (text && !hasUnprovidedMoney(text, allowedMoneyTokens(input)) && !hasFabricatedUrl(text)) {
-          out = { text, sources: input.sources.slice(0, 6), model: "claude-opus-4-8" };
+  // 동시 동일버킷 → 진행 중 LLM 호출 1개를 공유(stampede·실과금 N배 차단). 같은 키면 입력이 거의 동일하므로 결과 공유 가능.
+  let job = INFLIGHT.get(ck);
+  if (!job) {
+    job = (async (): Promise<ExplainResult | null> => {
+      const { system, user } = buildExplainMessages(input);
+      let out: ExplainResult | null = null;
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 15000);
+        // Anthropic Messages API(문서 형태: content[].text). 모델=claude-opus-4-8(기본).
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+          body: JSON.stringify({ model: "claude-opus-4-8", max_tokens: 400, system, messages: [{ role: "user", content: user }] }),
+          signal: ctrl.signal,
+        });
+        clearTimeout(t);
+        if (r.ok) {
+          const j = (await r.json()) as { content?: { type?: string; text?: string }[]; stop_reason?: string };
+          if (j?.stop_reason !== "refusal") {
+            const text = (Array.isArray(j?.content) ? j.content.filter((b) => b?.type === "text").map((b) => String(b.text ?? "")).join("").trim() : "").slice(0, 1200);
+            // 채택 조건(fail-closed): 텍스트 존재 + 엔진 미제공 금액 없음 + 날조 URL 없음. 출처는 입력 통과(Claude가 만들지 않음).
+            if (text && !hasUnprovidedMoney(text, allowedMoneyTokens(input)) && !hasFabricatedUrl(text)) {
+              out = { text, sources: input.sources.slice(0, 6), model: "claude-opus-4-8" };
+            }
+          }
         }
-      }
-    }
-    CACHE.set(ck, { at: Date.now(), v: out });
-    if (CACHE.size > CAP) { const k = CACHE.keys().next().value as string | undefined; if (k && k !== ck) CACHE.delete(k); }
-    return out;
-  } catch { return null; }
+      } catch { out = null; }
+      CACHE.set(ck, { at: Date.now(), v: out });
+      if (CACHE.size > CAP) { const k = CACHE.keys().next().value as string | undefined; if (k && k !== ck) CACHE.delete(k); }
+      return out;
+    })();
+    INFLIGHT.set(ck, job);
+    void job.finally(() => INFLIGHT.delete(ck)); // 완료 시 in-flight 정리(성공·실패 무관)
+  }
+  const out = await job;
+  // 버킷 공유라 '현재' 입력 금액과 정합 재확인(1원칙) — 어긋나면 설명 생략(무중단·null).
+  if (out && hasUnprovidedMoney(out.text, allowedMoneyTokens(input))) return null;
+  return out;
 }

@@ -52,7 +52,25 @@ export const API_CSP = "default-src 'none'; frame-ancestors 'none'";
 
 /** 인라인 `<script>`(속성 유무 무관)에 nonce 부여. 외부 `<script src>`는 제외(호스트 허용). 속성 보존(P2: 정확매칭 가용성 함정 제거). */
 export function injectNonce(html: string, nonce: string): string {
-  return html.replace(/<script(?![^>]*\bsrc=)([^>]*)>/gi, `<script nonce="${nonce}"$1>`);
+  const out = html.replace(/<script(?![^>]*\bsrc=)([^>]*)>/gi, `<script nonce="${nonce}"$1>`);
+  // 단일 실패점 방어(fail-closed): CSP script-src엔 'unsafe-inline'이 없어 인라인 <script>는 nonce가
+  // 정확히 박혀야만 실행된다. HTML 편집으로 정규식이 한 태그라도 놓치면 그 스크립트가 통째 차단돼
+  // HTML은 뜨나 앱 무동작(흰 화면)이 된다. 조용히 깨진 페이지를 내보내는 대신 즉시 에러로 드러낸다.
+  const missing = inlineScriptsMissingNonce(out, nonce);
+  if (missing.length > 0)
+    throw new Error(`injectNonce: 인라인 <script> ${missing.length}개에 nonce 미주입(CSP 차단 위험) — ${missing[0].slice(0, 100)}`);
+  return out;
+}
+
+/**
+ * 주입 사후검증 헬퍼(순수·테스트 가능). src 없는 인라인 `<script>` 여는태그 중 nonce가 빠진 것들을 반환.
+ * 비어있지 않으면 = CSP가 통째로 차단할 인라인 스크립트가 남았다는 뜻(흰 화면 위험). 외부 src 스크립트는
+ * 호스트 허용목록으로 실행되므로 nonce가 불필요 → 검사 제외.
+ */
+export function inlineScriptsMissingNonce(html: string, nonce: string): string[] {
+  return (html.match(/<script\b[^>]*>/gi) ?? [])
+    .filter((tag) => !/\bsrc\s*=/i.test(tag))           // 외부 src 스크립트 제외(호스트 허용)
+    .filter((tag) => !tag.includes(`nonce="${nonce}"`)); // nonce 누락 인라인만 남김
 }
 
 /* ─────────────────── 공통 보안 헤더(helmet 상당) ─────────────────── */

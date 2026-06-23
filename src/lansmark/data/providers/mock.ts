@@ -34,6 +34,7 @@ export const mockProviders: ProviderBundle = {
         summerMaxTempC: 32,   // 데모 평년 폭염기 일최고(근사)
         frostRisk: "medium",
         sunlightLevel: "high",
+        source: "mock-kma",   // 데모 예시값 표식 — climateEvidence가 '실측 아님' 라벨로 분기(가격 mock의 source:"mock-kamis"와 대칭 정직성)
       };
     },
     async parcel(loc) {

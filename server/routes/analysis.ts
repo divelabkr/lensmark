@@ -13,7 +13,8 @@ import { climateEvidence } from "../../src/lansmark/core/climateEvidence";
 import { buildParcelInput, sanitizeTerrain, isObject } from "../../src/lansmark/api/parcelRequest";
 import { runParcelSimulationWithProviders, type ParcelInput } from "../../src/lansmark/core/parcelSimulator";
 import { terrainBucketOf, toOutcomeRecord } from "../../src/lansmark/core/feedbackStore";
-import { getCalibration, getValidationLevel, VALIDATED_THRESHOLD } from "../../src/lansmark/core/calibration";
+import { getValidationLevel, VALIDATED_THRESHOLD } from "../../src/lansmark/core/calibration";
+import { getConsolidatedCalibration, markCalibrationDirty } from "../../src/lansmark/core/consolidateCache";
 import { buildGrowthCalendar } from "../../src/lansmark/core/calendar";
 import { buildGrowthRiskInfo } from "../../src/lansmark/core/growthRisk";
 import { anonSubmitterId, type SimulationEntitlement } from "../../src/lansmark/policy/entitlement";
@@ -100,7 +101,8 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
         try { const t = await ctx.providers.land.terrain({ lat, lng }); if (t) simCtx.terrain = t; } catch { /* 폴백: 보정 없이 */ }
       }
       const bucket = simCtx.terrain ? terrainBucketOf(simCtx.terrain) : undefined;
-      const calibration = await getCalibration(input.cropId, input.region, ctx.feedbackStore, bucket);
+      // Dream 스냅샷(이상치격리·recency·버킷승격)으로 정밀 보정 + 재계산 회피. 스냅샷에 없는 콜드/신규는 raw로 폴백(기존 동작 보존).
+      const calibration = await getConsolidatedCalibration(input.cropId, input.region, ctx.feedbackStore, bucket);
       const result = await runParcelSimulationWithProviders({ ...input, context: simCtx, calibration }, ctx.providers);
       // 4) 생육·출하 배선: 검증된 코어를 canonical 결과에 합쳐 노출(농지→작물→생육→출하 연결)
       const growth = { calendar: buildGrowthCalendar(input.cropId), risk: buildGrowthRiskInfo(input) };
@@ -144,6 +146,7 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
       { actualYieldKg: yC(act.actualYieldKg), actualCostKrw: mC(act.actualCostKrw), actualRevenueKrw: mC(act.actualRevenueKrw) },
     );
     ctx.feedbackStore.add(rec);
+    markCalibrationDirty(ctx.feedbackStore); // 새 실측 → Dream 스냅샷 무효화(다음 조회가 재정리·정밀화 즉시 반영)
     const level = await getValidationLevel(cropId, region, ctx.feedbackStore); // = 서로 다른 제출자 수
     json(res, 200, { ok: true, validationLevel: level, validated: level >= VALIDATED_THRESHOLD, bucket: rec.terrainBucket });
     return true;

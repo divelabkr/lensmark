@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.77.11 — 2026-06-23 · 4축 빈틈 5종 보강 — 데이터 기준일·mock기후 정직성·Dream 배선·explain dedup
+> 실시간화·캐시화·최저가·최고품질·데이터재활용 4축 점검에서 나온 빈틈 5종. 비용축은 진단상 이미 최적이라 무변경.
+- **정직성(1원칙)** ① 가격·기후 **기준일(asOf)** — KAMIS 도매가="최근 30일 분포"·KMA 기후=실관측 기간 명시(캐시값이 '오늘 실시세'로 오인되던 갭). 도매가 옆 "↳ …분포의 중앙값(오늘 단일 시세 아님)". ② **mock 기후 위장 차단** — `source:'mock-kma'` → climateEvidence가 "데모 예시값(실측 아님)" 라벨(가격 mock과 대칭).
+- **해자** ③ **Dream(consolidate) 프로덕션 배선** — 코드만 있고 미호출이던 이상치격리·recency·버킷승격을 store별 TTL 스냅샷 캐시(WeakMap·lazy·자기치유·피드백 시 무효화)로 simulate에 연결. 동일입력 재계산도 회피.
+- **효율** ④ **explain LLM in-flight dedup** — 동시 동일버킷 LLM 호출 1회로 합쳐 stampede·실과금 N배 차단. 콜드/신규는 raw 폴백(회귀 0).
+- tsc·vitest 654(+4: consolidateCache 배선 회귀가드)·arch·size 그린. min=0(무료) 유지.
+
 ## 0.77.10 — 2026-06-23 · SW install 견고화 — c.add→fetch+put 우회 + CDN best-effort (PWA 정상화)
 > 실브라우저(Chrome) 진단으로 사용자 갇힘 즉시 복구 + install redundant 버그 수정. 먹통은 이미 0(SW 미설치=서버 직접 로드 fail-safe)이고, 이건 PWA 정상화.
 - **진단**: 사용자가 옛 v4 SW의 빈 캐시(/app 없음)에 갇혀 "연결 실패". 서버·DNS·CF 200 정상(/api/는 SW 우회라 200, /app만 빈 캐시로 503). SW 해제+v5 로드로 즉시 복구.

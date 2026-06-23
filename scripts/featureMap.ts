@@ -229,10 +229,10 @@ export const FEATURES: Feature[] = [
 
   {
     id: "flywheel", name: "실측 보정 플라이휠(해자)", stage: "feedback",
-    flow: "실측 제출(유료게이트) → 작물·지형버킷 보정 → 다음 예측 현실화 → validated(서로 다른 제출자 5↑)",
+    flow: "실측 제출(유료게이트) → 작물·지형버킷 보정 → Dream 정리 스냅샷(이상치격리·recency·버킷승격·TTL캐시) → simulate가 정밀보정 사용 → validated(서로 다른 제출자 5↑)",
     endpoints: ["/api/feedback"],
-    files: ["src/lansmark/core/feedbackStore.ts", "src/lansmark/core/calibrate.ts", "src/lansmark/core/calibration.ts", "src/lansmark/core/consolidate.ts"],
-    tests: ["src/lansmark/tests/calibration.spec.ts", "src/lansmark/tests/consolidate.spec.ts", "src/lansmark/tests/terrainBucket.spec.ts"],
+    files: ["src/lansmark/core/feedbackStore.ts", "src/lansmark/core/calibrate.ts", "src/lansmark/core/calibration.ts", "src/lansmark/core/consolidate.ts", "src/lansmark/core/consolidateCache.ts"],
+    tests: ["src/lansmark/tests/calibration.spec.ts", "src/lansmark/tests/consolidate.spec.ts", "src/lansmark/tests/consolidateCache.spec.ts", "src/lansmark/tests/terrainBucket.spec.ts"],
     guardrails: ["엔티틀먼트 게이트", "validated=서로 다른 제출자 수", "입력 클램프(변조 방지)"], status: "live",
     notes: "★ B2C→B2B 다리: B2C 사용(일지 수확·실측 제출)이 작물·지역버킷 보정을 쌓아 demo를 실측으로 대체 → validated 누적이 곧 B2B(객관 근거 판매)의 전환 게이트. B2C 단계의 '실측 제출 인센티브'가 해자·B2B의 연료.",
   },
@@ -308,7 +308,7 @@ export const FEATURES: Feature[] = [
     flow: "요청 진입 → 보안헤더·CSP·CORS·레이트리밋(IP 신뢰경계) · 부팅 fail-closed",
     endpoints: [],
     files: ["src/lansmark/api/security.ts", "server/middleware.ts", "server/config.ts", "src/lansmark/api/httpUtil.ts"],
-    tests: ["src/lansmark/tests/security.spec.ts", "src/lansmark/tests/httpUtil.spec.ts", "src/lansmark/tests/appSecurity.spec.ts"],
+    tests: ["src/lansmark/tests/security.spec.ts", "src/lansmark/tests/httpUtil.spec.ts", "src/lansmark/tests/appSecurity.spec.ts", "src/lansmark/tests/injectNonceGuard.spec.ts"],
     guardrails: ["CSP·nonce", "레이트리밋", "CORS 허용목록", "fail-closed 부팅", "XFF 신뢰경계"], status: "platform",
   },
   {
