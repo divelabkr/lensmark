@@ -27,7 +27,7 @@ export interface QualityAssessment {
   sources: QualitySource[];                              // 차원별 게이트(피쉬본 뼈)
 }
 
-interface IntegrationLive { keyed: boolean; live: boolean; note?: string; runtime?: { state: string; live: number; fallback: number } } // runtime: 실제 호출 결과(off/pending/live/degraded) — '키=live' 거짓 녹색 차단
+interface IntegrationLive { keyed: boolean; live: boolean; note?: string; runtime?: { state: string; live: number; fallback: number; lastLiveAt?: number | null; ageMs?: number | null } } // runtime: 실제 호출 결과(off/pending/live/degraded) + 마지막 live 시각·경과(신선도) — '키=live' 거짓 녹색 차단
 export interface QualityInputs {
   integrations: Record<string, IntegrationLive>;                       // integrationReadiness().integrations
   rdaMeta: { rows: number; baseYears: number[] } | null;               // RDA_REAL_META — null=데모(미검증)

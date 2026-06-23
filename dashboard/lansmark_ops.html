@@ -247,6 +247,9 @@ const won=n=>"₩"+Number(n||0).toLocaleString("ko-KR");
 const fmt=n=>Number(n||0).toLocaleString("ko-KR"); // 숫자 콤마 공용(원화 외 카운트도 — O10)
 const ktime=iso=>{const d=new Date(iso||0);return isNaN(d)?String(iso||"").slice(11,19):d.toLocaleTimeString("ko-KR",{hour12:false});}; // UTC ISO → KST 표시(O5 — 한 화면 두 시간대 금지)
 // 런타임-인지 — '키=live' 거짓 녹색 차단. degraded(키 있으나 실 API 다운)는 폴백으로 강등, pending(실호출 검증 전)은 낙관이되 라벨로 정직.
+// 신선도/업타임 사람표기 — ms → "N분/시간/일 전" · 업타임 "N시간". 데이터가 '언제 기준'인지 운영자에게.
+function agoTxt(ms){ if(ms==null)return"—"; const s=Math.floor(ms/1000); if(s<60)return s+"초 전"; const m=Math.floor(s/60); if(m<60)return m+"분 전"; const h=Math.floor(m/60); if(h<24)return h+"시간 전"; return Math.floor(h/24)+"일 전"; }
+function uptimeTxt(ms){ if(ms==null)return"—"; const m=Math.floor(ms/60000); if(m<60)return m+"분"; const h=Math.floor(m/60); if(h<24)return h+"시간 "+(m%60)+"분"; return Math.floor(h/24)+"일 "+(h%24)+"시간"; }
 function statusOf(it){ const st=it.runtime&&it.runtime.state; if(st==="degraded")return["fallback","⚠폴백중"]; if(it.live)return["live",st==="pending"?"키있음·검증전":"LIVE"]; if(it.keyed)return["fallback","폴백"]; return["off","키 필요"]; }
 const LABEL={vworldTiles:"VWorld 타일",vworldGeocode:"주소→좌표",vworldParcel:"필지경계",vworldDem:"지형 DEM",kmaClimate:"기후(KMA)",kamisPrice:"도매가(KAMIS)",tossPayment:"결제(Toss)",pgWebhook:"PG 웹훅",paypalPayment:"결제(PayPal)",paypalWebhook:"PayPal 웹훅",rdaIncome:"소득 base(RDA)"};
 
@@ -363,7 +366,7 @@ async function load(){
   const ints=h.integrations||{}, keys=Object.keys(ints), liveN=keys.filter(k=>ints[k].live).length;
   $("int-c").textContent=`live ${liveN} / ${keys.length}`;
   $("intg-gauge").innerHTML=donut(liveN,keys.length||1,liveN>=keys.length*0.5?"var(--green)":"var(--amber)",liveN,"/ "+keys.length+" LIVE"); // 저조=amber(상태 stat과 색 일치 · O9)
-  $("intg-list").innerHTML=keys.map(k=>{const it=ints[k],[c,t]=statusOf(it);return `<div class="ig"><span class="idot ${c}"></span><span class="inm">${esc(LABEL[k]||k)}</span><span class="ist ${c}">${t}</span></div>`;}).join("");
+  $("intg-list").innerHTML=keys.map(k=>{const it=ints[k],[c,t]=statusOf(it);const fr=(it.runtime&&it.runtime.lastLiveAt!=null)?` <span style="color:var(--ink3);font-weight:600;font-size:10px" title="마지막 live 성공 시점">↳${agoTxt(it.runtime.ageMs)}</span>`:"";return `<div class="ig"><span class="idot ${c}"></span><span class="inm">${esc(LABEL[k]||k)}</span><span class="ist ${c}">${t}${fr}</span></div>`;}).join("");
   // 런타임 기준 정직 요약 — '키=live'가 아니라 '실제 호출 결과'로. 사용자가 지금 받는 게 실데이터인지 mock인지.
   const RT=keys.filter(k=>ints[k].runtime),rc=st=>RT.filter(k=>ints[k].runtime.state===st).length;
   $("intg-foot").innerHTML=`데이터 연동 런타임(사용자가 실제 받는 것): 🟢실데이터 <b>${rc("live")}</b> · ⚪검증전 ${rc("pending")} · 🔴폴백 <b>${rc("degraded")}</b> · ⚫키없음 ${rc("off")}`;
@@ -381,7 +384,7 @@ async function load(){
   const u=s.usage||{}, cfg=s.config||{}, livePct=keys.length?Math.round(liveN/keys.length*100):0;
   $("sys-gauge").innerHTML=gauge(livePct,100,s.storeDegraded?"var(--red)":"var(--green)","연동 가동률 %");
   $("sys-kpi").innerHTML=`<div class="stat-row"><div>${stat("v"+(h.version||"—"),"버전")}</div><div>${stat((cfg.store||"—")+(s.storeDegraded?" ⚠":""),"저장 방식",s.storeDegraded?"var(--red)":"var(--ink)")}</div><div>${stat(cfg.dataMode||"—","데이터 모드")}</div></div>`; // 운영자 어휘(O11 — 값은 원어 유지)
-  $("sys-stat").innerHTML=stat(fmt(u.simRuns||0),"정밀 시뮬")+stat(fmt(u.requests||0),"API 요청")+stat(fmt(u.errors||0),"5xx 에러",(u.errors>=10?"var(--red)":u.errors>0?"var(--amber)":"var(--ink3)")); // 5xx 1~9=주의·10+=시급(감시자 임계와 일치 · O9)
+  $("sys-stat").innerHTML=stat(fmt(u.simRuns||0),"정밀 시뮬")+stat(fmt(u.requests||0),"API 요청")+stat(fmt(u.errors||0),"5xx 에러",(u.errors>=10?"var(--red)":u.errors>0?"var(--amber)":"var(--ink3)"))+stat(u.latencyP95!=null?u.latencyP95+"ms":"—","응답 p95",(u.latencyP95>=2000?"var(--red)":u.latencyP95>=800?"var(--amber)":"var(--ink3)"))+stat(uptimeTxt(u.uptimeMs),"업타임"); // 5xx 1~9=주의·10+=시급 · p95 800/2000ms=주의/시급(느림 가시화) · 업타임=재시작 빈도(O9)
   $("sys-foot").textContent=s.storeDegraded?"⛔ 스토어 저하 — 영속 점검 필요":`정상 · 포트 ${esc(cfg.port||"—")}`;
 
   // ── 결제 · 유료권한(KPI + 게이트 토글 + revoke) ──

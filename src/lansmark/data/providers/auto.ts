@@ -2,7 +2,7 @@ import type { ProviderBundle } from "./types";
 import { mockProviders } from "./mock";
 import { liveProviders } from "./live";
 import { RDA_REAL_META } from "../rdaIncome.real"; // 실 RDA 적재 메타 — health rdaIncome 표시를 빌드 사실과 동기(낡은 하드코딩 금지)
-import { recordProvider, runtimeState, runtimeCounts } from "./runtimeHealth"; // 런타임 건강 — '키=live'가 아니라 '실제 호출 성공'을 집계(거짓 녹색 차단)
+import { recordProvider, runtimeState, runtimeCounts, runtimeFreshness } from "./runtimeHealth"; // 런타임 건강 — '키=live'가 아니라 '실제 호출 성공'을 집계(거짓 녹색 차단) + 마지막 live 시각(신선도)
 
 /**
  * Drop-in provider — "API만 붙이면 바로 운영".
@@ -14,7 +14,7 @@ const has = (...names: string[]) => names.every((n) => !!process.env[n]);
 
 async function pick<T>(key: string, useLive: boolean, live: () => Promise<T>, mock: () => Promise<T>, ok?: (v: T) => boolean): Promise<T> {
   if (useLive) {
-    try { const v = await live(); if (!ok || ok(v)) { recordProvider(key, "live"); return v; } } catch { /* throw → 폴백 */ }
+    try { const v = await live(); if (!ok || ok(v)) { recordProvider(key, "live", Date.now()); return v; } } catch { /* throw → 폴백 */ }
     recordProvider(key, "fallback"); // throw 또는 형태가드 실패 = 라이브 미채택 → mock. 조용한 폴백을 런타임 건강에 기록(거짓 녹색 차단).
   }
   return mock();
@@ -47,8 +47,8 @@ export const autoProviders: ProviderBundle = {
   },
 };
 
-/** 통합별 운영 준비도(operator readiness) — /api/health 에 노출. */
-export function integrationReadiness() {
+/** 통합별 운영 준비도(operator readiness) — /api/health 에 노출. now 주입=신선도 경과 계산(결정성). */
+export function integrationReadiness(now: number = Date.now()) {
   const k = (n: string) => !!process.env[n];
   const vworld = k("VWORLD_API_KEY");
   const kamis = k("KAMIS_API_KEY") && k("KAMIS_API_ID");
@@ -57,7 +57,8 @@ export function integrationReadiness() {
   const rt = (key: string, keyed: boolean) => {
     const st = !keyed ? "off" : runtimeState(key);
     const c = runtimeCounts(key);
-    return { live: keyed && st !== "degraded", runtime: { state: st, live: c.live, fallback: c.fallback } };
+    const fr = runtimeFreshness(key, now); // 마지막 live 성공 후 경과(신선도) — '키 있고 live지만 며칠째 폴백'을 시각으로 드러냄
+    return { live: keyed && st !== "degraded", runtime: { state: st, live: c.live, fallback: c.fallback, lastLiveAt: fr.lastLiveAt, ageMs: fr.ageMs } };
   };
   const dn = (base: string, state: string) => state === "degraded" ? base + " · ⚠ 키 있으나 최근 폴백(실 API 다운 추정)" : base;
   const G = rt("vworldGeocode", vworld), P = rt("vworldParcel", vworld), D = rt("vworldDem", true), C = rt("kmaClimate", k("KMA_API_KEY")), Km = rt("kamisPrice", kamis);

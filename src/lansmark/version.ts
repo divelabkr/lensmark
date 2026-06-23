@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.12",
+    date: "2026-06-23",
+    title: "운영 가시성 보강 — 데이터 신선도(마지막 live)·응답 p95·업타임",
+    items: [
+      "4축 점검의 공통 빈틈(신선도·지연 가시성) 해소: ① provider 런타임 건강에 '마지막 live 성공 시각(lastLiveAt·결정성 위해 at 주입식)' 추가 → integrationReadiness·/api/health·ops 통합목록에 '↳N시간 전' 노출(키 있고 live지만 며칠째 폴백 중인 소스를 시각으로 드러냄). ② API 응답시간 측정(미들웨어 res.finish·최근 200건 링버퍼) → ops 시스템건전성에 응답 p95(800/2000ms=주의/시급)·업타임(min=0 재시작 빈도) 노출 — 이전엔 5xx만 보여 '느려짐'이 사각이었음.",
+      "데이터 패스 묶임(featureMap 39기능+provider seam+arch 대조)·품질 게이트(A~D 신뢰 피쉬본)·ops 콘솔(7탭)은 이미 탄탄했고, 빠졌던 '신선도 시각·인프라 지연'만 채움. runtimeHealth 타임스탬프는 at 주입식이라 결정성 유지. tsc·vitest 654·arch·size 그린.",
+    ],
+  },
+  {
     version: "0.77.11",
     date: "2026-06-23",
     title: "4축 빈틈 5종 보강 — 데이터 기준일·mock기후 정직성·Dream 배선·explain dedup",

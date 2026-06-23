@@ -136,12 +136,17 @@ export const opsRoutes: RouteFn = async (ctx, req, res, url) => {
   });
 
   // 종합판정(watch) — Tier1 감시자(evaluateOps)와 동일 로직·임계·문장(SSOT): 콘솔 첫 화면 '지금 괜찮나' 한 줄(O6).
+  // 응답시간 백분위(p50/p95) + 업타임 — 운영자 '느려짐·재시작' 가시성(이전엔 5xx만 보여 '느림'이 사각).
+  const lat = ctx.metrics.latencies;
+  const pct = (p: number): number | null => { if (!lat.length) return null; const s = [...lat].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; };
   const usage = {
     simRuns: ctx.metrics.simRuns,
     entitlementsMinted: ctx.metrics.entitlementsMinted,
     mockPaysIssued: ctx.metrics.mockPaysIssued,
     requests: ctx.metrics.reqCount,
     errors: ctx.metrics.errCount,
+    uptimeMs: Date.now() - ctx.metrics.startedAt,                              // 업타임(min=0 콜드스타트 재시작 빈도 가시화)
+    latencyP50: pct(0.5), latencyP95: pct(0.95), latencySamples: lat.length,   // API 응답시간 백분위(최근 200건)
   };
   const storeDegraded = ctx.entitlement.isDegraded?.() ?? false;
   const clientErrors = { total: ctx.clientErrors.total(), distinct: ctx.clientErrors.distinct(), recent: ctx.clientErrors.recent(8) }; // 브라우저 에러 가시화(이전엔 안 보임)

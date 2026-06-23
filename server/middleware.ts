@@ -38,6 +38,13 @@ export function applySecurity(req: http.IncomingMessage, res: http.ServerRespons
       return true;
     }
     ctx.metrics.reqCount++; // 통과한 API 요청만 카운트
+    // 응답시간(latency) 측정 — 운영자 가시성(p50/p95). res.finish는 요청당 1회만 발화(리스너 누수 없음). 링버퍼 최근 200건.
+    const t0 = Date.now();
+    res.on("finish", () => {
+      const L = ctx.metrics.latencies;
+      L.push(Date.now() - t0);
+      if (L.length > 200) L.shift();
+    });
   }
   return false;
 }

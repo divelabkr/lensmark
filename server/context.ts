@@ -35,6 +35,8 @@ export interface Metrics {
   mockPaysIssued: number;   // 데모 결제 수
   reqCount: number;         // /api/* 요청 수(레이트리밋 통과분)
   errCount: number;         // 미처리 예외 수(500)
+  startedAt: number;        // 부팅 시각(ms) — 업타임 = now - startedAt(운영자 가시성: "느려짐·재시작" 사각 해소)
+  latencies: number[];      // 최근 API 응답시간(ms) 링버퍼(최대 200) — p50/p95 산출
 }
 
 /** 최근 활동 로그 1건. */
@@ -127,7 +129,7 @@ export function createContext(config: Config): Ctx {
     storeMode: stores.mode,
     storesReady,
     flushStores: stores.flushAll,
-    metrics: { simRuns: 0, entitlementsMinted: 0, mockPaysIssued: 0, reqCount: 0, errCount: 0 },
+    metrics: { simRuns: 0, entitlementsMinted: 0, mockPaysIssued: 0, reqCount: 0, errCount: 0, startedAt: Date.now(), latencies: [] },
     opsLog,
     logOps(type, detail) {
       const entry = { at: new Date().toISOString(), type, detail };
