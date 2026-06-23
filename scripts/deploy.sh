@@ -103,10 +103,13 @@ case "${1:-deploy}" in
     # 안정화(2026-06): memory 512Mi→1Gi(Node/tsx OOM 재시작 방지) + --cpu-boost(시작/재시작 시 CPU 부스트로 빠르고 안정적 부팅).
     #   ⚠ min=0(scale-to-zero)·max=1 — 무료 운영(2026-06-23 사용자 결정: "비용 안 내고 싶다, 무료로"). firestore blob 어댑터는 단일 인스턴스 정합 전제(동시 1=max).
     #     비용: min=0 → 무트래픽 시 인스턴스 0개=과금 0(Cloud Run 무료 티어 내) → 사실상 $0. (min=1은 24/7 풀CPU 상주 ~$30-50/월이라 사용자가 거부.)
-    #     ⚠ 먹통 이력·완화: 과거 min=0 콜드스타트가 SW navigation 재시도(3.6s)보다 길어 OFFLINE_HTML에 갇히는 먹통이 났었음(06-22, SW v3). → SW v4(0.77.8 캐시 앱셸 SWR)가 콜드스타트 중 '캐시 앱셸 즉시 + 백그라운드 서버 깨우기'로 '연결 실패' 화면을 차단(SW v3와 다름 → 재방문자 먹통 0). 첫 방문자(캐시 없음)는 콜드스타트 ~5-10초 로딩 감수(먹통 아님, 느림). 먹통 재발 시 min=1 즉시 복귀(비용 감수). no-cpu-throttling·cpu-boost 유지(drain 정합·콜드스타트 완화).
+    #     ⚠ 먹통 이력·완화: 과거 min=0 콜드스타트 OFFLINE_HTML 먹통(06-22, SW v3) → SW v4~v10(캐시 앱셸 SWR·버전 자동갱신)으로 차단. 먹통 재발 시 min=1 즉시 복귀.
+    #     💰 0원 설정(2026-06-23 사용자 "다 꺼·0원"): no-cpu-throttling 제거 → --cpu-throttling(request-based CPU). 인스턴스가 깨어있어도 '요청 처리 시간'만 과금
+    #        (이전 no-cpu-throttling = Instance-based billing = idle 인스턴스도 풀CPU 과금 = 6월 ₩67,712 폭증의 주범). min=0 + request-based = 무트래픽 시 $0.
+    #        ⚠ trade-off: blob write-through의 background flush가 응답 후 CPU를 덜 받을 수 있음 → 단 무트래픽이라 쓰기 거의 0·SIGTERM flushStores(종료 시 flush)는 동작 → 실질 위험 낮음. 트래픽 상시화 시 재검토.
     gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
       --allow-unauthenticated --min-instances 0 --max-instances 1 \
-      --memory 1Gi --cpu 1 --concurrency 80 --no-cpu-throttling --cpu-boost \
+      --memory 1Gi --cpu 1 --concurrency 80 --cpu-throttling --cpu-boost \
       --set-env-vars "$ENV_VARS" \
       --set-secrets "$SECRETS" \
       --quiet
