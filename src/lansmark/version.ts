@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.16",
+    date: "2026-06-23",
+    title: "랜드라인 가독성 — 필지 경계선 강조",
+    items: [
+      "선택 필지 경계선을 weight 2→3.5·진하게(opacity 1)·실선(dashArray 5 4)으로, 미리보기도 2.5로 — 토지 윤곽이 흐리게 보이던 것 개선(사용자 '랜드 라인 잘 보이게'). 지목 색은 landClass group(농경지/물/도시/임야/기타) 5종이라 사용자의 4구역은 다 '농경지' 초록 — 세부 지목(과수원/밭/논)별 색·추천 반영은 별개 과제(추천 로직이 지목을 안 보는 것 확인·다음 작업). tsc·vitest 659·arch·size 그린.",
+    ],
+  },
+  {
     version: "0.77.15",
     date: "2026-06-23",
     title: "버전 정합 — 옛 클라이언트 자동 갱신 안내(fail-open·차단 없음)",
