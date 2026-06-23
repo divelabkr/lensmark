@@ -6,6 +6,7 @@
 import type * as http from "node:http";
 import * as zlib from "node:zlib";
 import { genNonce, injectNonce, htmlCsp } from "../src/lansmark/api/security";
+import { APP_VERSION } from "../src/lansmark/version";
 import { MAX_BODY_BYTES } from "../src/lansmark/api/httpUtil";
 import { ValidationError } from "../src/lansmark/core/validate";
 
@@ -18,7 +19,8 @@ export function json(res: http.ServerResponse, code: number, body: unknown): voi
 /** HTML 응답: 요청별 nonce 생성 → 인라인 `<script>`에 주입 + HTML용 CSP(미들웨어의 API_CSP를 덮어씀). */
 export function sendHtml(res: http.ServerResponse, html: string, acceptEncoding?: string): void {
   const nonce = genNonce();
-  const out = injectNonce(html, nonce);
+  // 빌드 버전 주입(%BUILD_VER%) — 클라가 '내 HTML이 어느 버전인지' 알아 서버 최신과 비교(stale 자동 갱신 안내). 캐시(SW)된 옛 HTML엔 옛 버전이 박혀 stale 감지됨. fail-open: 비교 실패 시 차단 없음.
+  const out = injectNonce(html, nonce).replace(/%BUILD_VER%/g, APP_VERSION);
   const headers: Record<string, string> = {
     "Content-Type": "text/html; charset=utf-8",
     "Content-Security-Policy": htmlCsp(nonce),

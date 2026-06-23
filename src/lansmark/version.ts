@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.15",
+    date: "2026-06-23",
+    title: "버전 정합 — 옛 클라이언트 자동 갱신 안내(fail-open·차단 없음)",
+    items: [
+      "옛 버전 HTML(SW 캐시 등)에 갇히던 문제(이번 세션 먹통의 한 축) 대응: 서버가 sendHtml에 빌드 버전(window.__BUILD_VER) 주입 → 클라가 /api/version(서버 최신)과 비교해 stale 감지. stale이면 ① 배너 '새 버전·새로고침' ② SW 갱신 트리거(registration.update) ③ 작업 중(입력·모달·결제) 아닐 때 idle 1회 자동 새로고침. 무한루프 방지(sessionStorage·버전당 자동reload 1회).",
+      "⚠ fail-open: 버전을 못 가져오면(콜드스타트·네트워크) stale 판정 안 함·앱 정상 동작·차단 없음. 사용자 제안 중 '옛 버전이면 차단(못 켜게)'은 버전 체크가 콜드스타트/네트워크로 실패하면 멀쩡한 앱도 막아 '의도적 먹통'이 되므로 채택하지 않음(안내+자동갱신만으로 옛 버전 거의 제거). CACHE v8→v9. tsc·vitest 659·arch·size 그린.",
+    ],
+  },
+  {
     version: "0.77.14",
     date: "2026-06-23",
     title: "부팅 비콘 재시도 — 콜드스타트 관측 누락 방지",

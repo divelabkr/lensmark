@@ -325,6 +325,7 @@ function paywallCard(){const won=(PAY.priceKrw||4900).toLocaleString("ko-KR");re
   <div class="pw-note">${PAY.mode==="live"?"Toss 일반결제(카드·간편결제).":"※ 데모 결제(실 결제 아님) — Toss 키 연결 시 실결제 전환."} 구매 후 7일 · 이 브라우저에서 재계산 50회(공정 사용).</div></div>`;} // '무제한' 표기 금지 — 숫자는 서버 quota(config.ts 기본 50)와 동기 유지(과장=가드레일 위반)
 function bindPay(onPaid){const go=document.getElementById("pw-go");if(!go)return;go.addEventListener("click",async()=>{go.disabled=true;go.textContent="결제 처리 중…";try{await tossPay();}catch(e){const msg=(e&&e.message)||"";if(!/취소/.test(msg))alert("결제 실패: "+msg);go.disabled=false;go.textContent=`₩${(PAY.priceKrw||4900).toLocaleString("ko-KR")} · ${PAY.mode==="live"?"결제하고 열기":"데모 결제하고 열기"}`;return;}await onPaid();});}
 /* ===== 버전 · 변경점 팝업 ===== */
+window.__BUILD_VER="%BUILD_VER%"; // 빌드 버전(서버 sendHtml 주입) — 서버 최신과 비교해 stale(옛 캐시 HTML) 자동 갱신 안내. 치환 안 되면 '%'로 시작→stale 판정 제외(fail-safe).
 const SEEN_VER_KEY="lansmark_seen_version";let RELEASES_CACHE=[],CUR_VER="";
 function cmpVer(a,b){const pa=String(a).split(".").map(Number),pb=String(b).split(".").map(Number);for(let i=0;i<3;i++){const d=(pa[i]||0)-(pb[i]||0);if(d)return d;}return 0;}
 function setSeenVer(v){try{localStorage.setItem(SEEN_VER_KEY,v);}catch(_){}}
@@ -332,6 +333,7 @@ async function checkVersion(){
   let v;try{v=await jget("/api/version");}catch(_){return;}
   if(!v||!v.version)return;
   CUR_VER=v.version;RELEASES_CACHE=v.releases||[];
+  if(window.__BUILD_VER&&/^[0-9]/.test(window.__BUILD_VER)&&cmpVer(v.version,window.__BUILD_VER)>0)staleUpdate(v.version); // 내 빌드 < 서버 최신 → 옛 버전(stale) → 안내+자동갱신(fail-open·차단 없음)
   const vb=document.getElementById("ver");if(vb){vb.textContent="v"+v.version;vb.onclick=()=>RELEASES_CACHE.length&&showWhatsNew(CUR_VER,RELEASES_CACHE);}
   let seen=null;try{seen=localStorage.getItem(SEEN_VER_KEY);}catch(_){}
   if(seen===v.version)return;
@@ -340,6 +342,11 @@ async function checkVersion(){
   if(!rels.length){setSeenVer(v.version);return;}
   showWhatsNew(v.version,rels);
 }
+/* stale 자동 갱신(안내·비파괴·fail-open) — 옛 HTML(SW 캐시 등) 감지 시: 배너 + SW 갱신 트리거 + idle 1회 자동 새로고침.
+   ⚠ 차단 없음(앱은 계속 동작) · 무한루프 방지(sessionStorage로 버전당 자동reload 1회) · 작업 중(입력·모달·결제)엔 보류(배너만). */
+function isBusyNow(){var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return true;if(document.querySelector(".vmodal")||document.getElementById("pw-go"))return true;return false;}
+function showVerBanner(latest){if(document.getElementById("verbar"))return;var b=document.createElement("div");b.id="verbar";b.style.cssText="position:fixed;left:0;right:0;top:0;z-index:4100;background:#16a34a;color:#fff;font-size:12.5px;font-weight:700;text-align:center;padding:7px 12px;box-shadow:0 2px 8px rgba(0,0,0,.25)";b.innerHTML="🔄 새 버전("+esc(latest)+")이 있어요 — <button onclick=\"location.reload()\" style=\"margin-left:6px;padding:2px 10px;border:0;border-radius:7px;background:#fff;color:#16a34a;font-weight:800;cursor:pointer\">새로고침</button>";document.body.appendChild(b);}
+function staleUpdate(latest){showVerBanner(latest);try{if(navigator.serviceWorker)navigator.serviceWorker.getRegistration().then(function(r){if(r)r.update();}).catch(function(){});}catch(_){}var KEY="lm_autoreload",tried=null;try{tried=sessionStorage.getItem(KEY);}catch(_){}if(tried===latest)return;if(isBusyNow())return;setTimeout(function(){if(isBusyNow())return;try{sessionStorage.setItem(KEY,latest);}catch(_){}location.reload();},4500);}
 /* 첫 방문 웰컴 온보딩(1회) — 빈 지도 이탈 방지: 3단계 흐름 + 능동 CTA(내 위치/자가진단). vmodal 패턴·CSP-safe·esc. */
 function showWelcome(){
   if(document.getElementById("vmodal"))return;
