@@ -6,17 +6,14 @@
 #         미등록이면 실패 대신 스킵(혼란 방지). 권한 부족이면 gcloud가 명확한 메시지로 실패 → 권한 부여 후 재실행.
 name: deploy-run
 on:
-  workflow_dispatch:           # Actions 탭에서 버튼 1번으로 수동 배포
-  push:
-    branches: [main]
-    paths:                     # 앱/서버/엔진/데이터/배포설정 변경 시에만(불필요 배포 방지)
-      - 'src/**'
-      - 'server/**'
-      - 'dashboard/**'
-      - 'Dockerfile'
-      - 'package.json'
-      - 'scripts/deploy.sh'
-      - '.github/workflows/deploy-run.yml'
+  workflow_dispatch:           # Actions 탭에서 버튼 1번으로 수동 배포(권한 부여 후)
+  # ⚠ push 자동 트리거 제거(2026-06-23) — 이 SA에 Cloud Run 배포 권한(artifactregistry 등)이 없어 매 push마다 job이 실패,
+  #   "deploy-run: All jobs have failed" 이메일이 매번 발송됐다. 정식 배포는 로컬 `bash scripts/deploy.sh`(canonical)이고
+  #   이 워크플로는 미사용이므로, 불필요한 실패·알림을 없애려 push 트리거를 뗀다(workflow_dispatch 수동만 유지).
+  #   복원: SA에 run.admin·cloudbuild·artifactregistry·iam.serviceAccountUser·storage 부여 후 아래 push 블록 복구.
+  #   push:
+  #     branches: [main]
+  #     paths: ['src/**','server/**','dashboard/**','Dockerfile','package.json','scripts/deploy.sh','.github/workflows/deploy-run.yml']
 
 concurrency:                   # 동시 배포 충돌 방지(한 번에 하나)
   group: deploy-run
