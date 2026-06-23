@@ -15,6 +15,14 @@ REGION="asia-northeast3"
 PROJECT="lensmark-dev"
 APP_ORIGIN="https://lensmark.kr"
 
+# ───── 💰 비용 설정(SSOT) — 0원 운영이 기본값. 바꾸면 배포 직전 cost_guard가 검사·차단한다. ─────
+#   배경(2026-06): min=1 + no-cpu-throttling을 무심코 둬 트래픽 0인데 24/7 풀CPU 과금 → ₩67,712 폭증.
+#   교훈: "설정 실수를 잡아줄 안전장치 부재"가 진짜 원인 → 비싼 설정은 명시 동의(LANSMARK_ALLOW_COSTLY=1) 없이는 배포 거부.
+#   임시 변경은 파일 수정 없이 환경변수로: 예) 먹통 회귀 대응 시 → LANSMARK_MIN_INSTANCES=1 LANSMARK_ALLOW_COSTLY=1 bash scripts/deploy.sh
+MIN_INSTANCES="${LANSMARK_MIN_INSTANCES:-0}"        # 0=scale-to-zero(무트래픽 $0). ≥1=24시간 상주(비쌈 → 가드가 차단)
+MAX_INSTANCES="${LANSMARK_MAX_INSTANCES:-1}"        # 인스턴스 폭증 상한(firestore blob 단일인스턴스 정합 = 1)
+CPU_MODE="${LANSMARK_CPU_MODE:---cpu-throttling}"   # --cpu-throttling=요청 처리 시간만 과금(쌈). --no-cpu-throttling=상시 풀CPU(비쌈 → 가드가 차단)
+
 ENV_VARS="NODE_ENV=production"
 ENV_VARS+=",LANSMARK_STORE=firestore"                # 재배포 영속(A-7)
 ENV_VARS+=",LANSMARK_DATA_DIR=/tmp/lansmark-data"
@@ -39,6 +47,32 @@ for OPT in "LANSMARK_ALERT_WEBHOOK=lansmark-alert-webhook" "NCPMS_API_KEY=lansma
 done
 
 URL="https://lansmark-api-397463229960.${REGION}.run.app"   # 검증용(커스텀 도메인 전이라 Run URL)
+
+# ───── 💰 비용 가드 — 비싼 설정(상시 상주·상시 풀CPU)을 실수로 배포하는 걸 차단(2026-06 ₩67,712 재발 방지) ─────
+#   비싼 설정을 감지하면, 명시 동의(LANSMARK_ALLOW_COSTLY=1) 없이는 배포를 거부한다. '자동 차단'이 아니라 '실수 차단'.
+#   예산 알림(GCP Budget)은 사후 감지 — 이 가드는 사전 차단(애초에 비싼 설정이 라이브에 못 나가게).
+cost_guard() {
+  local costly=""
+  # min-instances ≥ 1 = 트래픽 없어도 인스턴스 상주 → 24시간 과금(6월 ₩67,712의 한 축)
+  if [ "${MIN_INSTANCES}" -ge 1 ] 2>/dev/null; then
+    costly+="  • min-instances=${MIN_INSTANCES} (≥1 = 24시간 상주 인스턴스 → 무트래픽에도 과금, 대략 월 \$30-50)\n"
+  fi
+  # no-cpu-throttling = idle 인스턴스도 풀CPU 과금(6월 폭증의 직접 원인)
+  if [ "${CPU_MODE}" = "--no-cpu-throttling" ]; then
+    costly+="  • no-cpu-throttling (깨어있는 인스턴스가 idle이어도 풀CPU 과금 = 6월 폭증의 직접 원인)\n"
+  fi
+  if [ -n "$costly" ]; then
+    echo "💰 비용 가드 — 비싼 설정 감지:"
+    printf '%b' "$costly"
+    if [ "${LANSMARK_ALLOW_COSTLY:-0}" != "1" ]; then
+      echo "  ✗ 배포 거부 — 무료 운영(min=0 + cpu-throttling)이 기본값입니다."
+      echo "    정말 비싼 설정이 필요하면(예: 먹통 회귀 대응) 의도를 명시해 재실행하세요:"
+      echo "      LANSMARK_ALLOW_COSTLY=1 LANSMARK_MIN_INSTANCES=1 bash scripts/deploy.sh"
+      exit 1
+    fi
+    echo "  ⚠ LANSMARK_ALLOW_COSTLY=1 확인 — 비싼 설정을 의도적으로 허용하고 진행합니다."
+  fi
+}
 
 # ───── 검증(배포 후·또는 단독) — '배포됨'이 아니라 '의도대로 동작함'을 확인 ─────
 verify() {
@@ -100,6 +134,8 @@ case "${1:-deploy}" in
     # 철자 footgun 가드 — firebase.json rewrite serviceId가 SERVICE와 일치하는지(lensmark↔lansmark 오타로 인한 사이트 전체 장애 사전 차단).
     FB_SVC="$(node -e "const j=require('./firebase.json');const r=(j.hosting.rewrites||[]).find(x=>x.run);process.stdout.write((r&&r.run&&r.run.serviceId)||'')" 2>/dev/null || true)"
     [ "$FB_SVC" = "$SERVICE" ] || { echo "  ✗ firebase.json serviceId('$FB_SVC') ≠ SERVICE('$SERVICE') — lensmark/lansmark 철자 불일치 → 배포 중단(과거 전체 장애 원인)"; exit 1; }
+    cost_guard   # 💰 비싼 설정(상시 상주·상시 풀CPU) 실수 배포 차단 — 2026-06 ₩67,712 재발 방지
+    echo "  💰 비용 설정: min=${MIN_INSTANCES} max=${MAX_INSTANCES} cpu=${CPU_MODE} (무료 운영 기본값)"
     # 안정화(2026-06): memory 512Mi→1Gi(Node/tsx OOM 재시작 방지) + --cpu-boost(시작/재시작 시 CPU 부스트로 빠르고 안정적 부팅).
     #   ⚠ min=0(scale-to-zero)·max=1 — 무료 운영(2026-06-23 사용자 결정: "비용 안 내고 싶다, 무료로"). firestore blob 어댑터는 단일 인스턴스 정합 전제(동시 1=max).
     #     비용: min=0 → 무트래픽 시 인스턴스 0개=과금 0(Cloud Run 무료 티어 내) → 사실상 $0. (min=1은 24/7 풀CPU 상주 ~$30-50/월이라 사용자가 거부.)
@@ -108,8 +144,8 @@ case "${1:-deploy}" in
     #        (이전 no-cpu-throttling = Instance-based billing = idle 인스턴스도 풀CPU 과금 = 6월 ₩67,712 폭증의 주범). min=0 + request-based = 무트래픽 시 $0.
     #        ⚠ trade-off: blob write-through의 background flush가 응답 후 CPU를 덜 받을 수 있음 → 단 무트래픽이라 쓰기 거의 0·SIGTERM flushStores(종료 시 flush)는 동작 → 실질 위험 낮음. 트래픽 상시화 시 재검토.
     gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
-      --allow-unauthenticated --min-instances 0 --max-instances 1 \
-      --memory 1Gi --cpu 1 --concurrency 80 --cpu-throttling --cpu-boost \
+      --allow-unauthenticated --min-instances "$MIN_INSTANCES" --max-instances "$MAX_INSTANCES" \
+      --memory 1Gi --cpu 1 --concurrency 80 $CPU_MODE --cpu-boost \
       --set-env-vars "$ENV_VARS" \
       --set-secrets "$SECRETS" \
       --quiet
