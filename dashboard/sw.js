@@ -1,5 +1,5 @@
 /* LENSMARK 서비스워커 — 앱 쉘 캐시(오프라인·설치형 PWA). API는 항상 네트워크(동적·캐시 금지). */
-const CACHE = "lensmark-shell-v7"; // v6→v7: OFFLINE_HTML이 localStorage('lm_offline_seen')를 남김 → 다음 정상 로드 때 앱이 '직전 오프라인(연결 실패) 겪음'을 /api/client-diag로 자동 보고(먹통 관측·복구는 안 함). install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
+const CACHE = "lensmark-shell-v8"; // v7→v8: 부팅 비콘(/api/client-diag)에 5xx/실패 재시도 추가(app.html) — 콜드스타트 윈도우에 비콘이 503으로 누락되던 것 방지(관측 도달 보장). OFFLINE 플래그·install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
 const SHELL = [
   "/app", "/manifest.webmanifest", "/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",

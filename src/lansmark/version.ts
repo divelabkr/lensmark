@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.14",
+    date: "2026-06-23",
+    title: "부팅 비콘 재시도 — 콜드스타트 관측 누락 방지",
+    items: [
+      "0.77.13 자동 관측을 라이브 실브라우저로 검증하다 발견: client-diag route는 정상(curl·수동 fetch 모두 204)인데 '부팅 시점 자동 비콘'만 503 — min=0 콜드스타트 윈도우에 비콘이 걸려 누락됐다(정작 관측하려던 콜드스타트를 그 순간 놓치는 아이러니). → 비콘에 5xx/네트워크 실패 시 0.9s 후 1회 재시도 추가(app.html·인스턴스 깬 뒤 관측 도달). CACHE v7→v8. 관측만·복구 아님(설계 불변식 유지). tsc·vitest 659·arch·size 그린.",
+    ],
+  },
+  {
     version: "0.77.13",
     date: "2026-06-23",
     title: "에러 자동 관측 구조 — '사용자 설명 의존' 탈피(관측·추적·가이드 / 복구 권한 없음)",
