@@ -1,5 +1,5 @@
 /* LENSMARK 서비스워커 — 앱 쉘 캐시(오프라인·설치형 PWA). API는 항상 네트워크(동적·캐시 금지). */
-const CACHE = "lensmark-shell-v6"; // v5→v6: install의 /app 캐시를 c.add→fetch+put로 교체(c.add가 SW 컨텍스트서 install을 redundant로 만들던 것 우회) + CDN은 개별 .catch best-effort(cross-origin이 CSP connect-src에 막혀도 install 안 깨짐). 빈캐시 fail-safe·updateViaCache 유지.
+const CACHE = "lensmark-shell-v7"; // v6→v7: OFFLINE_HTML이 localStorage('lm_offline_seen')를 남김 → 다음 정상 로드 때 앱이 '직전 오프라인(연결 실패) 겪음'을 /api/client-diag로 자동 보고(먹통 관측·복구는 안 함). install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
 const SHELL = [
   "/app", "/manifest.webmanifest", "/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
@@ -12,6 +12,8 @@ const OFFLINE_HTML =
   "<h2 style='font-size:1.25rem;margin:0 0 .6rem'>지금 연결할 수 없습니다</h2>" +
   "<p style='color:#6b7280;line-height:1.65;margin:0 0 1.3rem'>네트워크가 일시적으로 불안정하거나 차단된 상태입니다. 잠시 후 새로고침하거나 다른 네트워크(예: 모바일 데이터)로 시도해 주세요.</p>" +
   "<button onclick='location.reload()' style='padding:.7rem 1.5rem;border:0;border-radius:10px;background:#16a34a;color:#fff;font-weight:700;font-size:1rem;cursor:pointer'>새로고침</button>" +
+  // 관측(복구 아님): 연결 실패 화면을 띄웠다는 사실만 남긴다 → 다음 정상 로드 때 앱이 자동 보고. 여기서 unregister·캐시삭제 같은 복구는 하지 않는다.
+  "<script>try{localStorage.setItem('lm_offline_seen','1')}catch(e){}</script>" +
   "</body></html>";
 
 self.addEventListener("install", (e) => {

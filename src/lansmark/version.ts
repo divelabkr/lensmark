@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.77.13",
+    date: "2026-06-23",
+    title: "에러 자동 관측 구조 — '사용자 설명 의존' 탈피(관측·추적·가이드 / 복구 권한 없음)",
+    items: [
+      "전환: '먹통' 사용자 설명 의존 → 앱이 부팅 때 자기 환경(SW상태·직전 오프라인·콜드스타트·뷰포트·캐시버전)을 POST /api/client-diag로 익명 자동 보고. window.onerror(JS 에러)로 안 잡히던 '안 뜨는 상태'(SW갇힘·OFFLINE_HTML·콜드스타트)를 관측. OFFLINE_HTML이 localStorage 플래그를 남겨 다음 정상 로드가 '직전 오프라인(먹통)'조차 자동 보고. 운영자는 ops '사용자 환경 진단' 패널에서 직전 오프라인율·SW분포·콜드스타트·캐시버전 잔존(옛 SW 갇힘)을 추적.",
+      "⚠ 불변식: 관측/추적/가이드 전용 — SW unregister·캐시삭제·재시작 같은 복구는 절대 자동으로 하지 않는다(가이드는 '무엇을 점검하라' 텍스트일 뿐). clientDiag store(read/append only)·회귀가드 5종(복구 없음 명시 검증 포함). sw.js CACHE v6→v7(OFFLINE 플래그). tsc·vitest 659(+5)·arch·size 그린.",
+    ],
+  },
+  {
     version: "0.77.12",
     date: "2026-06-23",
     title: "운영 가시성 보강 — 데이터 신선도(마지막 live)·응답 p95·업타임",

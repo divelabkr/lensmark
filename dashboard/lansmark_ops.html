@@ -202,6 +202,7 @@
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--amber-s)">⚙️</span>시스템 · 건전성</div><div style="display:flex;gap:16px;align-items:center;margin-bottom:12px"><div id="sys-gauge" style="flex:0 0 auto"></div><div id="sys-kpi" style="flex:1"></div></div><div id="sys-stat" class="stat-row"></div><div class="w-foot" id="sys-foot"></div></section>
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--line2)">🧾</span>최근 활동</div><div id="recent"><div class="empty">활동 없음</div></div><div class="w-foot">결제 · 웹훅 · 게이트 · 실효</div></section>
         <section class="w"><div class="w-h"><span class="ico" style="background:var(--red-s)">🐞</span>클라이언트 에러<span class="meta" id="ce-c">—</span></div><div id="clienterr"><div class="empty">없음</div></div><div class="w-foot">브라우저(사용자 화면) JS 에러 · 새 종류 발생 시 경보(LANSMARK_ALERT_WEBHOOK)</div></section>
+        <section class="w"><div class="w-h"><span class="ico" style="background:var(--blue-s)">📡</span>사용자 환경 진단<span class="meta" id="cd-c">—</span></div><div id="clientdiag"><div class="empty">—</div></div><div class="w-foot">앱이 부팅 때 자동 보고(SW상태·직전 오프라인·콜드스타트) — 먹통을 '사용자 설명' 없이 관측 · 가이드만(자동 복구 안 함)</div></section>
       </div>
     </section>
 
@@ -443,6 +444,16 @@ async function load(){
   const ce=s.clientErrors||{total:0,distinct:0,recent:[]};
   $("ce-c").textContent=ce.distinct?`${ce.distinct}종 · ${ce.total}건`:"0";
   $("clienterr").innerHTML=(ce.recent&&ce.recent.length)?ce.recent.map(e=>`<div class="rec"><span class="rt" style="color:var(--red);background:var(--red-s)">×${esc(e.n)}</span><span class="rd" title="${esc((e.src||'')+' · '+(e.uaSample||''))}">${esc(e.msg)}${e.src?' <span style="color:var(--ink3)">@ '+esc(e.src)+'</span>':''}</span><span class="rti">${esc(ktime(e.lastAt))}</span></div>`).join(""):`<div class="empty">없음 — 사용자 브라우저에서 에러가 나면 여기 + (웹훅 설정 시) 즉시 경보</div>`;
+  // ── 사용자 환경 진단 — 먹통/SW갇힘/콜드스타트 자동 관측(window.onerror로 안 잡히는 '안 뜨는 상태'). 복구는 안 함(가이드만). ──
+  const cd=s.clientDiag||{total:0,offlinePrev:0,slowBoot:0,sw:{},byCacheVer:{},byViewport:{}};
+  $("cd-c").textContent=cd.total?`부팅 ${fmt(cd.total)}건`:"—";
+  const cdSw=Object.entries(cd.sw||{}).sort((a,b)=>b[1]-a[1]),cdVer=Object.entries(cd.byCacheVer||{}).sort((a,b)=>b[1]-a[1]);
+  const offPct=cd.total?Math.round((cd.offlinePrev||0)/cd.total*100):0;
+  $("clientdiag").innerHTML=cd.total?
+    `<div class="stat-row">`+stat(fmt(cd.offlinePrev||0),"직전 오프라인",(cd.offlinePrev>0?(offPct>=10?"var(--red)":"var(--amber)"):"var(--ink3)"))+stat(fmt(cd.slowBoot||0),"콜드스타트>3s",(cd.slowBoot>0?"var(--amber)":"var(--ink3)"))+stat(((cd.byViewport||{}).mobile||0)+"/"+((cd.byViewport||{}).desktop||0),"모바일/PC")+`</div>`+
+    `<div class="src" style="margin-top:8px">SW: ${cdSw.map(([k,v])=>esc(k)+" <b>"+v+"</b>").join(" · ")||"—"}</div>`+
+    `<div class="src">캐시버전: ${cdVer.map(([k,v])=>esc(String(k).replace("lensmark-shell-",""))+" <b>"+v+"</b>").join(" · ")||"—"}${cdVer.length>1?' <span style="color:var(--amber)">⚠ 옛 버전 잔존(갱신 막힘 의심)</span>':''}</div>`
+    :`<div class="empty">아직 비콘 없음 — 앱이 부팅되면 환경(SW·오프라인·콜드스타트)을 자동 보고</div>`;
 
   // ── 시계열 파생(종합·회원·추세) — analytics.days/signups + members ──
   const days=an.days||[], signups=an.signups||{}, mem=s.members||{accounts:0,sessions:0};

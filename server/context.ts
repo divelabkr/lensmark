@@ -26,6 +26,7 @@ import type { AccountStore } from "../src/lansmark/account/accountStore";
 import type { SessionStore } from "../src/lansmark/account/sessionStore";
 import { createPushSender, InMemoryPushSubscriptionStore, type PushSender, type PushSubscriptionStore } from "../src/lansmark/integrations/push";
 import { ClientErrorStore } from "../src/lansmark/ops/clientErrors";
+import { ClientDiagStore } from "../src/lansmark/ops/clientDiag";
 import type { Config } from "./config";
 
 /** 운영 대시보드 카운터(가변). */
@@ -79,6 +80,8 @@ export interface Ctx {
   pushSender: PushSender;
   /** 클라이언트(브라우저) 에러 텔레메트리 — 사용자 화면 에러를 ops에 가시화 + 웹훅 실시간 경보(LANSMARK_ALERT_WEBHOOK). 메모리(휘발). */
   clientErrors: ClientErrorStore;
+  /** 클라이언트 환경 진단(관측·추적·가이드 — 복구 권한 없음) — 먹통/SW갇힘/오프라인/콜드스타트를 앱이 자동 보고(window.onerror로 안 잡히는 '안 뜨는 상태'). 기록/집계 전용. */
+  clientDiag: ClientDiagStore;
   /** 백업/복구(blob 계층 스냅샷) — ops에서 '지금 백업'·'복구'. file/firestore 실동작, memory는 휘발(비대상). */
   backup: BackupManager;
 }
@@ -162,6 +165,7 @@ export function createContext(config: Config): Ctx {
     pushSubs: new InMemoryPushSubscriptionStore(),
     pushSender: createPushSender(),
     clientErrors: new ClientErrorStore(), // 브라우저 에러 가시화(이전엔 안 보임) — 새 distinct만 경보
+    clientDiag: new ClientDiagStore(),    // 환경 진단(SW상태·오프라인·콜드스타트) 자동 관측 — '먹통' 사용자 설명 의존 탈피(복구는 안 함)
     backup, // 백업/복구 매니저(blob 계층 스냅샷)
   };
 }

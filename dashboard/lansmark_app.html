@@ -1707,6 +1707,9 @@ document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;const m=docum
 /* PWA: 서비스워커 등록(설치형·오프라인 쉘). 실패는 무시(앱은 정상 동작).
    updateViaCache:'none' — 브라우저가 sw.js를 HTTP 캐시(CF 4시간 엣지캐시) 거치지 않고 항상 네트워크에서 받아 업데이트 체크. 옛 SW에 갇혀 먹통나던 핵심 원인 차단. */
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(function(){});});}
+/* 환경 진단 비콘(관측 전용·복구 없음) — 부팅 시 자기 상태(SW·직전 오프라인·콜드스타트·뷰포트·캐시버전)를 익명 보고.
+   위 report()는 JS 에러만 잡는다 → 이건 '안 뜨는/이상한 상태'(먹통·SW갇힘·콜드스타트)를 관측. 여기서 어떤 복구도 하지 않는다(unregister·캐시삭제 금지). */
+(function(){function diag(){var b={online:navigator.onLine,viewport:(innerWidth<768?"mobile":"desktop"),offlinePrev:false};try{if(localStorage.getItem("lm_offline_seen")){b.offlinePrev=true;localStorage.removeItem("lm_offline_seen");}}catch(_){}var nav=performance.getEntriesByType&&performance.getEntriesByType("navigation")[0];b.bootMs=nav?Math.round(nav.loadEventEnd):null;b.sw=(navigator.serviceWorker&&navigator.serviceWorker.controller)?"controlled":(navigator.serviceWorker?"none":"unsupported");var done=false,post=function(){if(done)return;done=true;try{fetch("/api/client-diag",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b),keepalive:true}).catch(function(){});}catch(_){}};try{var tasks=[];if(navigator.serviceWorker&&!navigator.serviceWorker.controller){tasks.push(navigator.serviceWorker.getRegistration().then(function(r){if(r)b.sw=r.active?"active":(r.installing?"installing":"redundant");}).catch(function(){}));}if(window.caches){tasks.push(caches.keys().then(function(ks){b.cacheVer=(ks&&ks[0])||"none";}).catch(function(){}));}if(tasks.length){Promise.all(tasks).then(post);setTimeout(post,1500);}else post();}catch(_){post();}}if(document.readyState==="complete")diag();else window.addEventListener("load",diag);})();
 </script>
 </body>
 </html>

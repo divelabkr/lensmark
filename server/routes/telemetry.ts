@@ -8,6 +8,23 @@ import { notifyAlertWebhook } from "../../src/lansmark/ops/clientErrors";
 import type { RouteFn } from "../context";
 
 export const telemetryRoutes: RouteFn = async (ctx, req, res, url) => {
+  // ── 환경 진단 비콘(관측 전용·복구 없음) — 먹통/SW갇힘/오프라인/콜드스타트를 앱이 부팅 때 자동 보고.
+  //   window.onerror(아래 client-error)는 'JS 에러'만 잡는다. 이건 '안 뜨는/이상한 상태'(에러 아님)를 관측한다.
+  if (url.pathname === "/api/client-diag" && req.method === "POST") {
+    let d: Record<string, unknown> = {};
+    try { const p = JSON.parse((await readBody(req)) || "{}"); if (isObject(p)) d = p; } catch { /* 깨진 바디 → 빈 객체 */ }
+    const guide = ctx.clientDiag.record({
+      sw: typeof d.sw === "string" ? d.sw.slice(0, 20) : undefined,
+      offlinePrev: d.offlinePrev === true,
+      bootMs: typeof d.bootMs === "number" && Number.isFinite(d.bootMs) ? Math.min(60000, Math.max(0, d.bootMs)) : undefined,
+      online: d.online === true,
+      cacheVer: typeof d.cacheVer === "string" ? d.cacheVer.slice(0, 30) : undefined,
+      viewport: d.viewport === "mobile" || d.viewport === "desktop" ? d.viewport : undefined,
+    });
+    if (guide) { ctx.logOps("환경진단", guide.guide); void notifyAlertWebhook(`📡 [LENSMARK] ${guide.guide}`); } // 가이드(점검 권장)만 — 자동 복구 트리거 없음
+    res.writeHead(204); res.end(); // 반사 0(client-error와 동일 보안)
+    return true;
+  }
   if (url.pathname !== "/api/client-error" || req.method !== "POST") return false;
   let b: Record<string, unknown> = {};
   try { const p = JSON.parse((await readBody(req)) || "{}"); if (isObject(p)) b = p; } catch { /* 깨진/과대 바디 → 빈 객체(아래서 204) */ }
