@@ -5,8 +5,12 @@
 #   행동권 0 — 읽기·진단만. (Slack/이슈 자동생성 등 알림 채널 확장은 후속 step으로.)
 name: ops-watch
 on:
-  schedule:
-    - cron: "0 0,6,12,18 * * *" # 6시간마다(00·06·12·18 UTC) — 서버다운·키만료·스토어 sealed를 반나절 늦게 인지하던 사각 축소(OP-1). 저트래픽이라 실행비용 무관
+  # ⚠ cron 자동 트리거 일시 중단(2026-06-24) — GCP billing OFF로 lensmark.kr(Cloud Run)이 '의도적으로' 중단된 상태라,
+  #   워처가 6시간마다 사이트를 찔러 "다운"으로 실패 → "ops-watch: All jobs have failed" 이메일이 반복 발송됐다.
+  #   사이트 중단은 사고가 아니라 결정(진짜 0원·사용자)이므로 워처를 멈춘다. ✅ billing 재개 시 아래 schedule 블록 주석 해제.
+  #   (그동안 수동 점검이 필요하면 Actions 탭 → ops-watch → Run workflow 로 workflow_dispatch 실행.)
+  # schedule:
+  #   - cron: "0 0,6,12,18 * * *" # 6시간마다(00·06·12·18 UTC) — billing 재개 시 복원
   workflow_dispatch: {} # 수동 실행(Run workflow)
 jobs:
   watch:
