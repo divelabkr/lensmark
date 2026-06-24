@@ -52,6 +52,7 @@ export const EXCLUDED = {
     "src/lansmark/data/cropPests.seed.ts", "server/context.ts",
     "src/lansmark/api/_rateLimit.ts", // ⚠ 미사용(Next.js 예시 전용) · 실서버는 security.ts 사용
     "src/lansmark/version.archive.ts", // 릴리스 노트 아카이브(런타임 미사용 — version.ts 슬림)
+    "src/lansmark/integrations/callBudget.ts", // 외부 유료 API 일일 호출 상한(explain·perplexity 횡단 비용 가드)
   ],
 };
 

@@ -81,15 +81,15 @@ verify() {
   WANT=$(node -p "require('./package.json').version" 2>/dev/null || echo "?")
   V=$(curl -fsS --max-time 20 "${URL}/api/version" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log(j.releases?j.releases[0].version:j.version)})")
   echo "  버전: 라이브 ${V} / 레포 ${WANT}"
-  [ "$V" = "$WANT" ] || { echo "  ✗ 버전 불일치 — 빌드가 옛 코드일 수 있음"; exit 1; }
+  [ "$V" = "$WANT" ] || { echo "  ✗ 버전 불일치 — 빌드가 옛 코드일 수 있음"; return 1; }
   H=$(curl -fsS --max-time 20 "${URL}/api/health")
-  echo "$H" | grep -q '"store":"firestore"' || { echo "  ✗ store≠firestore — 영속 설정 누락(재배포 데이터 유실 위험)"; exit 1; }
+  echo "$H" | grep -q '"store":"firestore"' || { echo "  ✗ store≠firestore — 영속 설정 누락(재배포 데이터 유실 위험)"; return 1; }
   echo "$H" | grep -q '"kamisPrice":{"keyed":true,"live":true' || echo "  ⚠ KAMIS live 아님(시크릿 확인)"
   # 스모크: 시뮬 1건(엔진+실데이터 경로) — 한국어 에러/200 확인
   local CODE
   CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 -X POST "${URL}/api/simulate" -H "Content-Type: application/json" \
     -d '{"land":{"areaM2":3300,"soilEvidence":{"source":"none"}},"cropId":"apple","salesChannel":"mixed","region":"경상북도"}')
-  [ "$CODE" = "200" ] || { echo "  ✗ /api/simulate ${CODE}"; exit 1; }
+  [ "$CODE" = "200" ] || { echo "  ✗ /api/simulate ${CODE}"; return 1; }
   echo "  ✓ 버전·store·시뮬 스모크 통과"
   # 커스텀 도메인 end-to-end 스모크 — 사용자 실제 경로(도메인→Hosting→Cloudflare→Cloud Run)까지 살아있는지.
   #   과거 serviceId 오타·통신사 IP 차단 류 장애를 '배포 단계'에서 포착. 단 도메인/DNS/Cloudflare는 배포와 타이밍이 달라 실패해도 경고만(비차단).
@@ -150,8 +150,15 @@ case "${1:-deploy}" in
       --set-secrets "$SECRETS" \
       --quiet
     hosting   # Hosting rewrite도 함께 반영(firebase.json 변경이 라이브에 닿도록 — SSOT 일원화)
-    verify
-    echo "✓ 배포+검증 완료. 문제 시: bash scripts/deploy.sh rollback"
+    # 🔁 배포 후 자동 롤백 — verify(버전·store·시뮬 200) 실패 = 나쁜 버전이 라이브에 올라간 것 → 사람 개입 전에 직전 정상 리비전으로 자동 복귀.
+    #   verify를 'if 조건'으로 부르면 내부 실패가 set -e로 스크립트를 죽이지 않고 return 1로 흘러 여기서 분기된다(curl 실패 포함).
+    if verify; then
+      echo "✓ 배포+검증 완료. 문제 시: bash scripts/deploy.sh rollback"
+    else
+      echo "  ✗✗ 배포 검증 실패 — 나쁜 버전이 라이브일 수 있음 → 자동 롤백 시작..."
+      rollback || echo "  ⚠ 자동 롤백도 실패(직전 리비전 없음 등) — 수동 확인 필요: bash scripts/deploy.sh rollback"
+      exit 1
+    fi
     ;;
   *) echo "사용: bash scripts/deploy.sh [deploy|verify|rollback|hosting]"; exit 1 ;;
 esac

@@ -9,6 +9,7 @@
  *   모델: 기본 claude-opus-4-8(스킬 기준). 비용 민감하면 소유자가 claude-haiku-4-5로 교체 가능.
  */
 import { hasEnv } from "./types";
+import { tryConsume } from "./callBudget"; // 일일 호출 상한(폭주 비용 차단)
 
 export interface ExplainInput {
   cropNameKo: string;
@@ -130,6 +131,8 @@ export async function fetchExplanation(input: ExplainInput): Promise<ExplainResu
   // 동시 동일버킷 → 진행 중 LLM 호출 1개를 공유(stampede·실과금 N배 차단). 같은 키면 입력이 거의 동일하므로 결과 공유 가능.
   let job = INFLIGHT.get(ck);
   if (!job) {
+    // 일일 호출 상한 — 초과 시 새 LLM 호출 안 함(설명 생략·무중단). 위의 캐시 적중·inflight 공유는 상한을 소비하지 않음(진짜 새 호출만 카운트).
+    if (!tryConsume("anthropic")) return null;
     job = (async (): Promise<ExplainResult | null> => {
       const { system, user } = buildExplainMessages(input);
       let out: ExplainResult | null = null;

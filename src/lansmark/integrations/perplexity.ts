@@ -8,6 +8,7 @@
  *   비용: sonar online ≈ $0.005/콜 — 캐시로 작물당 1회. 무료티어 없음(유료 키).
  */
 import { hasEnv } from "./types";
+import { tryConsume } from "./callBudget"; // 일일 호출 상한(폭주 비용 차단)
 
 export interface AiCultivation { summary: string; sources: string[]; model: string; }
 
@@ -43,6 +44,8 @@ export async function fetchPerplexityCultivation(cropName: string): Promise<AiCu
   const ck = cropName.trim().toLowerCase();
   const hit = CACHE.get(ck);
   if (hit && Date.now() - hit.at < (hit.v ? TTL_MS : NEG_TTL_MS)) return hit.v; // 캐시 적중(비용 0) — 실패(null)는 음성TTL로 짧게
+  // 일일 호출 상한 — 초과 시 외부 호출 안 함(요약 생략·무중단). 캐시 적중은 위에서 이미 반환(상한 소비 안 함).
+  if (!tryConsume("perplexity")) return null;
 
   const body = {
     model: "sonar",
