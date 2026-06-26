@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.78.3",
+    date: "2026-06-27",
+    title: "지형 색칠 — 시도 행정경계 면(VWorld)",
+    items: [
+      "작물 적합지를 시도 중심 색 원 → 시도 행정경계 면 색칠로(VWorld LT_C_ADSIDO_INFO 1회 수신·좌표 단순화 1/6·캐시). region 약칭↔VWorld 정식 시도명 정규화 매칭. 경계 없음·키없음 시 색 원 폴백(무중단).",
+    ],
+  },
+  {
     version: "0.78.2",
     date: "2026-06-27",
     title: "전국 시도 녹/적 색 면 + 작물 전부 포함",

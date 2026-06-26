@@ -86,8 +86,8 @@ export const FEATURES: Feature[] = [
   {
     id: "region-discover", name: "작물→지역 추천(기후 적합)", stage: "recommend",
     flow: "작물 선택 → 추천 지형조건(요구조건) + 시도별 기후 적합(적합/주의/부적합) · 시도 중심좌표(지도 마커 다음)",
-    endpoints: ["/api/region-fit"],
-    files: ["src/lansmark/region/cropRegionFit.ts", "server/routes/regionFit.ts", "src/lansmark/data/sidoClimate.seed.ts"],
+    endpoints: ["/api/region-fit", "/api/sido-geo"],
+    files: ["src/lansmark/region/cropRegionFit.ts", "server/routes/regionFit.ts", "src/lansmark/data/sidoClimate.seed.ts", "src/lansmark/geo/sidoGeo.ts"],
     tests: ["src/lansmark/tests/cropRegionFit.spec.ts"],
     guardrails: ["추측 금지(평년값 근사·검수필요)", "시도 광역≠필지 적합 명시", "수익보장 금지", "면책"], status: "live",
     notes: "역방향 탐색(작물→어디서). 시도 평년기후(근사·KMA 평년 seam) × field-monitor 로직 재사용 · 무료 · 시도 중심좌표 포함(지도 마커 다음 단계) · 온난화 시나리오(year/path/dt → ΔT)로 현재↔미래 적합 이동 제공(KMA SSP 근사·외삽·미검증) · ⚠ 전국 고해상 적합 히트맵은 비구현(전국 기후·지형 그리드 필요)",

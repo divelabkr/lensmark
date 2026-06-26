@@ -6,6 +6,7 @@
  */
 import { json } from "../respond";
 import { buildCropRegionFit } from "../../src/lansmark/region/cropRegionFit";
+import { getSidoBoundaries } from "../../src/lansmark/geo/sidoGeo";
 import type { WarmingScenario, EmissionPath } from "../../src/lansmark/types";
 import type { RouteFn } from "../context";
 
@@ -29,5 +30,13 @@ export const regionFitRoutes: RouteFn = async (_ctx, _req, res, url) => {
   if (!SAFE_CROP.test(cropId)) { json(res, 400, { error: "유효한 cropId가 필요합니다." }); return true; }
   try { json(res, 200, { ok: true, regionFit: buildCropRegionFit(cropId, scenarioFromQuery(url.searchParams)) }); }
   catch { json(res, 400, { error: "알 수 없는 작물입니다.", code: "UNKNOWN_CROP" }); } // getCropProfile throw
+  return true;
+};
+
+/** GET /api/sido-geo : 시도 행정경계(VWorld LT_C_ADSIDO_INFO·단순화·캐시) — '지형 색칠' choropleth용. 키없음·실패 시 sido:null(클라가 색 원으로 폴백). */
+export const sidoGeoRoutes: RouteFn = async (_ctx, _req, res, url) => {
+  if (url.pathname !== "/api/sido-geo") return false;
+  const sido = await getSidoBoundaries(); // VWorld 17 시도 경계(단순화·1회 캐시) or null
+  json(res, 200, { ok: true, sido });
   return true;
 };
