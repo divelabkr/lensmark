@@ -13,6 +13,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.78.2",
+    date: "2026-06-27",
+    title: "전국 시도 녹/적 색 면 + 작물 전부 포함",
+    items: [
+      "S3: 작물 선택 시 전국 지도에 시도별 적합도 색 원(녹 적합/황 주의/적 부적합) — 중심 마커 → 색 면(⚠ 시도 광역·필지 정밀은 KMA 격자 연동 후속).",
+      "작물 누락 보완: Perplexity 프롬프트 'omit none' 강제 — 19작물 전부 평가 유도(이전 라이브 17/19).",
+    ],
+  },
+  {
     version: "0.78.1",
     date: "2026-06-26",
     title: "시장 트렌드 표 — Perplexity 파서 보정(라이브 SHAPE 검증)",

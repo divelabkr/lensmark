@@ -1128,9 +1128,11 @@ function plotRegionMarkers(regions){
   const fc={ok:"#10B95C",watch:"#D98E1B",risk:"#DA5237",unknown:"#9aa19a"},ft={ok:"적합",watch:"주의",risk:"부적합우려",unknown:"-"};
   (regions||[]).forEach(g=>{
     if(!okN(g.lat)||!okN(g.lng))return;
-    const c=fc[g.fit]||fc.unknown;
+    const show=g.fitFuture||g.fit,c=fc[show]||fc.unknown;
+    // S3: 시도 적합도 색 원(면) — '전국 한눈에 녹/적'(⚠ 시도 광역·필지 정밀 아님). 중심좌표=실값·반경=시각용(겹침은 반투명). 클릭은 라벨 마커로(원 interactive:false).
+    L.circle([g.lat,g.lng],{radius:42000,color:c,weight:1,fillColor:c,fillOpacity:.2,interactive:false}).addTo(REGION);
     L.marker([g.lat,g.lng],{icon:L.divIcon({className:"",html:`<div class="rgnm" style="background:${c}">${esc(g.sido)}</div>`,iconSize:[38,18],iconAnchor:[19,9]})})
-      .bindPopup(`<b>${esc(g.sido)}</b> · ${ft[g.fit]||'-'}<br>${esc((g.reasons||[]).join(", ")||"기후 적합")}`)
+      .bindPopup(`<b>${esc(g.sido)}</b> · ${ft[show]||'-'}<br>${esc((g.reasons||[]).join(", ")||"기후 적합")}`)
       .addTo(REGION);
   });
   MAP.setView([36.3,127.8],7); // 전국 뷰로

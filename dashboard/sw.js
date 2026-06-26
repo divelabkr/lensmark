@@ -1,5 +1,5 @@
 /* LENSMARK 서비스워커 — 앱 쉘 캐시(오프라인·설치형 PWA). API는 항상 네트워크(동적·캐시 금지). */
-const CACHE = "lensmark-shell-v11"; // v10→v11: app.html crop-first 시장 트렌드 정렬 표(renderCropTrend) 반영. 버전정합·부팅비콘재시도·OFFLINE 플래그·install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
+const CACHE = "lensmark-shell-v12"; // v11→v12: app.html S3 전국 시도 녹/적 색 면(plotRegionMarkers circle) 반영. 버전정합·부팅비콘재시도·OFFLINE 플래그·install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
 const SHELL = [
   "/app", "/manifest.webmanifest", "/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",

@@ -77,7 +77,7 @@ export async function fetchMarketSignals(now: number = Date.now()): Promise<Mark
     "trend (1=stable, 2=watch, 3=rising demand) and niche/differentiation (1=low, 2=mid, 3=high). " +
     "Give a one-line Korean reason (under 40 chars). Only use the crops provided — never invent crops outside the list. " +
     "Do not fabricate prices or percentages; qualitative 1-3 levels only.";
-  const user = `Assess these crops: ${catalog}. Respond ONLY as a JSON array, nothing else.`;
+  const user = `Assess ALL of these crops (every single one, omit none): ${catalog}. Respond ONLY as a JSON array, nothing else.`;
   // JSON schema 강제 — sonar가 산문 대신 파싱 가능한 배열을 반환하게(라이브 검증됨).
   const RESP_FMT = { type: "json_schema", json_schema: { schema: { type: "array", items: { type: "object", properties: { crop: { type: "string" }, trend: { type: "integer" }, niche: { type: "integer" }, why: { type: "string" } }, required: ["crop", "trend", "niche", "why"] } } } };
 
