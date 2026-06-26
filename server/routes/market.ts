@@ -8,6 +8,7 @@ import { finiteParam } from "../../src/lansmark/api/httpUtil";
 import { compareSalesChannels } from "../../src/lansmark/market/salesChannels";
 import type { PriceResult } from "../../src/lansmark/data/providers/types";
 import type { RouteFn } from "../context";
+import { fetchMarketTrends } from "../../src/lansmark/market/cropTrend";
 
 const SAFE_CROP = /^[a-z_]{1,40}$/; // cropId 화이트리스트(비신뢰 입력 차단)
 /** SigmaRange가 p10/p50/p90 모두 유한수인지(부분형/NaN 앵커 차단). */
@@ -39,5 +40,17 @@ export const marketRoutes: RouteFn = async (ctx, req, res, url) => {
     });
     json(res, 200, { ok: true, market });
   } catch { json(res, 400, { error: "알 수 없는 작물입니다." }); } // getCropProfile throw(미존재 cropId)
+  return true;
+};
+
+/**
+ * GET /api/crop-trend : 작물 시장 트렌드 3섹터(volume 많이/premium 비싸게/niche 특수) — Perplexity 시장조사·주기캐시·출처필수.
+ *   'crop-first' 진입(작물 먼저)의 데이터. 키 없거나 출처 0개·파싱 실패면 trends:null(무중단 — 클라는 '땅 먼저' 흐름으로 폴백).
+ *   ⚠ 숫자(가격)는 여기서 주지 않는다 — 섹터 분류·맥락만. 실제 가격은 /api/market(출하시세)·작물 카드의 crops.seed 실값.
+ */
+export const cropTrendRoutes: RouteFn = async (_ctx, _req, res, url) => {
+  if (url.pathname !== "/api/crop-trend") return false;
+  const trends = await fetchMarketTrends(); // 키 없음·출처0·파싱실패 → null
+  json(res, 200, { ok: true, trends });
   return true;
 };
