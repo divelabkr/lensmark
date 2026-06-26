@@ -55,13 +55,14 @@ export async function getSidoBoundaries(): Promise<SidoBoundary[] | null> {
       if (!sido || !g) continue;
       // MultiPolygon coords: [ [ [ [lng,lat],... ] ] ] · Polygon: [ [ [lng,lat],... ] ] — 외곽 ring(poly[0])만 색칠용.
       const polys = g.type === "MultiPolygon" ? (g.coordinates as unknown[]) : g.type === "Polygon" ? [g.coordinates] : [];
-      const rings: [number, number][][] = [];
+      // 본토 = 점 수 최대 polygon의 외곽 ring 1개만. VWorld는 시도당 섬·자투리 수백 polygon(경기 346)이라, 다 그리면 면이 깨짐 → 가장 큰 조각(본토)만 색칠(광역 근사·섬 자투리 무시).
+      let best: unknown = null, bestN = 0;
       for (const poly of polys) {
         const outer = Array.isArray(poly) ? (poly as unknown[])[0] : null;
-        const ring = simplifyRing(outer);
-        if (ring.length >= 4) rings.push(ring);
+        if (Array.isArray(outer) && outer.length > bestN) { bestN = outer.length; best = outer; }
       }
-      if (rings.length) out.push({ sido, rings });
+      const ring = simplifyRing(best);
+      if (ring.length >= 4) out.push({ sido, rings: [ring] });
     }
     if (!out.length) return null;
     CACHE = out;

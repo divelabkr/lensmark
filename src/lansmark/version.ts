@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.78.4",
+    date: "2026-06-27",
+    title: "지형 색칠 파싱 보정 — 시도 본토 폴리곤",
+    items: [
+      "VWorld 시도 경계가 섬·자투리 수백 polygon(경기 346)이라 다 그리면 면이 깨짐 → 점 수 최대 polygon(본토) 1개만 색칠로 보정. 깔끔한 시도 면(섬 자투리 무시·광역 근사).",
+    ],
+  },
+  {
     version: "0.78.3",
     date: "2026-06-27",
     title: "지형 색칠 — 시도 행정경계 면(VWorld)",
