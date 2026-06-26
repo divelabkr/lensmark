@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.78.1",
+    date: "2026-06-26",
+    title: "시장 트렌드 표 — Perplexity 파서 보정(라이브 SHAPE 검증)",
+    items: [
+      "라이브 검증: sonar가 한국어 '분류'를 ML classification으로 오해해 산문으로 답하던 것 → 영어 system 프롬프트 + response_format(JSON schema)로 교정. trend/niche JSON 정상 반환·citations 동반 확인(SHAPE_UNVERIFIED 해소).",
+    ],
+  },
+  {
     version: "0.78.0",
     date: "2026-06-26",
     title: "작물 먼저 — 시장 트렌드 정렬 표(crop-first)",

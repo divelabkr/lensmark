@@ -70,14 +70,16 @@ export async function fetchMarketSignals(now: number = Date.now()): Promise<Mark
   if (!tryConsume("perplexity")) return CACHE?.v ?? null;         // 호출 상한
 
   const catalog = CROP_PROFILES.map((c) => c.cropNameKo).join(", ");
+  // 프롬프트: 영어 system(sonar 지시 준수↑) + response_format JSON 강제. 라이브 검증으로 교정 —
+  //   한국어 "분류해줘"를 sonar가 ML classification으로 오해해 산문으로 답하던 것을 영어 시장 맥락 + JSON schema로 해결(citations 9~10개 동반 확인).
   const system =
-    "너는 한국 농작물 시장 분석가다. 아래 '작물 목록' 안의 작물만 사용하라(목록 밖 작물 절대 금지). " +
-    "각 작물에 대해 2024~2025년 한국 시장 기준으로 두 가지를 1~3 단계로 평가하라: " +
-    "trend(시장 추세: 1=유지, 2=주목, 3=상승), niche(차별화·틈새·고부가: 1=낮음, 2=중간, 3=높음). " +
-    "각 작물에 한 줄(40자 내) 한국어 이유를 달아라. 불확실하면 그 작물은 제외하라. " +
-    "정밀 순위·구체 수치(가격·퍼센트)를 지어내지 말고 1~3 단계와 정성 이유만. 반드시 아래 JSON 배열로만 답하라(설명 문장 금지): " +
-    '[{"crop":"작물명","trend":1,"niche":1,"why":"이유"}]';
-  const user = `작물 목록: ${catalog}\n위 작물들의 trend·niche 단계를 평가해줘.`;
+    "You are a Korean agricultural market analyst. For each given crop, assess the 2024-2025 South Korean market: " +
+    "trend (1=stable, 2=watch, 3=rising demand) and niche/differentiation (1=low, 2=mid, 3=high). " +
+    "Give a one-line Korean reason (under 40 chars). Only use the crops provided — never invent crops outside the list. " +
+    "Do not fabricate prices or percentages; qualitative 1-3 levels only.";
+  const user = `Assess these crops: ${catalog}. Respond ONLY as a JSON array, nothing else.`;
+  // JSON schema 강제 — sonar가 산문 대신 파싱 가능한 배열을 반환하게(라이브 검증됨).
+  const RESP_FMT = { type: "json_schema", json_schema: { schema: { type: "array", items: { type: "object", properties: { crop: { type: "string" }, trend: { type: "integer" }, niche: { type: "integer" }, why: { type: "string" } }, required: ["crop", "trend", "niche", "why"] } } } };
 
   let raw = "", sources: string[] = [];
   try {
@@ -86,7 +88,7 @@ export async function fetchMarketSignals(now: number = Date.now()): Promise<Mark
     const r = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "sonar", messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 1200, temperature: 0.2 }),
+      body: JSON.stringify({ model: "sonar", messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 1500, temperature: 0.1, response_format: RESP_FMT }),
       signal: ctrl.signal,
     });
     clearTimeout(t);
