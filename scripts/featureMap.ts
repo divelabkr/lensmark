@@ -75,13 +75,13 @@ export const FEATURES: Feature[] = [
     guardrails: ["수면 경작 차단"], status: "mock", notes: "live=VWorld 지목→classifyJimok seam",
   },
   {
-    id: "market-trend", name: "작물 시장 트렌드·3섹터(crop-first 진입)", stage: "recommend",
-    flow: "처음 사용자 '뭘 키울지' → Perplexity 시장조사(주기캐시·출처필수) → 많이/비싸게/특수 3섹터 작물 리스트 → 작물 선택(→region-discover 적합지)",
+    id: "market-trend", name: "작물 시장 정렬 표(crop-first 진입)", stage: "recommend",
+    flow: "처음 사용자 '뭘 키울지' → 정렬 표(순서·작물·난이도·트렌드·단가·차별화·기본=트렌드순) → 작물 선택(→region-discover 적합지 녹/적)",
     endpoints: ["/api/crop-trend"],
     files: ["src/lansmark/market/cropTrend.ts"],
     tests: ["src/lansmark/tests/cropTrend.spec.ts"],
-    guardrails: ["출처(citations) 0개 폐기", "19작물 화이트리스트(목록밖 LLM 작물 차단)", "숫자는 LLM 금지=섹터 분류만(가격은 crops.seed 실값)", "AI 시장조사 하드라벨·면책"], status: "live",
-    notes: "crop-first 진입 데이터(작물 고르기 전). Perplexity Sonar로 19작물을 volume/premium/niche 분류·1줄 맥락·citations. 주기 캐시(TTL 30일·매 요청 호출 금지) + callBudget 상한. ⛔ PERPLEXITY_API_KEY=HUMAN GATE(없으면 trends:null·기존 '땅먼저' 폴백). 라우트=server/routes/market.ts(cropTrendRoutes·harvest-market과 동거). UI(3섹터 리스트)·녹적지도는 후속 슬라이스 S2/S3.",
+    guardrails: ["출처(citations) 0개 폐기", "19작물 화이트리스트(목록밖 LLM 작물 차단)", "정밀순위 금지=3단계(1~3)만·LLM 환각차단", "단가=crops.seed·난이도=요구조건 룰(LLM 아님)", "AI 시장조사 하드라벨·면책"], status: "live",
+    notes: "crop-first 정렬 표(작물 고르기 전). 컬럼 출처 분리 — 난이도=재배 요구조건 룰(S1b)·단가=crops.seed 실값·트렌드/차별화=Perplexity Sonar 3단계(1~3·정밀순위 금지)·citations 필수. fetchMarketSignals 주기캐시(TTL 30일)+callBudget. ⛔ PERPLEXITY_API_KEY=HUMAN GATE(없으면 signals:null·기존 '땅먼저' 폴백). 라우트=server/routes/market.ts(cropTrendRoutes·harvest-market과 동거). 표 조립(S1c)·색막대 게이지 UI(S2)·녹적지도(S3) 후속.",
   },
   {
     id: "region-discover", name: "작물→지역 추천(기후 적합)", stage: "recommend",
