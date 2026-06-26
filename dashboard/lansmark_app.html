@@ -388,7 +388,8 @@ function showWelcome(){
     const it=b.dataset.intent;try{localStorage.setItem("lansmark_intent",it);}catch(_){}
     close();
     if(it==="returnfarm"){if(typeof openAssess==="function")openAssess();}
-    else if(it==="crop"||it==="income"){const g=document.getElementById("srch-geo");if(g)g.click();}
+    else if(it==="crop"){if(typeof renderCropTrend==="function")renderCropTrend();} /* 작물 먼저 → 시장 트렌드 표(S2) */
+    else if(it==="income"){const g=document.getElementById("srch-geo");if(g)g.click();}
     /* browse = 그냥 지도 둘러보기(추가 동작 없음) */
   }));
 }
@@ -1252,6 +1253,46 @@ async function renderCropRegion(cropId){
     else{document.getElementById("ptitle").textContent="🌱 땅을 선택하세요";document.getElementById("psub").textContent="땅 → 추천 작물 → 정밀 소득 시뮬";plist.innerHTML=`<div class="empty"><span class="ic">📍</span>지도를 탭해 지점을 분석하세요</div>`;}
   });
   bindClimCtl('clim-rgn',()=>renderCropRegion(cropId)); // 기후 시점 변경 → 재조회(현재↔미래 적합 이동)
+}
+
+/* ===== crop-first 시장 트렌드 정렬 표(S2) — '뭘 키울지'부터 ===== */
+/* /api/crop-trend(table) → 순서·작물·난이도·트렌드·단가·차별화. 헤더 정렬(기본 트렌드 내림차) · 색막대 게이지 · 행클릭 → renderCropRegion(적합지). */
+/*   출처 분리 표기: 단가=농진청 base·난이도=재배 요구조건(룰) / 트렌드·차별화=AI 시장조사(출처 동반). 키 없음·실패 = 땅먼저 폴백(무중단). */
+async function renderCropTrend(){
+  const plist=document.getElementById("plist");if(!plist)return;
+  CROPVIEW=null;
+  document.getElementById("ptitle").textContent="🌾 어떤 작물을 키울까";
+  document.getElementById("psub").textContent="시장 트렌드로 고르기 → 적합지 → 시뮬";
+  plist.innerHTML=loading("시장 트렌드 분석 중…");
+  let T;try{T=(await jget("/api/crop-trend")).table;}catch(e){plist.innerHTML=errCard((e&&e.message)||"조회 실패");return;}
+  if(!T||!Array.isArray(T.rows)||!T.rows.length){
+    plist.innerHTML=`<div class="card"><div class="ch"><span class="cname">🌾 작물 추천</span></div><div class="creg">시장 트렌드를 불러오지 못했어요. 지도에서 <b>땅을 먼저</b> 골라도 무료 작물 추천을 볼 수 있어요.</div><div style="margin-top:8px"><button class="btn" id="ct-map" style="font-size:12px;padding:5px 10px">📍 지도에서 시작</button></div></div>`;
+    const mb=document.getElementById("ct-map");if(mb)mb.addEventListener("click",()=>{const g=document.getElementById("srch-geo");if(g)g.click();});
+    return;
+  }
+  const rows=T.rows.slice();let sort="trend",dir="desc"; // 기본 = 트렌드 높은 순(사용자 결정)
+  const DIFF=["","쉬움","보통","어려움"],TR=["","유지","주목","상승"],NI=["","낮음","중간","높음"];
+  const gauge=(lv,col)=>`<span style="display:inline-block;width:36px;height:6px;background:#e9ece6;border-radius:3px;vertical-align:middle"><span style="display:block;width:${[33,66,100][lv-1]||0}%;height:100%;background:${col};border-radius:3px"></span></span>`;
+  function paint(){
+    rows.sort((a,b)=>{const x=a[sort],y=b[sort];const c=(typeof x==="number")?x-y:String(x).localeCompare(String(y),"ko");return dir==="asc"?c:-c;});
+    const hd=(k,l)=>`<th data-k="${k}" style="cursor:pointer;padding:5px 4px;font-weight:600;white-space:nowrap">${l}${sort===k?(dir==="asc"?" ↑":" ↓"):""}</th>`;
+    const body=rows.map((r,i)=>`<tr data-id="${esc(r.cropId)}" style="cursor:pointer;border-top:1px solid var(--line)">`+
+      `<td style="padding:6px 4px;color:var(--ink3)">${i+1}</td>`+
+      `<td style="padding:6px 4px"><b>${esc(r.cropNameKo)}</b></td>`+
+      `<td style="padding:6px 4px">${gauge(r.difficulty,"#DA5237")} <span style="font-size:9px;color:var(--ink3)">${DIFF[r.difficulty]||""}</span></td>`+
+      `<td style="padding:6px 4px">${gauge(r.trend,"#10B95C")} <span style="font-size:9px;color:var(--ink3)">${TR[r.trend]||""}</span></td>`+
+      `<td style="padding:6px 4px;text-align:right">${r.priceP50?r.priceP50.toLocaleString():"—"}</td>`+
+      `<td style="padding:6px 4px">${gauge(r.niche,"#7C5CD9")} <span style="font-size:9px;color:var(--ink3)">${NI[r.niche]||""}</span></td></tr>`).join("");
+    plist.innerHTML=`<div class="card"><div class="ch"><span class="cname">🌾 어떤 작물을 키울까</span><span class="badge b-free">🔓 무료</span></div>`+
+      `<div class="creg">2024–25 시장 트렌드 · 헤더를 눌러 <b>정렬</b> · 작물을 누르면 <b>적합지 지도</b>로</div>`+
+      `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr style="color:var(--ink2);text-align:left">${hd("idx","#")}${hd("cropNameKo","작물")}${hd("difficulty","난이도")}${hd("trend","트렌드")}${hd("priceP50","단가")}${hd("niche","차별화")}</tr></thead><tbody>${body}</tbody></table>`+
+      `<div class="src" style="margin-top:9px">⚠ ${esc(T.label)} · 단가=농진청 base(원/kg)·난이도=재배 요구조건 / 트렌드·차별화=AI 시장조사</div>`+
+      `<div class="src" style="margin-top:4px">출처: ${(T.sources||[]).slice(0,4).map((u,i)=>`<a href="${esc(u)}" target="_blank" rel="noopener" style="color:var(--green-mid)">[${i+1}]</a>`).join(" ")||"—"}</div>`+
+      `<div class="src" style="margin-top:6px">${esc(T.disclaimer)}</div></div>`;
+    plist.querySelectorAll("th[data-k]").forEach(th=>th.addEventListener("click",()=>{const k=th.dataset.k;if(k==="idx")return;if(sort===k)dir=dir==="asc"?"desc":"asc";else{sort=k;dir=k==="cropNameKo"?"asc":"desc";}paint();}));
+    plist.querySelectorAll("tr[data-id]").forEach(tr=>tr.addEventListener("click",()=>renderCropRegion(tr.dataset.id))); // 작물 → 적합지 녹/적
+  }
+  paint();
 }
 
 /* 작물→지역 적합(시도 기후) 리스트(/api/region-fit) — 적합 먼저, 색구분. 모든 데이터 esc. */
