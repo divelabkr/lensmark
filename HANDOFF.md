@@ -4,7 +4,10 @@
 
 ---
 
-## 🔴 현재 상태 — billing OFF · 앱 중단 (사용자 결정 2026-06-23)
+## ✅ 현재 상태 — billing ON · 라이브 복구 (2026-06-25 재배포)
+> **2026-06-25:** 사용자가 billing 재활성(Firebase Blaze) → `bash scripts/deploy.sh` 재배포로 **lensmark.kr 0.77.16 복구**(end-to-end 200·revision `00040-rtq`). Budget API 활성화 후 **예산 알림(월 5천원) 등록**·**ops-watch cron 재가동** 완료. `min=0+cpu-throttling`이라 무트래픽 거의 $0. **아래는 06-23 중단 이력 — 재발(다시 끌 때) 대비 참조.**
+
+### 이력 — 2026-06-23 billing OFF·앱 중단 (사용자 결정)
 사용자가 6월 청구(₩74,322·CPU Instance-based ₩67,712) 충격 → **GCP 결제(billing)를 비활성화**하고 "완전 중단·진짜 0원" 선택(AskUserQuestion).
 - **현재: billing DISABLED** → `lensmark.kr`(Cloud Run)이 정지되며 곧/이미 접속 불가. `bash scripts/deploy.sh`는 `BILLING_DISABLED`로 실패함(Artifact Registry·Cloud Build가 billing 필요).
 - **0원 코드는 준비·커밋 완료(`9114b61`):** deploy.sh `--no-cpu-throttling` → `--cpu-throttling`(request-based CPU·요청 처리 시간만 과금). billing만 켜면 `min=0 + cpu-throttling` = 무트래픽 $0.
