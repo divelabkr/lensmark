@@ -8,7 +8,7 @@ import { finiteParam } from "../../src/lansmark/api/httpUtil";
 import { compareSalesChannels } from "../../src/lansmark/market/salesChannels";
 import type { PriceResult } from "../../src/lansmark/data/providers/types";
 import type { RouteFn } from "../context";
-import { fetchMarketSignals } from "../../src/lansmark/market/cropTrend";
+import { buildCropTable } from "../../src/lansmark/market/marketTable";
 
 const SAFE_CROP = /^[a-z_]{1,40}$/; // cropId 화이트리스트(비신뢰 입력 차단)
 /** SigmaRange가 p10/p50/p90 모두 유한수인지(부분형/NaN 앵커 차단). */
@@ -50,7 +50,7 @@ export const marketRoutes: RouteFn = async (ctx, req, res, url) => {
  */
 export const cropTrendRoutes: RouteFn = async (_ctx, _req, res, url) => {
   if (url.pathname !== "/api/crop-trend") return false;
-  const signals = await fetchMarketSignals(); // 키 없음·출처0·파싱실패 → null. 표 조립(난이도·단가 합침)은 S1c.
-  json(res, 200, { ok: true, signals });
+  const table = await buildCropTable(); // 키 없음·출처0·실패 → null(폴백). 난이도(룰)·트렌드/차별화(AI)·단가(seed) 합침.
+  json(res, 200, { ok: true, table });
   return true;
 };
