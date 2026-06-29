@@ -1714,6 +1714,13 @@ document.getElementById("view").addEventListener("click",e=>{const b=e.target.cl
   if(MODE==="select")renderSelect();});
 document.getElementById("reset").addEventListener("click",()=>{SELLAYER.clearLayers();SEL.clear();for(const k in CHOSEN)delete CHOSEN[k];FOCUS=null;if(PIN){PIN.remove();PIN=null;}PARCEL.clearLayers();pinState=null;
   if(MODE==="pin"){document.getElementById("cnt").innerHTML=`핀 <b>0</b>`;document.getElementById("plist").innerHTML=`<div class="empty"><span class="ic">📍</span>지도를 탭해 지점을 분석하세요</div>`;}else renderSelect();});
+/* LENSMARK 로고 = 홈 — 전국 지도로 리셋 + '작물 추천'부터 다시(작물→지형→시뮬 루프 재시작). */
+(function(){const lg=document.querySelector(".logo");if(!lg)return;lg.style.cursor="pointer";lg.title="처음으로 — 작물부터 다시";lg.addEventListener("click",()=>{
+  try{document.getElementById("reset").click();}catch(_){}              // 핀·선택·pinState 초기화 재사용
+  try{REGION.clearLayers();}catch(_){}CROPVIEW=null;PENDING_CROP=null;   // 지형 색칠·작물 상태 정리
+  try{MAP.setView([36.3,127.8],7);}catch(_){}                            // 전국 지도(홈)
+  if(typeof renderCropTrend==="function")renderCropTrend();              // 작물 추천부터 루프
+});})();
 /* ===== 저장/불러오기/PDF/공유 (스토리지 비의존: JSON + URL + 인쇄) ===== */
 function snapshot(){return{v:2,mode:MODE,view:VIEW,sels:[...SEL.values()].map(it=>({lat:it.center[0],lng:it.center[1],tier:it.tier,opts:it.opts,crop:CHOSEN[it.key]||it.crop||null})),pin:pinState?{lat:pinState.lat,lng:pinState.lng,tier:pinState.tier,crop:pinState.crop,opts:pinState.opts}:null};}
 function dl(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}

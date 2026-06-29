@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.78.8",
+    date: "2026-06-27",
+    title: "LENSMARK 로고 = 홈(작물 루프 재시작)",
+    items: [
+      "헤더 LENSMARK 로고 클릭 → 전국 지도로 리셋(핀·선택·지형색칠·작물상태 초기화) + 작물 추천부터 다시. 작물→지형→시뮬→로고→작물 루프 완성.",
+    ],
+  },
+  {
     version: "0.78.7",
     date: "2026-06-27",
     title: "토지선택 '따로'=단일 선택",

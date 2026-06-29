@@ -1,5 +1,5 @@
 /* LENSMARK 서비스워커 — 앱 쉘 캐시(오프라인·설치형 PWA). API는 항상 네트워크(동적·캐시 금지). */
-const CACHE = "lensmark-shell-v16"; // v15→v16: app.html 토지선택 '따로=단일 선택'(다른 구역 클릭 시 이전 해제) 반영. S4 다리·SW 자동갱신·버전정합·부팅비콘재시도·OFFLINE 플래그·install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
+const CACHE = "lensmark-shell-v17"; // v16→v17: app.html LENSMARK 로고=홈(전국 지도+작물 추천 루프 재시작) 반영. 따로=단일·S4 다리·SW 자동갱신·버전정합·부팅비콘재시도·OFFLINE 플래그·install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
 const SHELL = [
   "/app", "/manifest.webmanifest", "/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
