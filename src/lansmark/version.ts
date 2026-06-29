@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.78.7",
+    date: "2026-06-27",
+    title: "토지선택 '따로'=단일 선택",
+    items: [
+      "토지선택 모드에서 '따로'는 한 구역만 선택(다른 구역 누르면 이전 자동 해제·라디오). '합쳐서'만 여러 구역 합산. 이전엔 따로도 다중 누적되던 것 수정(사용자 '따로인데 합쳐진다').",
+    ],
+  },
+  {
     version: "0.78.6",
     date: "2026-06-27",
     title: "작물→지형→시뮬 다리 (crop-first 흐름 완성)",
