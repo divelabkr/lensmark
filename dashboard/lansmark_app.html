@@ -1132,9 +1132,11 @@ async function getSidoGeo(){ if(SIDOGEO!==undefined)return SIDOGEO; try{const r=
 /* 시도명 정규화 — region 약칭("경북")과 VWorld 정식("경상북도") 매칭용. */
 function normSido(s){ s=String(s||"").replace(/특별자치도|특별자치시|특별시|광역시|자치도|자치시/g,"").replace(/도$|시$/,""); return ({"경상남":"경남","경상북":"경북","전라남":"전남","전라북":"전북","충청남":"충남","충청북":"충북"})[s]||s; }
 async function plotRegionMarkers(regions){
+  const myView=CROPVIEW; // 호출 시점 작물 — sido-geo await 사이 작물이 바뀌거나 로고(홈)로 CROPVIEW=null 되면 색칠 폐기(잔여 방지·경쟁조건 가드)
   REGION.clearLayers();
   const fc={ok:"#10B95C",watch:"#D98E1B",risk:"#DA5237",unknown:"#9aa19a"},ft={ok:"적합",watch:"주의",risk:"부적합우려",unknown:"-"};
   const geo=await getSidoGeo(); // VWorld 시도 경계(단순화) or false
+  if(CROPVIEW!==myView){REGION.clearLayers();return;} // 그 사이 다른 작물 선택/홈 복귀 → stale 색칠 폐기
   const byName={}; if(Array.isArray(geo))geo.forEach(x=>{byName[normSido(x.sido)]=x.rings;});
   (regions||[]).forEach(g=>{
     if(!okN(g.lat)||!okN(g.lng))return;

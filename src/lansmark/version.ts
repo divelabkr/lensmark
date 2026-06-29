@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.78.9",
+    date: "2026-06-27",
+    title: "지형 색칠 stale 가드",
+    items: [
+      "로고(홈)·작물 전환 시 그리던 시도 색칠이 잔여로 남던 경쟁조건 수정 — plotRegionMarkers가 sido-geo 로딩 사이 CROPVIEW가 바뀌면 색칠을 폐기(잔여 방지).",
+    ],
+  },
+  {
     version: "0.78.8",
     date: "2026-06-27",
     title: "LENSMARK 로고 = 홈(작물 루프 재시작)",
