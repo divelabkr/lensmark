@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.78.5",
+    date: "2026-06-27",
+    title: "SW 자동갱신 강화 — 옛 캐시 갇힘 해소",
+    items: [
+      "배포 후 사용자가 수동 새로고침 없이 최신을 받도록: SW update()를 등록 즉시·6분 주기·탭 복귀 시 호출 + 새 SW 활성 시 1회 자동 새로고침(controllerchange). register만 하고 update() 주기 호출이 없던 게 근본 — 옛 캐시(v5~v13)에 갇혀 지형 색칠·'따로' 토글이 화면에 반영 안 되던 문제 해소.",
+    ],
+  },
+  {
     version: "0.78.4",
     date: "2026-06-27",
     title: "지형 색칠 파싱 보정 — 시도 본토 폴리곤",

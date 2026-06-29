@@ -1,5 +1,5 @@
 /* LENSMARK 서비스워커 — 앱 쉘 캐시(오프라인·설치형 PWA). API는 항상 네트워크(동적·캐시 금지). */
-const CACHE = "lensmark-shell-v13"; // v12→v13: app.html S3 지형(시도 행정경계 면) 색칠(plotRegionMarkers L.polygon·VWorld sido-geo) 반영. 버전정합·부팅비콘재시도·OFFLINE 플래그·install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
+const CACHE = "lensmark-shell-v14"; // v13→v14: app.html SW 자동갱신 강화(update 주기·visibilitychange·controllerchange 자동 reload) 반영. 버전정합·부팅비콘재시도·OFFLINE 플래그·install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
 const SHELL = [
   "/app", "/manifest.webmanifest", "/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
