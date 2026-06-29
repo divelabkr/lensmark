@@ -1226,6 +1226,7 @@ function bindClimCtl(pfx,onChange){const g=id=>{const e=document.getElementById(
    /api/region-fit(무료) 재사용: terrainConditions(요구 지형·환경) + regions(시도 적합·중심좌표) + disclaimer.
    원안("검색창에 작물 고르면 추천 지형을 리스트/지도로") — 선택 즉시 지도에도 표시(전국 뷰). 모든 데이터 esc. */
 let CROPVIEW=null; // 현재 작물→지역 보기 작물ID(중복 진입 stale 폐기·복귀 판정)
+let PENDING_CROP=null; // crop-first 다리: 작물 들고 땅(필지) 탭 → 추천 거치지 않고 그 작물 자동 시뮬(지형→시뮬 연결·S4)
 async function renderCropRegion(cropId){
   const plist=document.getElementById("plist");if(!plist||!cropId)return;
   CROPVIEW=cropId;
@@ -1251,9 +1252,11 @@ async function renderCropRegion(cropId){
     ${R.deltaC>0?`<div class="creg" style="margin-top:6px">🌡 <b>+${R.deltaC}℃</b>(${R.scenarioYear?R.scenarioYear+'년':'직접'}) 가정 — 아래 색은 <b>미래</b> 적합 · 개선 ${R.regions.filter(x=>x.shift==='개선').length}곳 · 악화 ${R.regions.filter(x=>x.shift==='악화').length}곳`:`<div class="src" style="margin-top:6px">‘기후 시점’을 미래로 바꾸면 같은 작물의 적합 지역이 어떻게 이동하는지 보여줍니다.</div>`}
     <div class="sectt" style="margin:10px 0 5px">🗺 적합 지역 (시도 기후·근사)</div>
     <div class="tagrow">${chips}</div>
-    <div style="margin-top:9px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="cr-map" style="font-size:12px;padding:5px 10px">지도 마커 지우기</button><button class="btn" id="cr-back" style="font-size:12px;padding:5px 10px">← 지도 탐색으로</button></div>
+    <div style="margin-top:9px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="cr-sim" style="font-size:12px;padding:5px 10px;border-color:var(--green-mid);color:var(--green-mid);font-weight:700">🗺 이 작물로 땅 골라 시뮬 →</button><button class="btn" id="cr-map" style="font-size:12px;padding:5px 10px">지도 마커 지우기</button><button class="btn" id="cr-back" style="font-size:12px;padding:5px 10px">← 지도 탐색으로</button></div>
     <div class="src" style="margin-top:8px">${esc(R.disclaimer)}</div></div>`;
   plotRegionMarkers(R.regions);window.__rgnShown=true; // 선택 즉시 지도에도 — 원안 "지도 상에서"
+  const sb=document.getElementById("cr-sim");
+  if(sb)sb.addEventListener("click",()=>{PENDING_CROP=cropId;document.getElementById("psub").textContent="🗺 지도에서 땅(필지)을 탭하면 '"+esc(R.cropNameKo)+"'로 바로 시뮬";try{MAP.setView(MAP.getCenter(),Math.max(MAP.getZoom(),13));}catch(_){}}); // crop-first 다리: 작물 들고 땅 고르기 → renderDetailPin이 PENDING_CROP로 자동 시뮬
   const mb=document.getElementById("cr-map");
   if(mb)mb.addEventListener("click",()=>{
     if(window.__rgnShown){clearRegionMarkers();window.__rgnShown=false;mb.textContent="🗺 지도에 표시";}
@@ -1601,6 +1604,8 @@ function renderDetailPin(){const st=pinState;if(!st)return;
   const pickCrop=async(cropId)=>{st.crop=cropId;st.simBusy=true;st.justPicked=true;renderDetailPin();await ensureSim(st,cropId);renderDetailPin();}; // justPicked → 결과 렌더 후 소득카드로 스크롤+하이라이트(UX-1)
   bindChips(plist,pickCrop);
   bindAllCrops(plist,pickCrop);
+  // crop-first 다리(S4): 작물 들고 와서 땅(필지) 탭 → 추천 거치지 않고 그 작물로 자동 시뮬. parcel 단계·미선택 시 1회(아니면 더 확대 안내 유지·PENDING 보존).
+  if(PENDING_CROP && st.tier==="parcel" && !st.crop && !st.simBusy){ const pc=PENDING_CROP; PENDING_CROP=null; pickCrop(pc); }
   // UX-1: 작물 클릭 후 소득카드(.decide)로 부드럽게 스크롤 + 펄스 하이라이트 — "눌렀는데 뭐 바뀌었지?" 마찰 제거(모달 대신).
   if(st.justPicked&&st.sim&&!st.simBusy){st.justPicked=false;requestAnimationFrame(()=>{const dc=document.querySelector(".plist .decide");if(dc){try{dc.scrollIntoView({behavior:"smooth",block:"nearest"});}catch(_){dc.scrollIntoView();}dc.classList.add("just-picked");setTimeout(()=>{dc.classList.remove("just-picked");},1200);}});}
 }

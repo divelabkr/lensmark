@@ -1,6 +1,6 @@
 {
   "name": "lansmark-simulator",
-  "version": "0.78.5",
+  "version": "0.78.6",
   "private": true,
   "type": "commonjs",
   "description": "LANSMARK 작물·수확·소득 시뮬레이터 (drop-in module + standalone harness)",

@@ -13,6 +13,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.78.6",
+    date: "2026-06-27",
+    title: "작물→지형→시뮬 다리 (crop-first 흐름 완성)",
+    items: [
+      "작물 표 → 적합 지형(시도 색칠) → '🗺 이 작물로 땅 골라 시뮬' 버튼 → 땅(필지) 탭 시 추천 거치지 않고 그 작물로 바로 정밀 시뮬(PENDING_CROP 다리). 작물→지형→시뮬이 끝까지 이어짐(이전엔 지형에서 끊김).",
+    ],
+  },
+  {
     version: "0.78.5",
     date: "2026-06-27",
     title: "SW 자동갱신 강화 — 옛 캐시 갇힘 해소",

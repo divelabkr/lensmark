@@ -1,5 +1,5 @@
 /* LENSMARK 서비스워커 — 앱 쉘 캐시(오프라인·설치형 PWA). API는 항상 네트워크(동적·캐시 금지). */
-const CACHE = "lensmark-shell-v14"; // v13→v14: app.html SW 자동갱신 강화(update 주기·visibilitychange·controllerchange 자동 reload) 반영. 버전정합·부팅비콘재시도·OFFLINE 플래그·install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
+const CACHE = "lensmark-shell-v15"; // v14→v15: app.html S4 작물→지형→시뮬 다리(PENDING_CROP·cr-sim 버튼) 반영. SW 자동갱신·버전정합·부팅비콘재시도·OFFLINE 플래그·install fetch+put·빈캐시 fail-safe·updateViaCache 유지.
 const SHELL = [
   "/app", "/manifest.webmanifest", "/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
