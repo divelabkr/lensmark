@@ -422,7 +422,7 @@ function nearest(list,lat,lng){let b=null,bd=1e9;for(const r of list){const d=(r
 function regionOf(lat,lng){const sg=nearest(SIGUNGU_PT,lat,lng),sd=nearest(SIDO_PT,lat,lng);return{sido:sd.name,sigungu:sg.dist<0.6?sg.name:null};}
 
 /* ===== 실데이터 호출 (필지단계 = 실엔진) ===== */
-async function apiRecommend(lat,lng){return await jpost("/api/recommend",{land:{lat,lng,areaM2:3300},limit:6});} // 전체 응답 반환(candidates + climateEvidence)
+async function apiRecommend(lat,lng){return await jpost("/api/recommend",{land:{lat,lng},limit:6});} // 전체 응답 반환(candidates + climateEvidence) · 면적 미전송 — 적합도 랭킹은 면적 무관(서버 기본값), 소득 시뮬은 폴리곤 실면적(st.opts.area) 사용
 async function apiTerrain(lat,lng){return jget(`/api/terrain?lat=${lat}&lng=${lng}`);}      // {slopeDegree,aspect,altitudeM,source}
 async function apiParcel(lat,lng){return jget(`/api/parcel?lat=${lat}&lng=${lng}`);}        // {center,polygon,pnu,address}
 async function apiSimulate(cropId,lat,lng,opts,terr,region){
@@ -557,6 +557,7 @@ async function init(){
   document.querySelectorAll("#mapsw button").forEach(b=>b.addEventListener("click",()=>setBasemap(b.dataset.bm)));
   GRID.addTo(MAP);SELLAYER.addTo(MAP);PARCEL.addTo(MAP);REGION.addTo(MAP);
   MAP.on("zoomend moveend",()=>{tierBadge();});MAP.on("click",onClick);tierBadge();bindSearch();checkVersion();if(MODE==="select")renderSelect(); // 기본 필지선택 패널 초기 표시 (startEvents 제거 — LIVE 피드 폐지)
+  renderBriefingHome(); // 🌾 재배중 농장이 있으면 첫 화면=오늘의 브리핑(리텐션 홈) — 없으면 조용히 탐색 홈 유지
 }
 
 async function onClick(e){const{lat,lng}=e.latlng,tier=tierOf(MAP.getZoom());
@@ -1536,21 +1537,67 @@ function jrnReportHtml(R){
     <div class="src" style="margin-top:7px">${esc(R.disclaimer)}</div></div>`;
 }
 
+/* ===== 🌾 오늘의 내 농장(데일리 브리핑) — 리텐션 홈 =====
+   재배중 일지(=내 농장)가 있으면 앱의 첫 화면이 '오늘 내 농장에 무슨 일·뭘 해야 하나'가 된다(시뮬은 탐색 깔때기로).
+   서버 /api/briefing 이 예보×작물요구 위험·생육단계·병해충·특보·시세를 조립 — 여기선 표시만(모든 서버 문자열 esc). */
+function brSevColor(s){return s==="warn"?"#C0392B":"#D98E1B";} // 경계=적 · 주의=주황
+function brFarmHtml(f,i){
+  const t=f.today;
+  // 오늘 예보 요약(예보 실패 시 섹션 생략) + 데모 라벨(mock 예보 정직 표기)
+  const wx=t?`<div class="k3" style="margin-top:7px">
+      <div class="kbox"><div class="kl">오늘 기온</div><div class="kv num">${Math.round(t.minC)}~${Math.round(t.maxC)}<small>℃</small></div></div>
+      <div class="kbox"><div class="kl">강수${t.rainProbPct!=null?" ("+Math.round(t.rainProbPct)+"%)":""}</div><div class="kv num">${Math.round(t.rainMm)}<small>mm</small></div></div>
+      <div class="kbox"><div class="kl">최대풍속</div><div class="kv num">${t.windMaxMs!=null?Math.round(t.windMaxMs):"—"}<small>m/s</small></div></div></div>`:"";
+  // 위험 배지(서리·폭염·호우·강풍·건조) — detail은 title 툴팁으로
+  const risks=(f.risks||[]).map(x=>`<span title="${esc(x.detail)}" style="display:inline-block;margin:2px 3px 0 0;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:800;background:${brSevColor(x.severity)}14;color:${brSevColor(x.severity)};border:1px solid ${brSevColor(x.severity)}55">${x.severity==="warn"?"⚠ ":""}${esc(x.title)}</span>`).join("");
+  const warns=(f.warnings||[]).length?`<div style="margin-top:6px;font-size:12px;font-weight:800;color:#C0392B">📢 기상특보: ${f.warnings.map(esc).join(" · ")}</div>`:"";
+  // 오늘 할 일 체크리스트 — 브리핑의 심장(행동 지시)
+  const chk=(f.checklist||[]).map(c=>`<div style="display:flex;gap:7px;font-size:12.5px;line-height:1.6;align-items:flex-start"><span style="color:var(--green)">☐</span><span>${esc(c)}</span></div>`).join("");
+  // 주간 7일 스트립(요일·최고/최저·비)
+  const week=(f.week&&f.week.length)?`<div style="display:flex;gap:2px;margin-top:8px;padding:7px 4px;background:#F4F8F1;border-radius:10px">${f.week.map(d=>{const dt=new Date(d.date+"T00:00:00");const wd="일월화수목금토"[dt.getDay()];return `<div style="flex:1;text-align:center;font-size:10px;color:var(--ink3);line-height:1.5"><div>${wd}</div><div style="font-weight:800;color:var(--ink)">${Math.round(d.maxC)}°</div><div>${Math.round(d.minC)}°</div><div style="color:#3D7BC0">${d.rainMm>=1?"💧"+Math.round(d.rainMm):"&nbsp;"}</div></div>`;}).join("")}</div>`:"";
+  const st=f.stage||{};
+  const stageLine=`<div class="creg" style="margin-top:7px">${esc(st.stageKo||"")} 단계${st.daysSincePlanting!=null?` · 정식 후 D+${st.daysSincePlanting}`:""}${st.harvestMonths&&st.harvestMonths.length?` · 수확 ${st.harvestMonths.join("·")}월`:""}${st.careLabel?` · 이달: ${esc(st.careLabel)}`:""}</div>`;
+  const mkt=f.market?`<div class="creg" style="margin-top:4px">도매 시세(P50) <b>${fmt(f.market.p50KrwPerKg)}원/kg</b> <span class="src">· ${esc(f.market.source)}${f.market.asOf?" · "+esc(f.market.asOf):""}</span></div>`:"";
+  return `<div class="card">
+    <div class="ch"><span class="cname">🌾 ${esc(f.cropNameKo)}${f.region?` <span style="font-weight:600;color:var(--ink3);font-size:12px">${esc(f.region)}</span>`:""}</span>
+      ${f.demo?`<span class="badge b-tier" title="예보 실연동 실패 — 데모 예보로 표시 중">예보 데모</span>`:`<span class="badge b-val">예보 실데이터</span>`}</div>
+    ${wx}${risks?`<div style="margin-top:7px">${risks}</div>`:""}${warns}
+    <div style="margin-top:9px;font-weight:800;font-size:12.5px">오늘 할 일</div>${chk}
+    ${stageLine}${mkt}${week}
+    <div style="margin-top:9px">${f.lat!=null?`<button class="btn" id="br-go-${i}" style="font-size:12px;padding:6px 11px">📍 지도에서 열기</button>`:""}</div>
+    <div class="src" style="margin-top:6px">출처: ${(f.sources||[]).map(esc).join(" · ")}</div></div>`;
+}
+/* 브리핑 홈 렌더 — 내 농장 있으면 true(패널 점유), 없거나 실패면 false(기존 탐색 홈 유지). */
+async function renderBriefingHome(){
+  let r=null;try{r=await jget("/api/briefing");}catch(_){return false;} // 실패=조용히(탐색 홈으로)
+  const farms=(r&&r.farms)||[];if(!farms.length)return false;
+  const pt=document.getElementById("ptitle"),ps=document.getElementById("psub"),pl=document.getElementById("plist");if(!pl)return false;
+  if(pt)pt.textContent="🌾 오늘의 내 농장";
+  if(ps)ps.textContent=(r.generatedAt||todayISO())+" 브리핑 · 농장 "+farms.length+"곳"+(r.totalGrowing>farms.length?" (재배중 "+r.totalGrowing+"곳 중 최근 "+farms.length+")":"");
+  pl.innerHTML=farms.map(brFarmHtml).join("")
+    +`<div style="margin:8px 2px"><button class="btn" id="br-explore" style="font-size:12px;padding:7px 12px">🗺 다른 땅·작물 탐색</button></div>
+    <div class="src" style="margin:4px 2px">${esc(farms[0].disclaimer||"")}</div>`;
+  const ex=document.getElementById("br-explore");
+  if(ex)ex.addEventListener("click",()=>{try{document.getElementById("reset").click();}catch(_){}if(typeof renderCropTrend==="function")renderCropTrend();});
+  farms.forEach((f,i)=>{const b=document.getElementById("br-go-"+i);if(b)b.addEventListener("click",()=>{try{MAP.setView([f.lat,f.lng],17);}catch(_){}});}); // 지도에서 열기 → 탭하면 기존 분석 흐름
+  return true;
+}
+
 /* 패널 전체 렌더 — 서버에서 일지 1건을 읽어 그림(없으면 '재배 시작' 버튼). */
 async function renderJournal(st){
   const panel=document.getElementById("jrn-panel");if(!panel||!st.sim)return;
   const key=jrnKey(st),id=JRN[key];
   if(!id){ // 아직 시작 전
     panel.innerHTML=`<div class="ch"><span class="cname">🌾 재배 일지</span><span class="badge b-free">신규</span></div>
-      <div class="creg">이 분석을 <b>예측 기준값</b>으로 묶어 재배를 시작하면 작업·수확을 기록하고 <b>시즌 리포트</b>를 받습니다. 수확 실측은 <b>예측 보정</b>에 반영돼 다음 예측이 더 정확해집니다.</div>
-      <div style="margin-top:9px"><button class="btn" id="jrn-start" style="background:var(--green);color:#fff;border-color:var(--green);font-weight:800">＋ 이 분석으로 재배 시작</button></div>`;
+      <div class="creg">이 분석을 <b>예측 기준값</b>으로 묶어 재배를 시작하면 이 땅이 <b>내 농장</b>이 됩니다 — 앱을 열 때마다 <b>오늘의 브리핑</b>(날씨 위험·오늘 할 일·병해충·시세)을 받고, 작업·수확을 기록해 <b>시즌 리포트</b>를 받습니다. 수확 실측은 <b>예측 보정</b>에 반영돼 다음 예측이 더 정확해집니다.</div>
+      <div style="margin-top:9px"><button class="btn" id="jrn-start" style="background:var(--green);color:#fff;border-color:var(--green);font-weight:800">＋ 내 농장으로 등록하고 재배 시작</button></div>`;
     const b=document.getElementById("jrn-start");
     if(b)b.addEventListener("click",async()=>{b.disabled=true;b.textContent="시작 중…";
       try{const c=coordOf(st)||[],sim=st.sim;
         const r=await jpost("/api/journal",{cropId:sim.cropId,region:(st.rec&&st.rec.region)||undefined,lat:c[0],lng:c[1],areaM2:sim.areaM2,plantedAt:todayISO(),
           predicted:{yieldKg:sim.yieldKg.p50,costKrw:sim.costKrw.p50,revenueKrw:sim.revenueKrw.p50,terrain:{slopeDegree:st.terr.slopeDegree,aspect:st.terr.aspect,altitudeM:st.terr.altitudeM}}});
         JRN[key]=r.id;jrnSave();
-      }catch(e){alert("재배 시작 실패: "+(e&&e.message||e));b.disabled=false;b.textContent="＋ 이 분석으로 재배 시작";return;}
+      }catch(e){alert("재배 시작 실패: "+(e&&e.message||e));b.disabled=false;b.textContent="＋ 내 농장으로 등록하고 재배 시작";return;}
       renderJournal(st);});
     return;
   }
@@ -1716,12 +1763,13 @@ document.getElementById("view").addEventListener("click",e=>{const b=e.target.cl
   if(MODE==="select")renderSelect();});
 document.getElementById("reset").addEventListener("click",()=>{SELLAYER.clearLayers();SEL.clear();for(const k in CHOSEN)delete CHOSEN[k];FOCUS=null;if(PIN){PIN.remove();PIN=null;}PARCEL.clearLayers();pinState=null;
   if(MODE==="pin"){document.getElementById("cnt").innerHTML=`핀 <b>0</b>`;document.getElementById("plist").innerHTML=`<div class="empty"><span class="ic">📍</span>지도를 탭해 지점을 분석하세요</div>`;}else renderSelect();});
-/* LENSMARK 로고 = 홈 — 전국 지도로 리셋 + '작물 추천'부터 다시(작물→지형→시뮬 루프 재시작). */
-(function(){const lg=document.querySelector(".logo");if(!lg)return;lg.style.cursor="pointer";lg.title="처음으로 — 작물부터 다시";lg.addEventListener("click",()=>{
+/* LENSMARK 로고 = 홈 — 내 농장(브리핑)이 있으면 '오늘의 내 농장', 없으면 전국 지도+작물 추천 루프. */
+(function(){const lg=document.querySelector(".logo");if(!lg)return;lg.style.cursor="pointer";lg.title="처음으로 — 내 농장/작물부터 다시";lg.addEventListener("click",async()=>{
   try{document.getElementById("reset").click();}catch(_){}              // 핀·선택·pinState 초기화 재사용
   try{REGION.clearLayers();}catch(_){}CROPVIEW=null;PENDING_CROP=null;   // 지형 색칠·작물 상태 정리
   try{MAP.setView([36.3,127.8],7);}catch(_){}                            // 전국 지도(홈)
-  if(typeof renderCropTrend==="function")renderCropTrend();              // 작물 추천부터 루프
+  const shown=await renderBriefingHome();                                // 🌾 브리핑 홈 우선(피벗: 동반앱이 기본, 탐색은 깔때기)
+  if(!shown&&typeof renderCropTrend==="function")renderCropTrend();      // 농장 없으면 작물 추천부터 루프
 });})();
 /* ===== 저장/불러오기/PDF/공유 (스토리지 비의존: JSON + URL + 인쇄) ===== */
 function snapshot(){return{v:2,mode:MODE,view:VIEW,sels:[...SEL.values()].map(it=>({lat:it.center[0],lng:it.center[1],tier:it.tier,opts:it.opts,crop:CHOSEN[it.key]||it.crop||null})),pin:pinState?{lat:pinState.lat,lng:pinState.lng,tier:pinState.tier,crop:pinState.crop,opts:pinState.opts}:null};}

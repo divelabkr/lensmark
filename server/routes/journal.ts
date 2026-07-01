@@ -80,7 +80,7 @@ function sanitizeHarvest(raw: unknown): HarvestRecord | null {
  *   ⚠ 과거의 고정 userId("dev")는 다중 사용자 운영에서 전 사용자를 한 신원으로 합쳐 위치·매출 PII를
  *      교차 노출시켰다(IDOR·레드팀 H1). 익명ID는 추측 불가 무작위라 타인 일지 열람·변조를 차단한다.
  */
-async function requireEnt(ctx: Ctx, req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse): Promise<SimulationEntitlement | null> {
+export async function requireEnt(ctx: Ctx, req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse): Promise<SimulationEntitlement | null> { // briefing 등 '내 일지' 기반 라우트가 같은 신원 규칙을 공유(export)
   if (!ctx.config.requireEntitlement) {
     // 무료 베타: 로그인 세션이 있으면 계정 신원 우선(익명 → 가입 → 계정 흐름), 없으면 브라우저 익명ID로 격리.
     const acctUid = sessionAccountUserId(ctx.sessions, sessionTokenFrom(req));

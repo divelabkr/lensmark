@@ -189,6 +189,16 @@ export const FEATURES: Feature[] = [
     notes: "Phase A: KMA 기후 요약 vs 작물 요구조건 적합 점검 · 무료·sensitive RL · ⚠ 일일 실측·필지별 시계열·자동 알림(인앱/푸시)은 Phase B seam(수집 cron+인프라)",
   },
   {
+    // 리텐션 루프 1호(피벗 2026-07): '오늘 내 농장에 무슨 일·뭘 해야 하나'가 매일 여는 이유 — 시뮬(1회성)을 깔때기로 전환.
+    id: "daily-briefing", name: "데일리 브리핑(오늘 내 농장)", stage: "operate",
+    flow: "재배중 일지(=내 농장) → 7일 예보(Open-Meteo 무키)×작물요구 위험 매칭(서리·폭염·호우·강풍·건조) + 생육단계·오늘 할 일 + 병해충·KMA특보·시세 → 홈 브리핑",
+    endpoints: ["/api/briefing"],
+    files: ["src/lansmark/briefing/dailyBriefing.ts", "src/lansmark/data/providers/forecast.ts", "server/routes/briefing.ts"],
+    tests: ["src/lansmark/tests/dailyBriefing.spec.ts", "src/lansmark/tests/forecast.spec.ts", "src/lansmark/tests/briefingRoutes.spec.ts"],
+    guardrails: ["보장 없음·면책·출처", "예보 mock=demo 라벨 강제", "live 검증 시세만 앵커(mock 호도 금지)", "위험 임계=일반 농학 룰북(참고) 명시"], status: "live",
+    notes: "신원=journal requireEnt 공유(무료베타 익명 격리) · 농장 상한 3(외부호출 가드)+예보 30분 캐시 · 예보=Open-Meteo(무키·⚠비상업 티어 — 상업 전환 시 KMA 단기예보 교체 seam) · 웹푸시 아침 발송 연계는 후속 슬라이스",
+  },
+  {
     // 기후를 '근거(why)'로 — 농민이 읽을 평이한 문장(측정 사실). 작물별 판정은 factors에 위임(날조 금지).
     id: "climate-evidence", name: "기후 근거(필지 기후 프로필)", stage: "recommend",
     flow: "필지/지점 → KMA 실측 기후(연평균기온·적산온도GDD·강수·겨울최저·여름최고·일조) → 평이한 '기후 근거' 문장 + 출처(평년값 아님)·면책",
