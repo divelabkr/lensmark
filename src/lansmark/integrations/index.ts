@@ -50,7 +50,7 @@ export function listIntegrations(): IntegrationStatus[] {
     {
       id: "web-push", name: "브라우저 푸시(VAPID)", envVars: ["LANSMARK_VAPID_PUBLIC_KEY", "LANSMARK_VAPID_PRIVATE_KEY"], configured: vapidConfigured(), verified: false,
       applyUrl: "(자체 생성 — 외부 발급 없음)",
-      humanGate: "VAPID 키쌍 자체 생성(npx web-push generate-vapid-keys) → .env 주입 · web-push 암호화는 승격 시 결정",
+      humanGate: "VAPID 키쌍 자체 생성(npm run vapid:gen) → env 주입 · 발송 코드 승격 완료(RFC 8291 벡터 검증) — verified는 실기기 수신 확인 후",
     },
     {
       id: "monitor-cron", name: "모니터링 스케줄러", envVars: ["LANSMARK_MONITOR_CRON"], configured: monitorCronEnabled(), verified: false,

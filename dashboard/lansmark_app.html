@@ -1575,10 +1575,13 @@ async function renderBriefingHome(){
   if(pt)pt.textContent="🌾 오늘의 내 농장";
   if(ps)ps.textContent=(r.generatedAt||todayISO())+" 브리핑 · 농장 "+farms.length+"곳"+(r.totalGrowing>farms.length?" (재배중 "+r.totalGrowing+"곳 중 최근 "+farms.length+")":"");
   pl.innerHTML=farms.map(brFarmHtml).join("")
-    +`<div style="margin:8px 2px"><button class="btn" id="br-explore" style="font-size:12px;padding:7px 12px">🗺 다른 땅·작물 탐색</button></div>
+    +`<div style="margin:8px 2px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="br-push" style="font-size:12px;padding:7px 12px;background:var(--green);color:#fff;border-color:var(--green)">🔔 아침 브리핑 알림 받기</button><button class="btn" id="br-explore" style="font-size:12px;padding:7px 12px">🗺 다른 땅·작물 탐색</button></div>
+    <div id="br-push-note" style="font-size:11px;margin:2px 2px"></div>
     <div class="src" style="margin:4px 2px">${esc(farms[0].disclaimer||"")}</div>`;
   const ex=document.getElementById("br-explore");
   if(ex)ex.addEventListener("click",()=>{try{document.getElementById("reset").click();}catch(_){}if(typeof renderCropTrend==="function")renderCropTrend();});
+  const bp=document.getElementById("br-push"); // 웹푸시 옵트인 재사용 — 아침마다 이 브리핑을 알림으로(리텐션 루프의 방아쇠)
+  if(bp)bp.addEventListener("click",()=>enablePush(bp,document.getElementById("br-push-note"),farms[0].cropId));
   farms.forEach((f,i)=>{const b=document.getElementById("br-go-"+i);if(b)b.addEventListener("click",()=>{try{MAP.setView([f.lat,f.lng],17);}catch(_){}});}); // 지도에서 열기 → 탭하면 기존 분석 흐름
   return true;
 }

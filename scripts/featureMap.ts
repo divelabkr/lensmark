@@ -191,12 +191,12 @@ export const FEATURES: Feature[] = [
   {
     // 리텐션 루프 1호(피벗 2026-07): '오늘 내 농장에 무슨 일·뭘 해야 하나'가 매일 여는 이유 — 시뮬(1회성)을 깔때기로 전환.
     id: "daily-briefing", name: "데일리 브리핑(오늘 내 농장)", stage: "operate",
-    flow: "재배중 일지(=내 농장) → 7일 예보(Open-Meteo 무키)×작물요구 위험 매칭(서리·폭염·호우·강풍·건조) + 생육단계·오늘 할 일 + 병해충·KMA특보·시세 → 홈 브리핑",
-    endpoints: ["/api/briefing"],
-    files: ["src/lansmark/briefing/dailyBriefing.ts", "src/lansmark/data/providers/forecast.ts", "server/routes/briefing.ts"],
-    tests: ["src/lansmark/tests/dailyBriefing.spec.ts", "src/lansmark/tests/forecast.spec.ts", "src/lansmark/tests/briefingRoutes.spec.ts"],
-    guardrails: ["보장 없음·면책·출처", "예보 mock=demo 라벨 강제", "live 검증 시세만 앵커(mock 호도 금지)", "위험 임계=일반 농학 룰북(참고) 명시"], status: "live",
-    notes: "신원=journal requireEnt 공유(무료베타 익명 격리) · 농장 상한 3(외부호출 가드)+예보 30분 캐시 · 예보=Open-Meteo(무키·⚠비상업 티어 — 상업 전환 시 KMA 단기예보 교체 seam) · 웹푸시 아침 발송 연계는 후속 슬라이스",
+    flow: "재배중 일지(=내 농장) → 7일 예보(Open-Meteo 무키)×작물요구 위험 매칭(서리·폭염·호우·강풍·건조) + 생육단계·오늘 할 일 + 병해충·KMA특보·시세 → 홈 브리핑 + 아침 웹푸시(관리자/크론 트리거)",
+    endpoints: ["/api/briefing", "/api/ops/push-briefing"],
+    files: ["src/lansmark/briefing/dailyBriefing.ts", "src/lansmark/briefing/briefingPush.ts", "src/lansmark/data/providers/forecast.ts", "server/routes/briefing.ts"],
+    tests: ["src/lansmark/tests/dailyBriefing.spec.ts", "src/lansmark/tests/forecast.spec.ts", "src/lansmark/tests/briefingRoutes.spec.ts", "src/lansmark/tests/briefingPush.spec.ts"],
+    guardrails: ["보장 없음·면책·출처", "예보 mock=demo 라벨 강제", "live 검증 시세만 앵커(mock 호도 금지)", "위험 임계=일반 농학 룰북(참고) 명시", "푸시 본문에 소득 수치 금지(보장 오인)"], status: "live",
+    notes: "신원=journal requireEnt 공유(무료베타 익명 격리) · 농장 상한 3(외부호출 가드)+예보 30분 캐시 · 예보=Open-Meteo(무키·⚠비상업 티어 — 상업 전환 시 KMA 단기예보 교체 seam) · 아침 발송=/api/ops/push-briefing(관리자 토큰·1회 500건 상한·만료 구독 파기) — 매일 아침 크론 호출은 Cloud Scheduler(HUMAN GATE) · ⚠ 유료 모드 결제-계정 결속 전엔 무료베타 신원에서 정합",
   },
   {
     // 기후를 '근거(why)'로 — 농민이 읽을 평이한 문장(측정 사실). 작물별 판정은 factors에 위임(날조 금지).
@@ -229,13 +229,13 @@ export const FEATURES: Feature[] = [
   },
   {
     id: "web-push", name: "웹푸시 알림(앱 푸시·SMS 대체)", stage: "operate",
-    flow: "알림 모달 '브라우저 알림 받기' → /api/push/vapid(configured?) → 권한 요청 → SW pushManager.subscribe → /api/push/subscribe(구독 저장). 발송 시 SW push 이벤트가 알림 표시·클릭 시 앱 포커스.",
+    flow: "알림 모달/브리핑 홈 '알림 받기' → /api/push/vapid(configured?) → 권한 요청 → SW pushManager.subscribe → /api/push/subscribe(구독 저장) → 발송(LiveWebPushSender: RFC 8291 aes128gcm+RFC 8292 VAPID) → SW push 이벤트가 알림 표시·클릭 시 앱 포커스.",
     endpoints: ["/api/push/vapid", "/api/push/subscribe", "/api/push/unsubscribe"],
-    files: ["server/routes/push.ts"], // 발신자·구독 스토어 seam은 integrations/push.ts(통합층 소속), SW는 dashboard/sw.js(단일파일)
-    tests: ["src/lansmark/tests/pushRoutes.spec.ts"],
-    guardrails: ["opt-in(브라우저 권한 명시 동의)", "VAPID 미설정→구독 시도 안 함·'준비 중' 정직 안내", "구독 endpoint/키 로그·응답 비노출(PII)", "구독 DoS 상한(cap)", "발송 미구현→ConsolePushSender ok:false(거짓 성공 금지)"],
+    files: ["server/routes/push.ts", "src/lansmark/integrations/webPushSender.ts", "scripts/genVapid.ts"], // 인터페이스·구독 스토어는 integrations/push.ts(통합층 소속), SW는 dashboard/sw.js(단일파일)
+    tests: ["src/lansmark/tests/pushRoutes.spec.ts", "src/lansmark/tests/webPushSender.spec.ts"],
+    guardrails: ["opt-in(브라우저 권한 명시 동의)", "VAPID 미설정→구독 시도 안 함·'준비 중' 정직 안내", "구독 endpoint/키 로그·응답 비노출(PII)", "구독 DoS 상한(cap)", "발송 SSRF 차단(푸시 서비스 host allowlist)", "VAPID 없으면 ConsolePushSender ok:false(거짓 성공 금지)"],
     status: "live",
-    notes: "구독 저장 + SW 표시/클릭 다리 live · 실제 발송(LiveWebPushSender: VAPID JWT ES256 + aes128gcm)·VAPID 키 생성=HUMAN GATE(integrations/push.ts) · 구독 영속(File store)=follow-up · SMS(alert-subscribe) 대신 무과금 앱 푸시 채널(사용자 선택)",
+    notes: "발송 승격(2026-07): 무의존 직접구현 — RFC 8291 공식 테스트 벡터 바이트 일치 검증(webPushSender.spec) · VAPID 자가생성=npm run vapid:gen → env 주입(HUMAN GATE) · 만료 구독(404/410) 자동 파기 · 아침 브리핑 발송=/api/ops/push-briefing(daily-briefing 소속) · 구독 영속(File store)=follow-up",
   },
   {
     id: "harvest-market", name: "출하 시세·납품처 최적화", stage: "operate",

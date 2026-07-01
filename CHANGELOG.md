@@ -3,6 +3,15 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.80.0 — 2026-07-01 · 🔔 아침 브리핑 웹푸시 — 발송 실구현(리텐션 피벗 2호)
+> 브리핑(0.79.0)이 '올 이유'라면 푸시는 '여는 방아쇠'. 발송이 seam(ConsolePushSender)에 머물던 것을 무의존 실구현으로 승격.
+- **LiveWebPushSender(신규·무의존)** — RFC 8291(aes128gcm 메시지 암호화)+RFC 8188(콘텐츠 인코딩)+RFC 8292(VAPID ES256 JWT)를 node:crypto로 직접 구현. **RFC 8291 Appendix A 공식 테스트 벡터와 바이트 단위 일치** 검증(webPushSender.spec) + UA측 복호 왕복 + VAPID 서명 검증. `createPushSender()`가 VAPID env 있으면 live, 없으면 Console(미전송 정직) 자동 선택.
+- **SSRF 원천 차단** — 발송 POST는 4대 푸시 서비스 host allowlist(FCM·Mozilla·WNS·Apple)만. 구독 endpoint는 비신뢰 입력이라 임의 URL POST(내부망 타격·DNS 재바인딩)를 allowlist로 봉쇄. 다른 벤더는 `LANSMARK_PUSH_ENDPOINT_ALLOW`(host 접미사 CSV)로 운영자 명시 확장.
+- **`POST /api/ops/push-briefing`(신규·관리자)** — 푸시 구독자별로 '자기 농장' 브리핑을 조립해 발송(briefingPush: 특보>경계>주의 제목 우선순위·**푸시에 소득 수치 금지** 가드레일·기기별 다중 구독·404/410 만료 구독 즉시 파기·1회 500건 상한). 매일 아침 크론 호출은 Cloud Scheduler(HUMAN GATE).
+- **VAPID 자가생성** — `npm run vapid:gen`(외부 발급 불필요·무료). 키는 출력만 하고 저장·전송하지 않음.
+- **앱** — 브리핑 홈에 '🔔 아침 브리핑 알림 받기' 버튼(기존 enablePush 옵트인 재사용). 알림 클릭 → 앱(브리핑 홈).
+- 신규 테스트: webPushSender(8)·briefingPush(6) → vitest 712 · 브리핑 라우트는 buildUserBriefings로 공유 리팩터(GET·발송 동일 코어).
+
 ## 0.79.0 — 2026-07-01 · 🌾 오늘의 내 농장 — 데일리 브리핑(리텐션 피벗 1호)
 > 진단: 기능 39개인데 재방문 훅 0 — 시뮬(1회성 의사결정)만으로는 '매일 올 이유'가 없다. 제품 중심 질문을 "이 땅에 뭘 심으면 얼마 벌까"에서 **"오늘 내 농장에 무슨 일이 있고 뭘 해야 하나"**로 확장(시뮬=탐색 깔때기).
 - **`GET /api/briefing`(신규)** — 재배중 일지(=내 농장)별로 7일 예보×작물요구 위험 매칭(서리·폭염·호우·강풍·건조) + 생육단계·오늘 할 일 체크리스트 + 병해충(active)·KMA 특보(live)·도매 시세(live 검증분만)를 한 응답으로 조립. 신원=journal과 동일 규칙(무료베타 익명 격리)·농장 상한 3(외부호출 가드).
