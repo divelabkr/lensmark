@@ -21,6 +21,16 @@ import type { RouteFn } from "../context";
 const SESSION_TTL_MS = 30 * 24 * 3_600_000; // 30일
 const METHODS = new Set(["phone", "kakao", "email"]); // 허용 검증기(화이트리스트) — 현재 phone만 동작, 카카오/이메일은 추후 드롭인
 
+/**
+ * 세션 토큰의 응답 바디 포함 여부(§3-1 하드닝 — 유료 과금 전 필수) — 브라우저에는 httpOnly Set-Cookie만.
+ *   판별: 브라우저 fetch/XHR의 cross-site·same-origin POST는 Origin 헤더를 동봉한다(비브라우저 curl/서버/테스트는 없음).
+ *   효과: 로그인 순간 XSS가 응답 바디에서 세션을 읽던 경로(S5 상쇄) 차단. 프론트는 바디 토큰을 안 읽음(쿠키 자동전송) — 무영향.
+ *   비브라우저 API/테스트는 기존대로 {session} 수신(x-lansmark-session 헤더 폴백 흐름 유지).
+ */
+function sessionBody(req: import("node:http").IncomingMessage, token: string): { session?: string } {
+  return req.headers.origin ? {} : { session: token };
+}
+
 /** 외부 식별자 → keyed-hash(평문 PII 미저장·오프라인 열거 차단). 시크릿은 사용처에서 직접 읽음(설정객체 비노출). */
 function subjectHash(method: string, subject: string): string {
   // 계정 식별자 해시 전용 시크릿(있으면) — 엔티틀먼트 시크릿 회전이 계정 조회를 깨뜨리지 않게 분리(레드팀: 결합 완화).
@@ -74,10 +84,10 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     const token = crypto.randomBytes(24).toString("hex");
     const now = Date.now();
     ctx.sessions.create({ token, accountId: acct.id, createdAt: new Date(now).toISOString(), expiresAt: new Date(now + SESSION_TTL_MS).toISOString() });
-    // S5: 세션을 httpOnly 쿠키로 발급(XSS가 토큰을 읽지 못함). 응답 body의 session은 비브라우저 API/테스트 하위호환용으로 유지.
+    // S5: 세션을 httpOnly 쿠키로 발급(XSS가 토큰을 읽지 못함). 바디 토큰은 비브라우저 전용(§3-1 하드닝 — sessionBody).
     res.setHeader("Set-Cookie", sessionCookie(token, SESSION_TTL_MS / 1000, ctx.config.isProd)); // writeHead(json)와 병합 보존(다른 헤더명)
     ctx.logOps("계정", `로그인 ${isNew ? "신규" : "기존"} ${acct.id.slice(0, 12)}…`);
-    json(res, 200, { ok: true, session: token, accountId: acct.id, isNew });
+    json(res, 200, { ok: true, ...sessionBody(req, token), accountId: acct.id, isNew });
     return true;
   }
 
@@ -102,7 +112,7 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     ctx.sessions.create({ token, accountId: acct.id, createdAt: new Date(now).toISOString(), expiresAt: new Date(now + SESSION_TTL_MS).toISOString() });
     res.setHeader("Set-Cookie", sessionCookie(token, SESSION_TTL_MS / 1000, ctx.config.isProd));
     ctx.logOps("계정", `가입(ID/PW) ${acct.id.slice(0, 12)}…`);
-    json(res, 200, { ok: true, session: token, accountId: acct.id, isNew: true });
+    json(res, 200, { ok: true, ...sessionBody(req, token), accountId: acct.id, isNew: true });
     return true;
   }
 
@@ -127,7 +137,7 @@ export const accountRoutes: RouteFn = async (ctx, req, res, url) => {
     ctx.sessions.create({ token, accountId: acct.id, createdAt: new Date(now).toISOString(), expiresAt: new Date(now + SESSION_TTL_MS).toISOString() });
     res.setHeader("Set-Cookie", sessionCookie(token, SESSION_TTL_MS / 1000, ctx.config.isProd));
     ctx.logOps("계정", `로그인(ID/PW) ${acct.id.slice(0, 12)}…`);
-    json(res, 200, { ok: true, session: token, accountId: acct.id, isNew: false });
+    json(res, 200, { ok: true, ...sessionBody(req, token), accountId: acct.id, isNew: false });
     return true;
   }
 

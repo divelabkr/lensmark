@@ -76,9 +76,12 @@ export class InMemoryPushSubscriptionStore implements PushSubscriptionStore {
     if (!sub?.endpoint) return;
     this.map.set(sub.endpoint, { sub, subscriberId: meta?.subscriberId, cropId: meta?.cropId, at: new Date().toISOString() });
     while (this.map.size > this.cap) { const k = this.map.keys().next().value as string | undefined; if (!k) break; this.map.delete(k); } // DoS 백스톱
+    this.persist();
   }
-  remove(endpoint: string): boolean { return this.map.delete(endpoint); }
+  remove(endpoint: string): boolean { const r = this.map.delete(endpoint); if (r) this.persist(); return r; }
   all(): PushSubscription[] { return [...this.map.values()].map((e) => e.sub); }
   entries(): PushSubscriptionEntry[] { return [...this.map.values()]; }
   size(): number { return this.map.size; }
+  /** 영속 훅 — File/Firestore 어댑터가 오버라이드(다른 File* 스토어와 동일 패턴). 메모리는 no-op. */
+  protected persist(): void { /* memory: 휘발 */ }
 }

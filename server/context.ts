@@ -24,7 +24,7 @@ import { createSmsSender } from "../src/lansmark/notify/smsSender";
 import { createEmailSender } from "../src/lansmark/notify/emailSender";
 import type { AccountStore } from "../src/lansmark/account/accountStore";
 import type { SessionStore } from "../src/lansmark/account/sessionStore";
-import { createPushSender, InMemoryPushSubscriptionStore, type PushSender, type PushSubscriptionStore } from "../src/lansmark/integrations/push";
+import { createPushSender, type PushSender, type PushSubscriptionStore } from "../src/lansmark/integrations/push";
 import { ClientErrorStore } from "../src/lansmark/ops/clientErrors";
 import { ClientDiagStore } from "../src/lansmark/ops/clientDiag";
 import type { Config } from "./config";
@@ -161,8 +161,8 @@ export function createContext(config: Config): Ctx {
       phone: new PhoneOtpVerifier({ isProd: config.isProd, sms: createSmsSender() }),
       email: new EmailMagicLinkVerifier({ isProd: config.isProd, email: createEmailSender(), appOrigin: config.appOrigin }),
     }),
-    // 웹푸시: 구독 저장(memory) + 발신자 seam. SMS 과금 회피 → 앱 푸시 채널(사용자 선택). 실발송은 VAPID 키 설정 후.
-    pushSubs: new InMemoryPushSubscriptionStore(),
+    // 웹푸시: 구독 저장(memory|file|firestore — stores 소속으로 승격·재시작에도 알림 약속 보존) + 발신자(VAPID 있으면 live).
+    pushSubs: stores.pushSubs,
     pushSender: createPushSender(),
     clientErrors: new ClientErrorStore(), // 브라우저 에러 가시화(이전엔 안 보임) — 새 distinct만 경보
     clientDiag: new ClientDiagStore(),    // 환경 진단(SW상태·오프라인·콜드스타트) 자동 관측 — '먹통' 사용자 설명 의존 탈피(복구는 안 함)

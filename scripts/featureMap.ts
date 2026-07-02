@@ -236,7 +236,7 @@ export const FEATURES: Feature[] = [
     tests: ["src/lansmark/tests/pushRoutes.spec.ts", "src/lansmark/tests/webPushSender.spec.ts"],
     guardrails: ["opt-in(브라우저 권한 명시 동의)", "VAPID 미설정→구독 시도 안 함·'준비 중' 정직 안내", "구독 endpoint/키 로그·응답 비노출(PII)", "구독 DoS 상한(cap)", "발송 SSRF 차단(푸시 서비스 host allowlist)", "VAPID 없으면 ConsolePushSender ok:false(거짓 성공 금지)"],
     status: "live",
-    notes: "발송 승격(2026-07): 무의존 직접구현 — RFC 8291 공식 테스트 벡터 바이트 일치 검증(webPushSender.spec) · VAPID 자가생성=npm run vapid:gen → env 주입(HUMAN GATE) · 만료 구독(404/410) 자동 파기 · 아침 브리핑 발송=/api/ops/push-briefing(daily-briefing 소속) · 구독 영속(File store)=follow-up",
+    notes: "발송 승격(2026-07): 무의존 직접구현 — RFC 8291 공식 테스트 벡터 바이트 일치 검증(webPushSender.spec) · VAPID 자가생성=npm run vapid:gen → env 주입(HUMAN GATE) · 만료 구독(404/410) 자동 파기 · 아침 브리핑 발송=/api/ops/push-briefing(daily-briefing 소속) · 구독 영속 완료(0.82.0): memory|file|firestore 스토어 승격(재시작·재배포에도 알림 약속 보존·백업 포함)",
   },
   {
     id: "harvest-market", name: "출하 시세·납품처 최적화", stage: "operate",

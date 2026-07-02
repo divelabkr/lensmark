@@ -318,9 +318,14 @@ async function handlePaymentReturn(){const q=new URLSearchParams(location.search
   // 결제 전 보던 필지·작물 복원(엔티틀먼트 설정 후 → 잠금해제된 정밀시뮬로 바로 표시)
   if(lm){try{const p=JSON.parse(decodeURIComponent(escape(atob(lm))));if(okN(p.lat))await restore({mode:"pin",pin:{lat:p.lat,lng:p.lng,tier:p.tier,crop:p.crop}});}catch(_){}}
 }
-function paywallCard(){const won=(PAY.priceKrw||4900).toLocaleString("ko-KR");return `<div class="card pw"><div class="pw-h">🔒 정밀 소득 분석 잠금</div>
+function paywallCard(crop){const won=(PAY.priceKrw||4900).toLocaleString("ko-KR");
+  // 결제 '전' 소득 데이터 검증 상태를 정직 고지 — 미검증 작물에 돈 내고 추정값 보는 불만(돈값 실패)의 사전 차단(유료 파일럿 필수).
+  const dq=crop?(crop.inc
+    ?`<div style="margin:7px 0 0;padding:6px 9px;border-radius:9px;background:#E9F7EE;font-size:11.5px"><b>💰 ${esc(crop.ko)}</b>: 농진청 실측 소득자료${crop.incYear?"("+esc(crop.incYear)+")":""} 기반 — 소득 절대수준의 신뢰가 높습니다.</div>`
+    :`<div style="margin:7px 0 0;padding:6px 9px;border-radius:9px;background:#FDF3E4;font-size:11.5px"><b>⚠ ${esc(crop.ko)}</b>: 실측 소득자료 연결 전(<b>추정 구조값</b>) — 범위·근거·생육 정보는 제공되지만 절대 금액은 참고용입니다. 결제 전 확인하세요. 💰 표시 작물은 실측 기반입니다.</div>`):"";
+  return `<div class="card pw"><div class="pw-h">🔒 정밀 소득 분석 잠금</div>
   <div class="pw-sub">결제하면 이 필지의 <b>P10·P50·P90 소득</b> · 지형·토양·기후·위성 <b>6축 근거</b> · <b>생육·출하 타임라인</b> · 손익분기 · 실측 보정(플라이휠)이 전부 열립니다.</div>
-  <div class="pw-feat"><span>📊 소득 범위</span><span>⚙ 근거 6축</span><span>🌱 생육·출하</span><span>📋 실측 보정</span><span>🔁 재계산 50회</span></div>
+  <div class="pw-feat"><span>📊 소득 범위</span><span>⚙ 근거 6축</span><span>🌱 생육·출하</span><span>📋 실측 보정</span><span>🔁 재계산 50회</span></div>${dq}
   <button class="pw-btn" id="pw-go">₩${won} · ${PAY.mode==="live"?"결제하고 열기":"데모 결제하고 열기"}</button>
   <div class="pw-note">${PAY.mode==="live"?"Toss 일반결제(카드·간편결제).":"※ 데모 결제(실 결제 아님) — Toss 키 연결 시 실결제 전환."} 구매 후 7일 · 이 브라우저에서 재계산 50회(공정 사용).</div></div>`;} // '무제한' 표기 금지 — 숫자는 서버 quota(config.ts 기본 50)와 동기 유지(과장=가드레일 위반)
 function bindPay(onPaid){const go=document.getElementById("pw-go");if(!go)return;go.addEventListener("click",async()=>{go.disabled=true;go.textContent="결제 처리 중…";try{await tossPay();}catch(e){const msg=(e&&e.message)||"";if(!/취소/.test(msg))alert("결제 실패: "+msg);go.disabled=false;go.textContent=`₩${(PAY.priceKrw||4900).toLocaleString("ko-KR")} · ${PAY.mode==="live"?"결제하고 열기":"데모 결제하고 열기"}`;return;}await onPaid();});}
@@ -1654,7 +1659,7 @@ function renderDetailPin(){const st=pinState;if(!st)return;
   if(PIN&&st.rec&&st.rec.climateEvidence&&st.rec.climateEvidence.facts&&st.rec.climateEvidence.facts.length){const ev=st.rec.climateEvidence;PIN.bindPopup(`<div style="font-weight:800;margin-bottom:4px">🌤 이 땅 기후</div><div style="font-size:12px;line-height:1.6">${ev.facts.map(f=>esc(f)).join("<br>")}</div><div style="font-size:10px;color:#777;margin-top:4px">${esc(ev.sourceLabel)}</div>`);}
   const guideSlot=(st.tier==="parcel"&&st.crop)?'<div class="card" id="guide-panel"></div>':''; // 품종·재배 가이드(무료=대표작물/유료=전체)
   if(st.tier!=="parcel"||!st.crop){plist.innerHTML=lcB+recHead+(st.tier!=="parcel"?hintCard("🔍","더 확대하면(필지 단계) 실제 재배가능 작물과 <b>소득 시뮬</b>이 가능합니다."):hintCard("👆","추천 작물을 누르면 그 작물의 <b>예상 소득</b>이 계산됩니다."));}
-  else if(!isPro()&&!FREEBETA){plist.innerHTML=lcB+recHead+guideSlot+(st.entLost?errCard("이전 구매 권한이 종료되었습니다 — "+st.entLost):"")+paywallCard();bindPay(async()=>{st.simBusy=true;renderDetailPin();await ensureSim(st,st.crop);renderDetailPin();});renderGuide(st);} // 권한 만료/소진 사유를 페이월 위에 명시(말없는 회귀 금지)
+  else if(!isPro()&&!FREEBETA){const pwCrop=(st.rec&&st.rec.crops||[]).find(c=>c.id===st.crop);plist.innerHTML=lcB+recHead+guideSlot+(st.entLost?errCard("이전 구매 권한이 종료되었습니다 — "+st.entLost):"")+paywallCard(pwCrop);bindPay(async()=>{st.simBusy=true;renderDetailPin();await ensureSim(st,st.crop);renderDetailPin();});renderGuide(st);} // 권한 만료/소진 사유를 페이월 위에 명시(말없는 회귀 금지) · 선택 작물의 소득 데이터 검증 상태 사전 고지
   else{plist.innerHTML=lcB+recHead+guideSlot+(st.simBusy?loading("실엔진 시뮬레이션 중…"):st.simErr?errCard(st.simErr):simCardHtml(st.sim,st.terr,st.opts));if(st.sim&&!st.simBusy){bindSim(st,renderDetailPin);saveLast();}renderGuide(st);} // 시뮬 완료 시 이어보기 스냅샷 저장
   bindReconfirm(st,renderDetailPin);
   const pickCrop=async(cropId)=>{st.crop=cropId;st.simBusy=true;st.justPicked=true;renderDetailPin();await ensureSim(st,cropId);renderDetailPin();}; // justPicked → 결과 렌더 후 소득카드로 스크롤+하이라이트(UX-1)
@@ -1685,7 +1690,7 @@ function renderSelect(){const items=[...SEL.values()];document.getElementById("c
   const chosen=CHOSEN[it.key]||it.crop;
   const recHead=recHeadHtml(it.rec,it.tier,chosen,null);
   if(it.tier!=="parcel"||!chosen){plist.innerHTML=lcB+recHead+(it.tier!=="parcel"?hintCard("🔍","확대(필지 단계)하면 실제 재배가능 + <b>소득 시뮬</b>."):hintCard("👆","추천 작물을 누르면 소득이 계산됩니다."));}
-  else if(!isPro()&&!FREEBETA){plist.innerHTML=lcB+recHead+(it.entLost?errCard("이전 구매 권한이 종료되었습니다 — "+it.entLost):"")+paywallCard();bindPay(async()=>{it.simBusy=true;renderSelect();await ensureSim(it,it.crop);renderSelect();});}
+  else if(!isPro()&&!FREEBETA){const pwCrop=(it.rec&&it.rec.crops||[]).find(c=>c.id===it.crop);plist.innerHTML=lcB+recHead+(it.entLost?errCard("이전 구매 권한이 종료되었습니다 — "+it.entLost):"")+paywallCard(pwCrop);bindPay(async()=>{it.simBusy=true;renderSelect();await ensureSim(it,it.crop);renderSelect();});}
   else{plist.innerHTML=lcB+recHead+(it.simBusy?loading("실엔진 시뮬레이션 중…"):it.simErr?errCard(it.simErr):simCardHtml(it.sim,it.terr,it.opts));if(it.sim&&!it.simBusy){bindSim(it,renderSelect);saveLast();}}
   bindReconfirm(it,renderSelect);
   bindChips(plist,async(cropId)=>{CHOSEN[it.key]=cropId;it.crop=cropId;it.simBusy=true;renderSelect();await ensureSim(it,cropId);renderSelect();});

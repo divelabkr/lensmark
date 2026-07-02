@@ -15,6 +15,7 @@ import { InMemorySubscriptionStore, type SubscriptionStore } from "../notify/sub
 import type { AlertSubscription } from "../notify/alertSubscription";
 import { InMemoryAnalyticsStore, type DayCounts } from "../analytics/eventStore";
 import type { AnalyticsStore } from "../analytics/types";
+import { InMemoryPushSubscriptionStore, type PushSubscriptionStore, type PushSubscriptionEntry } from "../integrations/push";
 import { InMemoryAccountStore, type AccountStore } from "../account/accountStore";
 import { InMemorySessionStore, type SessionStore } from "../account/sessionStore";
 import type { Account, Session } from "../account/types";
@@ -164,6 +165,19 @@ export class FileSubscriptionStore extends InMemorySubscriptionStore {
   protected persist(): void { this.file.data = [...this.map.values()]; this.file.flush(); }
 }
 
+/* ───────────────── 웹푸시 구독(pushSubs): 파일 ───────────────── */
+/** 메모리 어댑터 상속 — 로드/flush만 디스크로(기존 File* 패턴). 재시작에도 '아침 브리핑 알림' 약속이 살아남는다(유료 파일럿 필수).
+ *   endpoint·키는 푸시 서비스 발급 opaque 값 — PII 아님(전화번호와 달리 at-rest 평문 허용·로그 비노출 원칙은 유지). */
+export class FilePushSubscriptionStore extends InMemoryPushSubscriptionStore {
+  private file: JsonFile<PushSubscriptionEntry[]>;
+  constructor(path: string, cap?: number) {
+    super(cap);
+    this.file = new JsonFile(path, []);
+    for (const e of this.file.data ?? []) this.map.set(e.sub.endpoint, e); // 부팅 시 디스크→메모리(재시작 보존)
+  }
+  protected persist(): void { this.file.data = [...this.map.values()]; this.file.flush(); }
+}
+
 /* ───────────────── 익명 수요·퍼널 계측(analytics): 파일 ───────────────── */
 /** 메모리 어댑터 상속 — 로드 + throttle flush. 분석 이벤트는 빈번(매 추천·시뮬)하므로 매번 동기 fs 쓰기는 부담 →
  *   N건마다 1회만 디스크 반영(메모리는 항상 최신, 크래시 시 최근 <N건만 손실=집계엔 무해). PII 없음. */
@@ -211,6 +225,7 @@ export class FileSessionStore extends InMemorySessionStore {
 export interface Stores {
   feedback: FeedbackStoreEx; idem: IdempotencyStore; entitlement: EntitlementStore; journal: JournalStore;
   subscriptions: SubscriptionStore; analytics: AnalyticsStore; accounts: AccountStore; sessions: SessionStore;
+  pushSubs: PushSubscriptionStore; // 웹푸시 구독(아침 브리핑 발송 대상) — memory|file|firestore
   mode: "memory" | "file" | "firestore";
   /** firestore 모드: 부팅 워밍(원격 상태 로드) 완료 신호 — devServer가 listen 前 대기. */
   ready?: Promise<void>;
@@ -234,6 +249,7 @@ export const FILE_STORE_FILES = {
   analytics: "analytics.json",
   accounts: "accounts.json",
   sessions: "sessions.json",
+  pushSubs: "pushSubs.json", // 웹푸시 구독(FILE_STORE_FILES 등록 → 백업/복구 자동 포함)
   flags: "runtimeFlags.json", // runtimeFlags.ts가 생성(이 팩토리 밖) — 백업은 직접 접근
 } as const;
 
@@ -251,6 +267,7 @@ export function createStores(opts: { mode: "memory" | "file"; dir: string; feedb
         analytics: new FileAnalyticsStore(join(opts.dir, FILE_STORE_FILES.analytics)),
         accounts: new FileAccountStore(join(opts.dir, FILE_STORE_FILES.accounts)),
         sessions: new FileSessionStore(join(opts.dir, FILE_STORE_FILES.sessions)),
+        pushSubs: new FilePushSubscriptionStore(join(opts.dir, FILE_STORE_FILES.pushSubs)),
         mode: "file",
       };
     } catch { /* 쓰기 불가 → 메모리 폴백 */ }
@@ -264,6 +281,7 @@ export function createStores(opts: { mode: "memory" | "file"; dir: string; feedb
     analytics: new InMemoryAnalyticsStore(),
     accounts: new InMemoryAccountStore(),
     sessions: new InMemorySessionStore(),
+    pushSubs: new InMemoryPushSubscriptionStore(),
     mode: "memory",
   };
 }

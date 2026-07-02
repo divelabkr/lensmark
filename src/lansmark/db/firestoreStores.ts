@@ -20,6 +20,7 @@ import type { AlertSubscription } from "../notify/alertSubscription";
 import { InMemoryAnalyticsStore, type DayCounts } from "../analytics/eventStore";
 import { InMemoryAccountStore } from "../account/accountStore";
 import { InMemorySessionStore } from "../account/sessionStore";
+import { InMemoryPushSubscriptionStore, type PushSubscriptionEntry } from "../integrations/push";
 import type { Account, Session } from "../account/types";
 
 const COLLECTION = "lm_state";      // 스토어 상태 문서 모음(문서 id = 스토어 이름)
@@ -40,6 +41,7 @@ export const STORE_DOC_IDS = {
   analytics: "analytics",
   accounts: "accounts",
   sessions: "sessions",
+  pushSubs: "push_subs", // 웹푸시 구독(아침 브리핑 대상) — 재배포에도 알림 약속 보존
   flags: "flags", // runtimeFlags.ts가 생성(이 팩토리 밖) — 백업은 lm_state/flags로 직접 접근
 } as const;
 
@@ -189,6 +191,11 @@ export class FirestoreSubscriptionStore extends InMemorySubscriptionStore {
   async warm(): Promise<void> { const j = await this.doc.load(); if (j) for (const s of JSON.parse(j) as AlertSubscription[]) this.map.set(s.phone, s); }
   protected persist(): void { this.doc.save(JSON.stringify([...this.map.values()])); }
 }
+export class FirestorePushSubscriptionStore extends InMemoryPushSubscriptionStore {
+  constructor(private readonly doc: FsDoc, cap?: number) { super(cap); }
+  async warm(): Promise<void> { const j = await this.doc.load(); if (j) for (const e of JSON.parse(j) as PushSubscriptionEntry[]) this.map.set(e.sub.endpoint, e); }
+  protected persist(): void { this.doc.save(JSON.stringify([...this.map.values()])); }
+}
 export class FirestoreAccountStore extends InMemoryAccountStore {
   constructor(private readonly doc: FsDoc, cap?: number) { super(cap); }
   async warm(): Promise<void> { const j = await this.doc.load(); if (j) for (const a of JSON.parse(j) as Account[]) this.map.set(a.id, a); }
@@ -256,16 +263,17 @@ export function createFirestoreStores(opts?: { fs?: FirestoreLite; feedbackMax?:
   const analytics = new FirestoreAnalyticsStore(d(STORE_DOC_IDS.analytics), opts?.analyticsDebounceMs); // undefined면 기본 5s 디바운스
   const accounts = new FirestoreAccountStore(d(STORE_DOC_IDS.accounts));
   const sessions = new FirestoreSessionStore(d(STORE_DOC_IDS.sessions));
+  const pushSubs = new FirestorePushSubscriptionStore(d(STORE_DOC_IDS.pushSubs));
   // M1: allSettled로 '모든' 워밍이 끝난 뒤에만 listen(늦은 warm이 초기 요청 쓰기를 덮어쓰는 레이스 차단).
   //   하나라도 실패하면 throw → devServer가 유료 게이트 시 fail-closed. 실패 문서는 sealed라 덮어쓰기 없음.
   const ready = Promise.allSettled([
     feedback.warm(), idem.warm(), entitlement.warm(), journal.warm(),
-    subscriptions.warm(), analytics.warm(), accounts.warm(), sessions.warm(),
+    subscriptions.warm(), analytics.warm(), accounts.warm(), sessions.warm(), pushSubs.warm(),
   ]).then((rs) => { const f = rs.filter((r) => r.status === "rejected").length; if (f) throw new Error(`firestore 스토어 워밍 ${f}/${rs.length} 실패(sealed)`); });
   // 감사로그 in-flight 추적 — 종료(flushAll) 시 대기해 보안 이벤트 유실 창을 축소(P2).
   const auditInflight = new Set<Promise<unknown>>();
   return {
-    feedback, idem, entitlement, journal, subscriptions, analytics, accounts, sessions,
+    feedback, idem, entitlement, journal, subscriptions, analytics, accounts, sessions, pushSubs,
     mode: "firestore",
     ready,
     // 종료(SIGTERM) 시 모든 FsDoc in-flight 쓰기 + 감사로그 in-flight를 끝까지 대기(유실 방지·H3·P2).

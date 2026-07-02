@@ -33,7 +33,7 @@
 > 무료 베타엔 무해(유료 게이트 OFF). **실제 과금 켜기 전** 필수.
 - ✅(0.46.0) **Firestore 영속 어댑터** — quota·revocation·idempotency·계정·세션·일지·실측·감사로그가 재배포에 내구(LANSMARK_STORE=firestore · 무의존성 REST · sealed 가드 · 유료게이트 ON+워밍실패=부팅중단). **잔여**: 다중 인스턴스 정합(per-record 문서·유니크 제약 — max-instances>1 전 필수) · 50k 축출은 여전히 메모리 상한(영속은 최신 전체 상태라 revoked 부활은 해소)
 - ✅(0.47.0) **라이브 실전환 + 재배포 생존 실증**(lensmark-dev `store:firestore` · 실측 1건→재배포(인스턴스 교체)→**records=2** 부팅 워밍 이어쓰기) · ops 콘솔에 store/degraded 노출·revoke UI · 유료 게이트 ON/OFF 라이브 토글 검증(`/api/simulate` 402↔400). **추가 잔여**: analytics(익명 집계)는 throttle·종료 flush 의존 → 재배포 직전 소량 유실 가능(점검 중 · 핵심 데이터는 write-through 생존)
-- **세션 토큰 응답 바디 비노출(브라우저)** — `auth/verify`가 `{session}`을 바디로도 반환(API/테스트 호환) → S5 httpOnly 효과를 일부 상쇄(로그인 순간 XSS가 바디 판독 가능). 브라우저 흐름은 Set-Cookie만, 바디 토큰은 비브라우저 모드 한정으로.
+- ✅(0.82.0) **세션 토큰 응답 바디 비노출(브라우저)** — verify/register/login 3곳: Origin 헤더 동봉(=브라우저) 요청엔 바디 `{session}` 생략·httpOnly Set-Cookie만(비브라우저 API/테스트는 기존 유지 — sessionBody 헬퍼·회귀 테스트).
 - **익명 결속토큰 사용 정책** — 결속 토큰을 '세션 없이' 사용하면 여전히 bearer(쿼터 한정). 완전 차단하려면 결속 토큰의 익명 사용 거부(제품 결정) + DB 결속.
 - **ops 관리자 토큰 httpOnly화** — 현재 sessionStorage(운영자 표면, esc 처리됨) → 쿠키로(후속).
 - **fetchJsonSafe 업스트림 바디 크기 캡**(방어심도) · **fetchRestrictedSoilEvidence 미구현 throw 유지**.

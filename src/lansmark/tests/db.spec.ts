@@ -107,3 +107,21 @@ describe("Entitlement use 축출 — 만료 우선(설계감사 P1#5)", () => {
     expect(["a", "b", "c"].filter((k) => s.hasUsage!(k)).length).toBe(2);        // 상한 2로 바운드(FIFO 1개 축출)
   });
 });
+
+describe("FilePushSubscriptionStore — 웹푸시 구독 재시작 보존(아침 브리핑 약속)", () => {
+  it("upsert → 새 인스턴스가 구독자ID까지 로드 · remove도 영속", async () => {
+    const { FilePushSubscriptionStore } = await import("../db/stores");
+    const p = join(DIR, "push.json");
+    const a = new FilePushSubscriptionStore(p);
+    a.upsert({ endpoint: "https://fcm.googleapis.com/send/x1", keys: { p256dh: "k1", auth: "a1" } }, { subscriberId: "anon-11", cropId: "apple" });
+    a.upsert({ endpoint: "https://fcm.googleapis.com/send/x2", keys: { p256dh: "k2", auth: "a2" } }, { subscriberId: "anon-22" });
+    const b = new FilePushSubscriptionStore(p); // 재시작 시뮬레이션
+    expect(b.size()).toBe(2);
+    const e1 = b.entries().find((e) => e.sub.endpoint.endsWith("x1"))!;
+    expect(e1.subscriberId).toBe("anon-11"); // 구독자 귀속(맞춤 발송 키) 보존
+    expect(e1.cropId).toBe("apple");
+    b.remove("https://fcm.googleapis.com/send/x1"); // 만료 파기도 디스크 반영
+    const c = new FilePushSubscriptionStore(p);
+    expect(c.size()).toBe(1);
+  });
+});
