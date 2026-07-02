@@ -60,13 +60,16 @@ describe("router dispatch (server smoke)", () => {
     expect(res.captured.code).toBe(400);
   });
 
-  it("GET /api/recommend → free candidates", async () => {
+  it("GET /api/recommend → free candidates + 소득 실데이터 배지 + 지형 반영 표시", async () => {
     const res = mockRes();
     await route(ctx, mockReq(), res, U("/api/recommend?lat=35.8&lng=126.9&area=3300"));
     expect(res.captured.code).toBe(200);
     const body = JSON.parse(res.captured.body);
     expect(body.mode).toBe("free");
     expect(Array.isArray(body.candidates)).toBe(true);
+    // 후보마다 소득 실데이터 검증 여부(농진청 실측 vs 데모)를 정직하게 노출 — 앱 💰 배지의 근거
+    for (const c of body.candidates) expect(typeof c.incomeData?.verified).toBe("boolean");
+    expect(typeof body.terrainUsed).toBe("boolean"); // 지형(경사·향) 반영 여부 — 앱 '⛰ 실측 지형 반영' 라벨의 근거
   });
 
   it("POST /api/simulate without entitlement → 402 (fail-closed gate)", async () => {

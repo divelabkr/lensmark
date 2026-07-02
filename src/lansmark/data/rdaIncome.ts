@@ -39,8 +39,17 @@ function normalizeRegion(region?: string): string | undefined {
 }
 
 /**
+ * 소득 base 검증 상태만 가볍게 — 추천 후보에 '💰 소득 실데이터' 배지를 달기 위한 조회.
+ *   verified=true ⇔ 농진청 실 소득조사 행 존재(getRdaBase ① 경로와 동일 판정). 미등록 cropId는 false(무중단).
+ */
+export function incomeDataStatus(cropId: string): { verified: boolean; baseYear?: number } {
+  try { const b = getRdaBase(cropId); return { verified: b.verified, baseYear: b.baseYear }; } // 판정·연도 SSOT=getRdaBase(중복 하드코딩 금지)
+  catch { return { verified: false }; } // 미등록 cropId — 무중단
+}
+
+/**
  * 작물별 소득 base (10a = 1,000㎡).
- * ① 실자료 우선: RDA_REAL에 행이 있으면 농진청 실 소득자료 사용(verified=true·baseYear·출처 표기).
+ * ① 실자료 우선: RDA_REAL에 행이 있으면 농진청 실 소득조사 사용(verified=true·baseYear·출처 표기).
  *    적재 절차: 자료 CSV → `npm run rda:build <csv>` → 이 테이블 재생성(rdaIncome.real.ts).
  *    실자료는 작물 단위 전국 평균(≈성숙기·혼합판로)이라 절대수준만 RDA로 두고, '연차 정착 ramp·판로 프리미엄'의
  *    상대구조(성숙기=1·혼합=1 기준 비율)만 룰북에서 보강한다 — 다년생 과일의 정착기 손실·판로 차이를 보존하되 출처에 정직 표기.

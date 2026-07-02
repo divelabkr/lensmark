@@ -3,6 +3,7 @@ import type { CropCandidateResult, CropProfile, LandInput, SuitabilityLevel } fr
 import { getSoilConfidence } from "../policy/soilPolicy";
 import { heatToleranceOf } from "../data/cropClimateTraits";
 import type { ClimateResult } from "../data/providers/types";
+import type { TerrainInput } from "./terrain";
 
 function toLevel(score: number, conditional: boolean): SuitabilityLevel {
   if (conditional) return "conditional";
@@ -33,7 +34,26 @@ function applyClimate(score: number, crop: CropProfile, climate: ClimateResult, 
   return score;
 }
 
-function scoreCrop(land: LandInput, crop: CropProfile, climate?: ClimateResult): CropCandidateResult {
+// 무료 추천에 지형(경사·향) 반영 — 유료 시뮬(core/terrain.terrainFactors)과 '동일 4단계 기준'을 점수델타로 옮긴 것.
+//   목적: 추천이 실제로 '이 땅'에 반응하게(경사 급한 땅엔 급경사 취약 작물 순위↓) — 지형은 무키 실데이터(Open-Meteo DEM).
+//   임계값(suitableSlopeMaxDegree)은 작물 데이터 — 날조 없음. 델타 크기는 기존 축(기후·배수)과 같은 스케일.
+function applyTerrain(score: number, crop: CropProfile, t: TerrainInput, reasons: string[], risks: string[]): number {
+  if (t.slopeDegree != null) {
+    const max = crop.requirements.suitableSlopeMaxDegree ?? 12;
+    const s = t.slopeDegree;
+    if (s <= max * 0.5) { score += 4; reasons.push(`경사 ${s}° — 평탄(작물 허용 ~${max}° 내)`); }
+    else if (s <= max) { reasons.push(`경사 ${s}° — 완경사(허용 ~${max}° 내)`); }
+    else if (s <= max * 2) { score -= 8; risks.push(`경사 ${s}° > 작물 허용(~${max}°) — 작업·토양유실 부담`); }
+    else { score -= 16; risks.push(`경사 ${s}° — 급경사(허용 ~${max}°의 2배 초과), 부적합 우려`); }
+  }
+  if (t.aspect && t.aspect !== "flat") {
+    if (t.aspect === "N" || t.aspect === "NE" || t.aspect === "NW") { score -= 5; risks.push(`${t.aspect} 향(북사면) — 일조 부족 경향`); }
+    else if (t.aspect === "S" || t.aspect === "SE" || t.aspect === "SW") { score += 2; reasons.push(`${t.aspect} 향 — 일조 양호`); }
+  }
+  return score;
+}
+
+function scoreCrop(land: LandInput, crop: CropProfile, climate?: ClimateResult, terrain?: TerrainInput): CropCandidateResult {
   let score = 50;
   const reasons: string[] = [];
   const risks: string[] = [];
@@ -80,7 +100,8 @@ function scoreCrop(land: LandInput, crop: CropProfile, climate?: ClimateResult):
     risks.push("노동력 수준 대비 관리·수확 부담이 큽니다.");
   }
 
-  // 기후 반영을 먼저 — 위치별 기후 근거(위험)가 일반 작물 주의보다 우선 노출되게(risks.slice(0,5)에 살아남도록).
+  // 위치별 근거(지형→기후)를 먼저 — 일반 작물 주의보다 우선 노출되게(risks.slice(0,5)에 살아남도록).
+  if (terrain) score = applyTerrain(score, crop, terrain, reasons, risks); // 유료 시뮬(terrainFactors)과 동일 기준 — 근거 일치
   if (climate) score = applyClimate(score, crop, climate, reasons, risks); // 유료 시뮬과 동일 기준 — 근거 일치
 
   crop.riskNotes.forEach((risk) => {
@@ -108,9 +129,9 @@ function scoreCrop(land: LandInput, crop: CropProfile, climate?: ClimateResult):
   };
 }
 
-export function rankCropCandidates(land: LandInput, limit = 5, climate?: ClimateResult): CropCandidateResult[] {
+export function rankCropCandidates(land: LandInput, limit = 5, climate?: ClimateResult, terrain?: TerrainInput): CropCandidateResult[] {
   return CROP_PROFILES
-    .map((crop) => scoreCrop(land, crop, climate)) // climate 주면 기후 반영(무료↔유료 일치)
+    .map((crop) => scoreCrop(land, crop, climate, terrain)) // climate·terrain 주면 위치 반영(무료↔유료 일치)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 }

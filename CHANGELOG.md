@@ -3,6 +3,13 @@
 > 단일 출처: `src/lansmark/version.ts`(`RELEASES`). 이 문서·`package.json` version·`version.ts`를 **함께** 올린다.
 > 사용자에겐 버전업 시 앱에서 "변경점" 팝업으로 노출(`/api/version` ↔ localStorage 마지막 본 버전).
 
+## 0.81.0 — 2026-07-01 · ⛰ 추천 지형 반영 + 💰 소득 실데이터 배지(정밀 복구 1호)
+> UX 감사 잔여 '무료 추천 위치 무반응(전국 동일 순위·가짜 정밀)'의 해소 축. 지형은 무키 실데이터(Open-Meteo DEM)라 키 없이도 '진짜'.
+- **추천 엔진 지형 반영** — `rankCropCandidates`에 terrain 인자 추가: 경사 4단계(평탄 가점/완경사/허용 초과 감점/급경사 큰 감점 — **유료 terrainFactors와 동일 기준**) + 향(남향 가점·북사면 감점). 임계값=작물 데이터(`suitableSlopeMaxDegree`) — 날조 없음. 근거·위험 문구에 수치 명시.
+- **recommend 라우트** — 기후·지형을 병렬 조회(Promise.allSettled·fail-soft)해 랭킹에 주입. 지형은 DEM 30일 캐시라 앱의 병렬 /api/terrain 호출과 캐시 공유(이중조회 저렴). 응답에 `terrainUsed` 노출.
+- **💰 소득 실데이터 배지** — 후보별 `incomeData:{verified,baseYear}`(SSOT=getRdaBase·`incomeDataStatus` 헬퍼). 앱 추천 칩에 💰 배지 + 범례("배지 없는 작물 소득 숫자=추정 구조값") — 검증 10작물 vs 데모 작물 정직 구분.
+- 신규 테스트: cropSuitabilityTerrain(6 — 순위가 경사로 실제 변동 검증 포함) + recommend 응답 계약 강화 → vitest 718.
+
 ## 0.80.0 — 2026-07-01 · 🔔 아침 브리핑 웹푸시 — 발송 실구현(리텐션 피벗 2호)
 > 브리핑(0.79.0)이 '올 이유'라면 푸시는 '여는 방아쇠'. 발송이 seam(ConsolePushSender)에 머물던 것을 무의존 실구현으로 승격.
 - **LiveWebPushSender(신규·무의존)** — RFC 8291(aes128gcm 메시지 암호화)+RFC 8188(콘텐츠 인코딩)+RFC 8292(VAPID ES256 JWT)를 node:crypto로 직접 구현. **RFC 8291 Appendix A 공식 테스트 벡터와 바이트 단위 일치** 검증(webPushSender.spec) + UA측 복호 왕복 + VAPID 서명 검증. `createPushSender()`가 VAPID env 있으면 live, 없으면 Console(미전송 정직) 자동 선택.

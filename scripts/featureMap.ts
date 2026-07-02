@@ -94,11 +94,12 @@ export const FEATURES: Feature[] = [
   },
   {
     id: "recommend-free", name: "무료 작물추천", stage: "recommend",
-    flow: "필지 → 적합도 상대점수 작물후보(무료·매입추천 아님) + 전체 작물 카탈로그(추천 밖 작물 직접 선택)",
+    flow: "필지 → 기후(KMA)+지형(DEM 경사·향) 반영 적합도 상대점수 작물후보(무료·매입추천 아님) + 💰 소득 실데이터 배지 + 전체 작물 카탈로그(추천 밖 작물 직접 선택)",
     endpoints: ["/api/recommend", "/api/crops", "/api/retail-price"],
     files: ["src/lansmark/core/cropSuitability.ts", "src/lansmark/core/validate.ts", "src/lansmark/crops/catalog.ts", "server/routes/analysis.ts", "server/routes/crops.ts", "src/lansmark/data/crops.seed.ts"],
-    tests: ["src/lansmark/tests/validate.spec.ts", "src/lansmark/tests/soilPolicy.spec.ts", "src/lansmark/tests/cropsCatalog.spec.ts", "src/lansmark/tests/retailRoutes.spec.ts"],
-    guardrails: ["매입추천 금지", "적합도 상대점수만", "면책"], status: "live",
+    tests: ["src/lansmark/tests/validate.spec.ts", "src/lansmark/tests/soilPolicy.spec.ts", "src/lansmark/tests/cropsCatalog.spec.ts", "src/lansmark/tests/retailRoutes.spec.ts", "src/lansmark/tests/cropSuitabilityTerrain.spec.ts", "src/lansmark/tests/cropSuitabilityClimate.spec.ts"],
+    guardrails: ["매입추천 금지", "적합도 상대점수만", "면책", "지형·기후 임계=작물 데이터(날조 금지)·유료 시뮬과 동일 기준", "소득 배지=getRdaBase verified SSOT"], status: "live",
+    notes: "지형 반영(2026-07): 경사 4단계(terrainFactors와 동일)+향(일조)을 무료 점수에 — '전국 동일 순위'(가짜 정밀) 해소. 지형=Open-Meteo DEM(무키 live·30일 캐시·앱 병렬 조회와 캐시 공유). 💰=농진청 실 소득조사(2024) 보유 작물 정직 구분.",
   },
   {
     id: "paywall-entitlement", name: "결제·유료권한", stage: "pay",

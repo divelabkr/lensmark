@@ -17,6 +17,7 @@ import { getValidationLevel, VALIDATED_THRESHOLD } from "../../src/lansmark/core
 import { getConsolidatedCalibration, markCalibrationDirty } from "../../src/lansmark/core/consolidateCache";
 import { buildGrowthCalendar } from "../../src/lansmark/core/calendar";
 import { buildGrowthRiskInfo } from "../../src/lansmark/core/growthRisk";
+import { incomeDataStatus } from "../../src/lansmark/data/rdaIncome";
 import { anonSubmitterId, type SimulationEntitlement } from "../../src/lansmark/policy/entitlement";
 import { assertPaidAccess } from "../paidAccess";
 import { clampNonNeg } from "../../src/lansmark/api/security";
@@ -44,12 +45,20 @@ export const analysisRoutes: RouteFn = async (ctx, req, res, url) => {
       }
     } catch (e) { badInput(res, e); return true; }
     ctx.analytics.funnel("recommend", req.headers["x-lansmark-anon"] as string | undefined); // 퍼널 1단계(유입) + 익명 기기로 신규/재방문 판정
-    // 기후를 '먼저' 가져와 추천 랭킹에도·근거에도 같이 씀 → 무료 추천 ↔ 유료 시뮬 근거 일치(모순 제거). 실패/좌표없으면 기후 생략(fail-soft, 추천은 유지).
-    let climate; let climateEv: ReturnType<typeof climateEvidence> | undefined;
+    // 기후·지형을 '먼저' 가져와 추천 랭킹에도·근거에도 같이 씀 → 무료 추천 ↔ 유료 시뮬 근거 일치(모순 제거).
+    //   지형=Open-Meteo DEM(무키 live·30일 캐시 — 앱의 병렬 /api/terrain 호출과 같은 캐시를 공유해 이중조회 저렴).
+    //   실패/좌표없으면 해당 축 생략(fail-soft, 추천은 유지) — '전국 동일 순위'(가짜 정밀) 해소 축.
+    let climate; let terrain; let climateEv: ReturnType<typeof climateEvidence> | undefined;
     if (land.lat != null && land.lng != null) {
-      try { climate = await ctx.providers.land.climate({ lat: land.lat, lng: land.lng }); if (climate) climateEv = climateEvidence(climate); } catch { /* 폴백: 기후 미반영 */ }
+      const loc = { lat: land.lat, lng: land.lng };
+      const [cR, tR] = await Promise.allSettled([ctx.providers.land.climate(loc), ctx.providers.land.terrain(loc)]);
+      if (cR.status === "fulfilled" && cR.value) { climate = cR.value; climateEv = climateEvidence(climate); }
+      if (tR.status === "fulfilled" && tR.value) terrain = tR.value;
     }
-    json(res, 200, { ok: true, mode: "free", paywallAfter: "crop_candidate_top", candidates: rankCropCandidates(land, limit, climate), climateEvidence: climateEv });
+    // 소득 실데이터 배지 — 후보별 농진청 실측 여부(incomeDataStatus)를 얹어 '숫자를 믿을 수 있는 작물'을 정직하게 구분.
+    const candidates = rankCropCandidates(land, limit, climate, terrain ?? undefined)
+      .map((c) => ({ ...c, incomeData: incomeDataStatus(c.cropId) }));
+    json(res, 200, { ok: true, mode: "free", paywallAfter: "crop_candidate_top", candidates, climateEvidence: climateEv, terrainUsed: !!terrain });
     return true;
   }
 

@@ -500,7 +500,7 @@ async function recommend(lat,lng,tier){
   if(tier==="sido")return{tier,regionText:reg.sido,crops:(SIDO_CROPS[reg.sido]||["데이터 준비중"]).map(ko=>({ko})),note:"시·도 대표작물(예시 시드)",region:reg.sido};
   if(tier==="sigungu"){const k=reg.sigungu,list=k&&SIGUNGU_PRODUCE[k]?SIGUNGU_PRODUCE[k]:(SIDO_CROPS[reg.sido]||["데이터 준비중"]);return{tier,regionText:(reg.sigungu?reg.sigungu+" ":"")+"("+reg.sido+")",crops:list.map(ko=>({ko})),note:k&&SIGUNGU_PRODUCE[k]?"지역 특산물(예시 시드)":"대표작물(예시 시드)",region:reg.sido};}
   const d=await apiRecommend(lat,lng),cands=(d&&d.candidates)||[];
-  return{tier,regionText:(reg.sigungu?reg.sigungu+" ":"")+"필지",crops:cands.map(c=>({id:c.cropId,ko:c.cropNameKo,score:c.score,suit:c.suitability,conf:c.confidence,blockedBy:c.blockedBy})),note:"실제 재배가능 · 무료 적합도 추천",region:reg.sido,climateEvidence:d&&d.climateEvidence};
+  return{tier,regionText:(reg.sigungu?reg.sigungu+" ":"")+"필지",crops:cands.map(c=>({id:c.cropId,ko:c.cropNameKo,score:c.score,suit:c.suitability,conf:c.confidence,blockedBy:c.blockedBy,inc:!!(c.incomeData&&c.incomeData.verified),incYear:c.incomeData&&c.incomeData.baseYear})),note:"실제 재배가능 · 무료 적합도 추천",region:reg.sido,climateEvidence:d&&d.climateEvidence,terrainUsed:d&&d.terrainUsed};
 }
 
 /* ===== 상태/지도 ===== */
@@ -648,7 +648,8 @@ function factorList(facts){if(!facts.length)return `<div style="font-size:12px;c
     const half=flat?0:Math.max(2,Math.min(48,Math.round(mag/max*48))),cls=flat?"flat":up?"up":"down",lab=f.target==="cost"?"비용":"수율",sign=raw>0?"+":"";
     const fill=flat?`left:50%;width:2px`:up?`left:50%;width:${half}%`:`left:${50-half}%;width:${half}%`; // 소득↑=중앙→오른쪽, 소득↓=왼쪽→중앙
     return `<div class="trow"><div class="thead"><span class="fax ${axClass(f.axis)}">${esc(f.axis)}</span><span class="freason">${esc(f.reason)}</span><span class="fpct ${cls}">${sign}${raw}%<span style="font-size:8.5px;color:var(--ink3)"> ${lab}</span></span></div><div class="tbar"><span class="tmid"></span><span class="tfill ${cls}" style="${fill}"></span></div></div>`;}).join("");}
-function cropChips(crops,chosenId){return crops.map(c=>{const hasScore=c.score!=null;const sc=hasScore?`<span class="sc num">${esc(c.score)}</span>`:"";const cls=!hasScore?"":(c.suit==="high"||c.suit==="medium_high")?"":(c.suit==="medium"||c.suit==="conditional")?"mid":"low";const sel=c.id&&c.id===chosenId?"sel":"";const cid=c.id||"";const tip=c.blockedBy&&c.blockedBy.length?` title="${esc(c.blockedBy.join(', '))}"`:"";return `<span class="crop ${cls} ${sel}" data-crop="${esc(cid)}" data-ko="${esc(c.ko)}"${tip}>${esc(c.ko)}${sc}</span>`;}).join("");}
+function cropChips(crops,chosenId){return crops.map(c=>{const hasScore=c.score!=null;const sc=hasScore?`<span class="sc num">${esc(c.score)}</span>`:"";const cls=!hasScore?"":(c.suit==="high"||c.suit==="medium_high")?"":(c.suit==="medium"||c.suit==="conditional")?"mid":"low";const sel=c.id&&c.id===chosenId?"sel":"";const cid=c.id||"";const inc=c.inc?`<span title="농진청 실측 소득자료${c.incYear?"("+esc(c.incYear)+")":""} 보유 — 소득 시뮬 신뢰 높음" style="margin-left:2px">💰</span>`:""; // 소득 실데이터 배지(미검증 작물과 정직 구분)
+  const tip=c.blockedBy&&c.blockedBy.length?` title="${esc(c.blockedBy.join(', '))}"`:"";return `<span class="crop ${cls} ${sel}" data-crop="${esc(cid)}" data-ko="${esc(c.ko)}"${tip}>${esc(c.ko)}${inc}${sc}</span>`;}).join("");}
 function bindChips(root,cb){root.querySelectorAll(".crop[data-crop]").forEach(el=>{const id=el.getAttribute("data-crop");if(!id)return;el.addEventListener("click",()=>cb(id));});}
 /* 전체 작물 보기 — 추천 top-N 밖 작물(벼·보리 등)도 직접 선택(무료 카탈로그 /api/crops). */
 function bindAllCrops(root,cb){
@@ -680,7 +681,7 @@ function recHeadHtml(rec,tier,chosenId,parcel,showAll){
     <div class="tagrow">${(rec.crops&&rec.crops.length)?cropChips(rec.crops,chosenId):'<div class="src">이 위치에 맞는 추천 작물이 없습니다 — 아래 \'전체 작물 보기\'에서 직접 선택하세요.</div>'}</div>
     ${(rec.climateEvidence&&rec.climateEvidence.facts&&rec.climateEvidence.facts.length)?`<div class="lc-r" style="margin-top:8px"><div style="font-weight:800;margin-bottom:3px">🌤 이 땅 기후 <span class="src" style="font-weight:600">· 추천 근거</span></div><div>${rec.climateEvidence.facts.map(f=>esc(f)).join(" · ")}</div><div class="src" style="margin-top:2px">출처: ${esc(rec.climateEvidence.sourceLabel)} · ${esc(rec.climateEvidence.disclaimer)}</div></div>`:''}
     ${(showAll&&tier==='parcel')?`<div style="margin-top:7px"><button class="btn" id="all-crops-btn" style="font-size:12px;padding:5px 10px">＋ 전체 작물 보기 (벼·보리 등)</button><div class="tagrow" id="all-crops" style="display:none;margin-top:7px"></div></div>`:''}
-    ${tier==='parcel'?`<div class="lc-r" style="margin-top:7px">숫자 = <b>적합도</b>(0~100, 높을수록 적합) · 색: <span style="color:#10B95C">초록 적합</span>·<span style="color:#D98E1B">노랑 검토</span>·회색 낮음. 정밀 신뢰도·근거·인증게이트는 작물 선택 후 표시.</div>`:''}</div>`;
+    ${tier==='parcel'?`<div class="lc-r" style="margin-top:7px">숫자 = <b>적합도</b>(0~100, 높을수록 적합) · 색: <span style="color:#10B95C">초록 적합</span>·<span style="color:#D98E1B">노랑 검토</span>·회색 낮음 · 💰 = <b>소득 실데이터</b>(농진청 실측 — 소득 숫자 신뢰 높음)${rec.terrainUsed?` · ⛰ 이 순위는 <b>실측 지형(경사·향)</b> 반영`:''}. 정밀 신뢰도·근거·인증게이트는 작물 선택 후 표시.</div>`:''}</div>`;
 }
 const STAGE_C={idle:"#eef1ec",sow:"#10B95C",growth:"#9ed8b4",bloom:"#F2B33D",harvest:"#DA5237"};
 const STAGE_T={idle:"",sow:"파종",growth:"생육",bloom:"개화",harvest:"수확"};
